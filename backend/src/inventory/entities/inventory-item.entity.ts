@@ -7,11 +7,13 @@ import {
   ManyToOne,
   JoinColumn,
   OneToMany,
+  Index,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { StockMovement } from './stock-movement.entity';
 
 @Entity('inventory_items')
+@Index(['userId', 'sku'], { unique: true })
 export class InventoryItem {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -23,7 +25,7 @@ export class InventoryItem {
   @JoinColumn({ name: 'userId' })
   user: User;
 
-  @Column({ unique: true })
+  @Column()
   sku: string;
 
   @Column()
@@ -32,19 +34,16 @@ export class InventoryItem {
   @Column({ type: 'text', nullable: true })
   description: string;
 
-  @Column({ nullable: true })
-  category: string;
-
   @Column()
   unit: string;
 
   @Column({ nullable: true })
   barcode: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  @Column({ type: 'decimal', precision: 12, scale: 4, nullable: true })
   costPrice: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  @Column({ type: 'decimal', precision: 12, scale: 4 })
   defaultUnitPrice: number;
 
   @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
@@ -54,9 +53,6 @@ export class InventoryItem {
   currentStock: number;
 
   @Column({ type: 'int', default: 0 })
-  reservedStock: number;
-
-  @Column({ type: 'int', default: 0 })
   reorderLevel: number;
 
   @Column({ type: 'int', nullable: true })
@@ -64,6 +60,38 @@ export class InventoryItem {
 
   @Column({ type: 'varchar', default: 'active' })
   status: 'active' | 'inactive';
+
+  // Bundle / Pack Information
+  @Column({ type: 'int', nullable: true })
+  bundleSize: number;
+
+  @Column({ nullable: true })
+  bundleUnit: string;
+
+  // Space / Container Planning
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  spacePerBundle: number;
+
+  @Column({ type: 'int', nullable: true })
+  bundlesPerContainer: number;
+
+  @Column({ type: 'int', nullable: true })
+  targetBundles: number;
+
+  // Pack Size (units per bundle/case)
+  @Column({ type: 'int', nullable: true })
+  packSize: number;
+
+  // Container Planning
+  @Column({ type: 'int', nullable: true })
+  unitsPerContainer: number;
+
+  // Planning Fields
+  @Column({ type: 'int', nullable: true })
+  weeksSupplyTargetOverride: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  averageWeeklyUsage: number;
 
   @OneToMany(() => StockMovement, (movement) => movement.inventoryItem)
   movements: StockMovement[];

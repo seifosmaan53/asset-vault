@@ -9,12 +9,14 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { ApiKeysService } from './api-keys.service';
 import { CreateApiKeyDto, UpdateApiKeyDto } from './dto';
-
+import { Roles } from '../auth/roles.decorator';
+import { UserRole } from '../users/entities/user.entity';
 @Controller('api-keys')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(ClerkAuthGuard)
+@Roles(UserRole.ADMIN, UserRole.OWNER)
 export class ApiKeysController {
   constructor(private readonly apiKeysService: ApiKeysService) {}
 
@@ -30,12 +32,22 @@ export class ApiKeysController {
 
   @Post()
   create(@Body() createDto: CreateApiKeyDto, @Request() req) {
-    return this.apiKeysService.create(req.user.userId, createDto);
+    try {
+      const result = this.apiKeysService.create(req.user.userId, createDto);
+      return result;
+    } catch (error: any) {
+      throw error;
+    }
   }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateDto: UpdateApiKeyDto, @Request() req) {
-    return this.apiKeysService.update(id, req.user.userId, updateDto);
+    try {
+      const result = this.apiKeysService.update(id, req.user.userId, updateDto);
+      return result;
+    } catch (error: any) {
+      throw error;
+    }
   }
 
   @Delete(':id')

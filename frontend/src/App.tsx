@@ -1,7 +1,9 @@
+// Copyright (c) 2025 Asset Vault. All rights reserved.
+
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuthStore } from './store/authStore';
 import ProtectedRoute from './components/layout/ProtectedRoute';
-import AuthLayout from './components/layout/AuthLayout';
+import { AdminRoute } from './components/layout/AdminRoute';
+import { AuthRouteWrapper } from './components/auth/AuthRouteWrapper';
 import AppLayout from './components/layout/AppLayout';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -20,36 +22,40 @@ import Settings from './pages/Settings/Settings';
 import ApiKeysList from './pages/ApiKeys/ApiKeysList';
 import Feedback from './pages/Feedback/Feedback';
 import InvoiceTemplatesList from './pages/InvoiceTemplates/InvoiceTemplatesList';
-import RecurringInvoicesList from './pages/RecurringInvoices/RecurringInvoicesList';
-import RecurringInvoiceForm from './pages/RecurringInvoices/RecurringInvoiceForm';
+import InvoiceTemplateEditor from './pages/InvoiceTemplates/InvoiceTemplateEditor';
+// Recurring invoices removed
+import StoreList from './pages/Stores/StoreList';
+import StoreForm from './pages/Stores/StoreForm';
+import StoreDetail from './pages/Stores/StoreDetail';
+import StoreItemSettings from './pages/Stores/StoreItemSettings';
+import StoreStockReport from './pages/Stores/StoreStockReport';
+import StoreAnalytics from './pages/Analytics/StoreAnalytics';
+import PlanSelection from './pages/Subscription/PlanSelection';
+import Billing from './pages/Subscription/Billing';
+import SubscriptionSuccess from './pages/Subscription/Success';
+import SubscriptionCancel from './pages/Subscription/Cancel';
+import NotFound from './pages/NotFound';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 function App() {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   return (
-    <Routes>
+    <ErrorBoundary>
+      <Routes>
       <Route
-        path="/login"
+        path="/login/*"
         element={
-          isAuthenticated ? (
-            <Navigate to="/dashboard" replace />
-          ) : (
-            <AuthLayout>
-              <Login />
-            </AuthLayout>
-          )
+          <AuthRouteWrapper>
+            <Login />
+          </AuthRouteWrapper>
         }
       />
       <Route
-        path="/register"
+        path="/register/*"
         element={
-          isAuthenticated ? (
-            <Navigate to="/dashboard" replace />
-          ) : (
-            <AuthLayout>
-              <Register />
-            </AuthLayout>
-          )
+          <AuthRouteWrapper>
+            <Register />
+          </AuthRouteWrapper>
         }
       />
       <Route
@@ -76,15 +82,29 @@ function App() {
         <Route path="invoices/:id/edit" element={<InvoiceForm />} />
         <Route path="invoices/:id/preview" element={<InvoicePreview />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="subscription/plan" element={<PlanSelection />} />
+        <Route path="subscription/billing" element={<Billing />} />
+        <Route path="subscription/success" element={<SubscriptionSuccess />} />
+        <Route path="subscription/cancel" element={<SubscriptionCancel />} />
         <Route path="api-keys" element={<ApiKeysList />} />
         <Route path="feedback" element={<Feedback />} />
-        <Route path="templates" element={<InvoiceTemplatesList />} />
-        <Route path="recurring-invoices" element={<RecurringInvoicesList />} />
-        <Route path="recurring-invoices/create" element={<RecurringInvoiceForm />} />
-        <Route path="recurring-invoices/:id" element={<RecurringInvoiceForm />} />
+        <Route path="invoice-templates" element={<InvoiceTemplatesList />} />
+        <Route path="invoice-templates/create" element={<InvoiceTemplateEditor />} />
+        <Route path="invoice-templates/:id" element={<InvoiceTemplateEditor />} />
+        <Route path="invoice-templates/:id/edit" element={<InvoiceTemplateEditor />} />
+        {/* Recurring invoices removed */}
+        <Route path="stores" element={<StoreList />} />
+        <Route path="stores/new" element={<StoreForm />} />
+        <Route path="stores/:id" element={<StoreDetail />} />
+        <Route path="stores/:id/edit" element={<StoreForm />} />
+        <Route path="stores/:id/items" element={<StoreItemSettings />} />
+        <Route path="stores/:id/report" element={<StoreStockReport />} />
+        <Route path="analytics/stores" element={<StoreAnalytics />} />
+        <Route path="analytics/stores/:storeId" element={<StoreAnalytics />} />
       </Route>
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
+    </ErrorBoundary>
   );
 }
 

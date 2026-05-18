@@ -10,14 +10,23 @@ coverage/
 # Production
 dist/
 build/
+backend/dist/
+frontend/dist/
 *.local
+*.tsbuildinfo
 
-# Environment variables
+# Environment variables (never commit real credentials)
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env.bak
+*.env.bak
+*.key
+
+# Note: .env.example files should be committed to version control
+# They serve as templates for users to create their own .env files
 
 # Logs
 logs
@@ -58,4 +67,32 @@ backend/backups/
 *.tmp
 *.temp
 .cache/
+
+# Internal dev reports (not for public repo)
+ADD_DATA_FOR_USER_GUIDE.md
+ALL_ANY_TYPES_*.md
+ALL_FIXES_*.md
+ARCHITECTURE_UPGRADES.md
+BUG_*.md
+COMPLETE_*.md
+COMPREHENSIVE_*.md
+DEEP_SCAN_*.md
+EDGE_CASE_*.md
+FINAL_*.md
+FIRST_TIME_STARTUP.md
+FIXES_*.md
+FRONTEND_STATUS_*.md
+IMPLEMENTATION_SUMMARY.md
+KEYS_QUICK_REFERENCE.md
+NEXT_STEPS_*.md
+QUICK_START*.md
+STRIPE_KEYS_NEEDED.md
+SUBSCRIPTION_SETUP_GUIDE.md
+TODO_COMPLETION_SUMMARY.md
+TROUBLESHOOTING_*.md
+VERIFICATION_COMPLETE.md
+WHAT_IS_LEFT.md
+first-time-startup.js
+Start\ InvoiceMe.command
+Stop\ InvoiceMe.command
 

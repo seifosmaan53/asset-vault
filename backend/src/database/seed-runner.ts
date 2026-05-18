@@ -7,6 +7,11 @@ import { InventoryItem } from '../inventory/entities/inventory-item.entity';
 import { Invoice } from '../invoices/entities/invoice.entity';
 import { InvoiceItem } from '../invoices/entities/invoice-item.entity';
 import { StockMovement } from '../inventory/entities/stock-movement.entity';
+// Recurring invoices removed
+import { Store } from '../inventory/entities/store.entity';
+import { StoreItemSettings } from '../inventory/entities/store-item-settings.entity';
+import { Organization } from '../organizations/entities/organization.entity';
+import { UserOrganization } from '../organizations/entities/user-organization.entity';
 
 config();
 
@@ -18,7 +23,7 @@ async function runSeed() {
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.DB_DATABASE || 'invoiceme',
-    entities: [User, Client, InventoryItem, Invoice, InvoiceItem, StockMovement],
+    entities: [User, Client, InventoryItem, Invoice, InvoiceItem, StockMovement, Store, StoreItemSettings, Organization, UserOrganization], // RecurringInvoice removed
     synchronize: false,
     logging: false,
   });

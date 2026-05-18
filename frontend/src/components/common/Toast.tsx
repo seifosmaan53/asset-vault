@@ -1,10 +1,6 @@
 import { Snackbar, Alert } from '@mui/material';
 import { useState, useCallback } from 'react';
 
-interface ToastContextType {
-  showToast: (message: string, severity?: 'success' | 'error' | 'warning' | 'info') => void;
-}
-
 export const useToast = () => {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState('');

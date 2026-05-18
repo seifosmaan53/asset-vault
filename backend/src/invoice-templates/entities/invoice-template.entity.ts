@@ -4,38 +4,58 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  ManyToOne,
-  JoinColumn,
+  DeleteDateColumn,
+  Index,
 } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
+
+export interface TemplateData {
+  header?: {
+    logo?: string;
+    companyName?: string;
+    companyAddress?: string;
+    companyPhone?: string;
+    companyEmail?: string;
+  };
+  footer?: {
+    text?: string;
+    showPageNumbers?: boolean;
+  };
+  styles?: {
+    primaryColor?: string;
+    secondaryColor?: string;
+    fontFamily?: string;
+    fontSize?: number;
+  };
+  sections?: {
+    showClientInfo?: boolean;
+    showStoreInfo?: boolean;
+    showItemsTable?: boolean;
+    showTotals?: boolean;
+    showNotes?: boolean;
+  };
+  variables?: Record<string, string>; // Custom template variables
+}
 
 @Entity('invoice_templates')
+@Index(['userId', 'deletedAt'])
 export class InvoiceTemplate {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({ type: 'uuid' })
+  @Index()
   userId: string;
 
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'userId' })
-  user: User;
-
-  @Column()
+  @Column({ type: 'varchar', length: 255 })
   name: string;
 
   @Column({ type: 'text', nullable: true })
-  description: string;
+  description: string | null;
 
   @Column({ type: 'jsonb' })
-  templateData: {
-    header?: any;
-    footer?: any;
-    styles?: any;
-    fields?: any;
-  };
+  templateData: TemplateData;
 
-  @Column({ default: false })
+  @Column({ type: 'boolean', default: false })
   isDefault: boolean;
 
   @CreateDateColumn()
@@ -43,5 +63,7 @@ export class InvoiceTemplate {
 
   @UpdateDateColumn()
   updatedAt: Date;
-}
 
+  @DeleteDateColumn({ nullable: true })
+  deletedAt: Date | null;
+}

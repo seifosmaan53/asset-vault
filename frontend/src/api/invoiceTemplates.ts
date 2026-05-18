@@ -1,24 +1,22 @@
 import { apiClient } from './apiClient';
-import { InvoiceTemplate } from '../types/invoiceTemplate';
-
-export interface CreateInvoiceTemplateDto {
-  name: string;
-  description?: string;
-  templateData: {
-    header?: any;
-    footer?: any;
-    styles?: any;
-    fields?: any;
-  };
-  isDefault?: boolean;
-}
-
-export interface UpdateInvoiceTemplateDto extends Partial<CreateInvoiceTemplateDto> {}
+import type { InvoiceTemplate, CreateInvoiceTemplateDto, UpdateInvoiceTemplateDto } from '../types/invoiceTemplate';
 
 export const invoiceTemplatesApi = {
   getAll: async (): Promise<InvoiceTemplate[]> => {
     const response = await apiClient.get<InvoiceTemplate[]>('/invoice-templates');
     return response.data;
+  },
+
+  getDefault: async (): Promise<InvoiceTemplate | null> => {
+    try {
+      const response = await apiClient.get<InvoiceTemplate>('/invoice-templates/default');
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   },
 
   getById: async (id: string): Promise<InvoiceTemplate> => {
@@ -40,4 +38,3 @@ export const invoiceTemplatesApi = {
     await apiClient.delete(`/invoice-templates/${id}`);
   },
 };
-

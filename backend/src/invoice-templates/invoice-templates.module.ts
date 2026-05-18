@@ -11,4 +11,3 @@ import { InvoiceTemplate } from './entities/invoice-template.entity';
   exports: [InvoiceTemplatesService],
 })
 export class InvoiceTemplatesModule {}
-

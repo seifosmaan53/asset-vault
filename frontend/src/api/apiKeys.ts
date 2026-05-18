@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import { ApiKey } from '../types/apiKey';
+import type { ApiKey } from '../types/apiKey';
 
 export interface CreateApiKeyDto {
   name: string;

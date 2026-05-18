@@ -2,12 +2,113 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <meta name="description" content="Asset Vault — Professional invoice & inventory management for modern businesses." />
+    <meta name="theme-color" content="#6366F1" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Inter: clean modern sans-serif used throughout the app -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+    <link rel="icon" type="image/svg+xml" href="/av-logo.svg" />
+    <title>Asset Vault</title>
+
+    <style>
+      /* Initial loading screen — shown before React hydrates */
+      #root-loader {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #080B14;
+        z-index: 9999;
+        font-family: 'Inter', sans-serif;
+        transition: opacity 0.4s ease;
+      }
+      #root-loader.fade-out { opacity: 0; pointer-events: none; }
+      .av-loader-logo {
+        width: 64px; height: 64px;
+        background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+        border-radius: 16px;
+        display: flex; align-items: center; justify-content: center;
+        margin-bottom: 20px;
+        box-shadow: 0 8px 32px rgba(99,102,241,0.4);
+        animation: av-pulse 2s ease-in-out infinite;
+      }
+      .av-loader-logo svg { width: 36px; height: 36px; }
+      .av-loader-text {
+        font-size: 22px; font-weight: 700; letter-spacing: -0.02em;
+        color: #F1F5F9; margin-bottom: 6px;
+      }
+      .av-loader-sub {
+        font-size: 13px; color: #64748B; font-weight: 400;
+      }
+      .av-loader-bar {
+        margin-top: 28px;
+        width: 180px; height: 3px;
+        background: rgba(255,255,255,0.06);
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .av-loader-bar-inner {
+        height: 100%;
+        background: linear-gradient(90deg, #6366F1, #8B5CF6, #6366F1);
+        background-size: 200% 100%;
+        border-radius: 2px;
+        animation: av-bar 1.4s ease-in-out infinite;
+      }
+      @keyframes av-pulse {
+        0%, 100% { box-shadow: 0 8px 32px rgba(99,102,241,0.4); }
+        50% { box-shadow: 0 8px 48px rgba(99,102,241,0.65); }
+      }
+      @keyframes av-bar {
+        0% { background-position: -200% 0; width: 30%; margin-left: 0; }
+        50% { width: 60%; }
+        100% { background-position: 200% 0; width: 30%; margin-left: 150px; }
+      }
+    </style>
   </head>
   <body>
+    <!-- Loader shown before React hydrates -->
+    <div id="root-loader">
+      <div class="av-loader-logo">
+        <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="18" cy="18" r="13" stroke="white" stroke-width="2.5" stroke-opacity="0.9"/>
+          <circle cx="18" cy="18" r="6" fill="white" fill-opacity="0.9"/>
+          <line x1="18" y1="5" x2="18" y2="10" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="18" y1="26" x2="18" y2="31" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="5" y1="18" x2="10" y2="18" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="26" y1="18" x2="31" y2="18" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="9.05" y1="9.05" x2="12.6" y2="12.6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-opacity="0.6"/>
+          <line x1="23.4" y1="23.4" x2="26.95" y2="26.95" stroke="white" stroke-width="2" stroke-linecap="round" stroke-opacity="0.6"/>
+          <line x1="26.95" y1="9.05" x2="23.4" y2="12.6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-opacity="0.6"/>
+          <line x1="12.6" y1="23.4" x2="9.05" y2="26.95" stroke="white" stroke-width="2" stroke-linecap="round" stroke-opacity="0.6"/>
+        </svg>
+      </div>
+      <div class="av-loader-text">Asset Vault</div>
+      <div class="av-loader-sub">Loading your workspace…</div>
+      <div class="av-loader-bar"><div class="av-loader-bar-inner"></div></div>
+    </div>
+
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Fade out loader once React takes over
+      window.addEventListener('load', function() {
+        requestAnimationFrame(function() {
+          var loader = document.getElementById('root-loader');
+          if (loader) {
+            loader.classList.add('fade-out');
+            setTimeout(function() { loader.remove(); }, 450);
+          }
+        });
+      });
+    </script>
   </body>
 </html>

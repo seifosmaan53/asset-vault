@@ -30,6 +30,9 @@ export default tseslint.config(
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
       "prettier/prettier": ["error", { endOfLine: "auto" }],
+      // Import order enforcement (Issue #223)
+      '@typescript-eslint/consistent-type-imports': ['warn', { prefer: 'type-imports' }],
+      'no-duplicate-imports': 'error',
     },
   },
 );

@@ -2,6 +2,66 @@
 
 All notable changes to InvoiceMe will be documented in this file.
 
+## [1.1.0] - 2024-12-20
+
+### Added
+- **Role-Based Access Control (RBAC)** - Three-tier permission system:
+  - **OWNER**: Full system control, can manage users and all settings
+  - **ADMIN**: Can manage settings, API keys, and perform dangerous operations (deletes)
+  - **STAFF**: Day-to-day operations only, restricted from admin features
+- User role management endpoint (`/users/*`) - Owner-only access
+- Role-based UI hiding - Admin-only menu items and delete buttons hidden from staff
+- `@Roles()` decorator for endpoint protection
+- `RolesGuard` for automatic permission enforcement
+- Global JWT and Roles guards applied to all endpoints
+- First registered user automatically becomes OWNER
+- Migration to add `role` column to users table
+
+### Security
+- Backend-enforced permissions (frontend hiding is UX only)
+- Role validation on every authenticated request
+- Owner protection (last owner cannot be deleted)
+- Self-protection (users cannot delete themselves)
+- Role included in JWT payload for validation
+
+### Changed
+- All existing users default to ADMIN role (first user becomes OWNER)
+- API Keys endpoint now requires ADMIN/OWNER role
+- User Settings endpoint now requires ADMIN/OWNER role
+- Delete operations (invoices, inventory) now require ADMIN/OWNER role
+- User management restricted to OWNER only
+
+### Documentation
+- Added `ROLES_DESIGN_v1.1.md` with complete permissions matrix and implementation details
+
+## [1.0.1] - 2024-12-20
+
+### Added
+- Recurring invoice scheduler with automatic generation (cron job every 5 minutes)
+- Manual trigger endpoint for recurring invoice generation (`POST /api/v1/recurring-invoices/trigger-generation`)
+- Health check endpoint (`GET /api/v1/health`) with uptime monitoring
+- Rate limiting on authentication endpoints (login: 5/min, password reset: 3/min)
+- Environment variable validation with Joi schema (fails fast on invalid config)
+- Enhanced scheduler logging with generation counts and error tracking
+
+### Fixed
+- TypeScript compilation errors in backend (71 errors resolved)
+- TypeScript compilation errors in frontend (155+ errors resolved)
+- Grid component compatibility with MUI v7 (using GridLegacy)
+- Type-only imports for verbatimModuleSyntax compliance
+- Invoice form lineTotal calculation
+- Various type inference issues in seed script and services
+
+### Security
+- Rate limiting protection against brute-force attacks
+- Production-safe error handling (no stack traces leaked)
+- Environment validation prevents misconfiguration
+
+### Changed
+- Migrated from `synchronize: true` to TypeORM migrations for production safety
+- Enhanced error logging with structured output
+- Improved scheduler reliability with better error handling
+
 ## [1.0.0] - 2024-12-20
 
 ### Added

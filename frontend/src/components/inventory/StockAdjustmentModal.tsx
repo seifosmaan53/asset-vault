@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -16,9 +16,10 @@ import {
   DialogContentText,
 } from '@mui/material';
 import { useCreateStockMovement, useInventoryItem } from '../../hooks/useInventory';
-import { CreateStockMovementDto } from '../../api/inventory';
+import type { CreateStockMovementDto } from '../../api/inventory';
 import { stockMovementSchema } from '../../utils/validationSchemas';
 import { useToast } from '../../contexts/ToastContext';
+import { getErrorMessage } from '../../utils/errorHandling';
 
 interface StockAdjustmentModalProps {
   open: boolean;
@@ -86,8 +87,8 @@ const StockAdjustmentModal = ({ open, onClose, inventoryItemId }: StockAdjustmen
       setShowConfirmDialog(false);
       setPendingData(null);
       onClose();
-    } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to adjust stock', 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error, 'Failed to adjust stock'), 'error');
     }
   };
 
@@ -164,13 +165,16 @@ const StockAdjustmentModal = ({ open, onClose, inventoryItemId }: StockAdjustmen
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowConfirmDialog(false)}>Cancel</Button>
+          <Button onClick={() => setShowConfirmDialog(false)} disabled={createMovement.isPending}>
+            Cancel
+          </Button>
           <Button 
             onClick={() => pendingData && performAdjustment(pendingData)} 
             color="warning" 
             variant="contained"
+            disabled={createMovement.isPending || !pendingData}
           >
-            Confirm Adjustment
+            {createMovement.isPending ? 'Adjusting...' : 'Confirm Adjustment'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import { InventoryItem, StockMovement } from '../types/inventory';
+import type { InventoryItem, StockMovement } from '../types/inventory';
 
 export interface CreateInventoryItemDto {
   sku: string;
@@ -15,6 +15,28 @@ export interface CreateInventoryItemDto {
   reorderLevel: number;
   maxStockLevel?: number;
   status: 'active' | 'inactive';
+  // Size & Material
+  sizeInches?: string;
+  material?: string;
+  // Bundle / Pack Information
+  bundleSize?: number;
+  bundleUnit?: string;
+  // Space / Container Planning
+  spacePerBundle?: number;
+  bundlesPerContainer?: number;
+  targetBundles?: number;
+  // Print Type
+  printType?: string;
+  // Flute Type
+  fluteType?: string;
+  // Pack Size
+  packSize?: number;
+  // Container Planning
+  unitsPerContainer?: number;
+  containerType?: string;
+  // Planning Fields
+  weeksSupplyTargetOverride?: number;
+  averageWeeklyUsage?: number;
 }
 
 export interface UpdateInventoryItemDto extends Partial<CreateInventoryItemDto> {}
@@ -87,6 +109,38 @@ export const inventoryApi = {
   getLinkedInvoices: async (id: string): Promise<any[]> => {
     const response = await apiClient.get<any[]>(`/inventory/items/${id}/invoices`);
     return response.data;
+  },
+
+  bulkDelete: async (ids: string[]): Promise<{ deleted: number; failed: Array<{ id: string; reason: string }> }> => {
+    // Edge case: Validate input
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new Error('At least one inventory item ID is required');
+    }
+    
+    try {
+      const response = await apiClient.post<{ deleted: number; failed: Array<{ id: string; reason: string }> }>('/inventory/items/bulk-delete', { ids });
+      return response.data;
+    } catch (error) {
+      logger.error('Inventory API: Error bulk deleting items', { ids, error });
+      throw error;
+    }
+  },
+
+  import: async (file: File): Promise<{ created: number; failed: Array<{ row: number; data: any; errors: string[] }> }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      const response = await apiClient.post<{ created: number; failed: Array<{ row: number; data: any; errors: string[] }> }>('/inventory/items/import', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data;
+    } catch (error) {
+      logger.error('Inventory API: Error importing items', error);
+      throw error;
+    }
   },
 };
 

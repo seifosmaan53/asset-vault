@@ -34,7 +34,7 @@ export class InvoiceItem {
   @Column({ type: 'int' })
   quantity: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  @Column({ type: 'decimal', precision: 12, scale: 4 })
   unitPrice: number;
 
   @Column({ type: 'decimal', precision: 5, scale: 2, default: 0 })
@@ -43,10 +43,15 @@ export class InvoiceItem {
   @Column({ type: 'decimal', precision: 5, scale: 2, default: 0 })
   discountRate: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  @Column({ type: 'decimal', precision: 12, scale: 4 })
   lineTotal: number;
 
   @CreateDateColumn()
   createdAt: Date;
+
+  // Removed updateLineTotal() hook - line totals are now calculated by
+  // computeInvoiceTotalsCents() in the service layer for consistency.
+  // This ensures all calculations use the same cents-based arithmetic and
+  // prevents discrepancies between entity hooks and service calculations.
 }
 

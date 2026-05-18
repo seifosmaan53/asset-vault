@@ -7,8 +7,11 @@ import {
   DeleteDateColumn,
   ManyToOne,
   JoinColumn,
+  OneToMany,
+  Index,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { Store } from '../../inventory/entities/store.entity';
 
 @Entity('clients')
 export class Client {
@@ -43,11 +46,12 @@ export class Client {
   @Column({ type: 'text', nullable: true })
   notes: string;
 
-  @Column('text', { array: true, default: [] })
-  tags: string[];
-
   @Column({ nullable: true })
   avatarUrl: string;
+
+  // Issue #46: Explicit cascade rules for relationships
+  @OneToMany(() => Store, (store) => store.client, { onDelete: 'SET NULL' })
+  stores: Store[];
 
   @CreateDateColumn()
   createdAt: Date;

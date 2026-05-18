@@ -1,0 +1,59 @@
+name: Dependency Checks
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 0 * * 0' # Weekly on Sunday
+
+jobs:
+  backend-audit:
+    name: Backend Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      - name: Run npm audit
+        working-directory: ./backend
+        run: npm audit --audit-level=moderate || true
+      - name: Check for outdated packages
+        working-directory: ./backend
+        run: npm outdated || true
+
+  frontend-audit:
+    name: Frontend Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+      - name: Run npm audit
+        working-directory: ./frontend
+        run: npm audit --audit-level=moderate || true
+      - name: Check for outdated packages
+        working-directory: ./frontend
+        run: npm outdated || true
+
+  circular-deps:
+    name: Check Circular Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Check circular dependencies
+        working-directory: ./backend
+        run: npm run check:circular || true
+

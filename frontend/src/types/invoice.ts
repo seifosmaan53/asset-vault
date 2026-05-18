@@ -1,6 +1,7 @@
-import { Client } from './client';
+import type { Client } from './client';
+import type { Store } from './store';
 
-export type InvoiceType = 'invoice' | 'estimate';
+export type InvoiceType = 'invoice'; // Only invoices, no estimates
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
 
 export interface InvoiceItem {
@@ -31,12 +32,14 @@ export interface Invoice {
   discountTotal: number;
   total: number;
   notes?: string;
-  metadataJson?: any;
+  metadataJson?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
   paidAt?: string;
   paymentMethodNote?: string;
+  storeId?: string;
+  store?: Store;
   client?: Client;
   items?: InvoiceItem[];
 }
