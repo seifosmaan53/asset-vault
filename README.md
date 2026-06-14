@@ -1,5 +1,8 @@
 # Asset Vault
 
+<!--portfolio-note-->
+> **Portfolio note —** one of three invoicing builds exploring the same problem across stacks. **This is the modern, fully type-safe take: React 19 + NestJS 11 + tRPC** (with Stripe + Clerk). Siblings: [pizza-box-system](https://github.com/seifosmaan53/pizza-box-system) (React + Express + Prisma) and [invoiceme](https://github.com/seifosmaan53/invoiceme) (Flutter mobile, offline-first).
+
 > Professional invoice & inventory management for modern businesses.
 
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev)
