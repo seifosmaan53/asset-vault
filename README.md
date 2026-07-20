@@ -25,10 +25,10 @@ It's also the "type-safety-first" entry in a set of three invoicing rebuilds I'v
 
 Each item below maps to code in `backend/src/` and `frontend/src/` — no unverified claims.
 
-- **Invoices** — CRUD, status transitions, PDF export (`invoices/invoice-pdf.service.ts`, Puppeteer-rendered), email delivery, recurring invoice generation on a cron scheduler
+- **Invoices** — CRUD, status transitions, PDF export (`invoices/invoice-pdf.service.ts`, Puppeteer-rendered), email delivery (`POST /:id/send` via `MailService`, SendGrid/SMTP)
 - **Inventory** — SKU/barcode items, stock movements, reorder-level alerts (`inventory/store-alerts.service.ts`), bulk CSV import with per-row error reporting
 - **Multi-store** — stores scoped per user/org, store-to-store stock transfers (`inventory/store-transfer.service.ts`), per-store item settings and alert thresholds
-- **Multi-tenant organizations** — `organizations/` module with an `OrganizationContextGuard` and an owner/admin/staff role enum enforced on the backend, not just hidden in the UI
+- **Multi-tenant organizations** — `organizations/` module with an `OrganizationContextGuard` and an owner/admin/manager/staff role enum enforced on the backend, not just hidden in the UI
 - **Clients** — contact database tied to invoice history
 - **Analytics & reports** — revenue/payment-method breakdowns and PDF store reports (`analytics/store-report-pdf.service.ts`)
 - **Subscription billing** — Stripe customer/subscription sync, webhook-driven plan updates, per-plan usage quotas enforced by a `QuotaGuard`
@@ -142,14 +142,14 @@ The test story is real but partial: services and utilities are covered, end-to-e
 - `inventory/inventory.service.spec.ts`, `inventory/store-item-settings.service.spec.ts`, `inventory/store-stock-validator.service.spec.ts`
 - `invoices/invoices.controller.spec.ts`, `invoices/invoices.service.spec.ts`, `invoices/utils/invoice-status.util.spec.ts`, `invoices/utils/invoice-totals.util.spec.ts`
 - `users/users.service.spec.ts`, `app.controller.spec.ts`
-- `test/invoices-store.integration.spec.ts`, `test/store-stock-validation.integration.spec.ts` (integration, run separately via the e2e Jest config)
+- `test/invoices-store.integration.spec.ts`, `test/store-stock-validation.integration.spec.ts` (integration specs present under `test/`, run ad-hoc — the current `jest-e2e.json` `testRegex` matches only `*.e2e-spec.ts`, so `test:e2e` does not pick them up)
 - `test/app.e2e-spec.ts` (e2e smoke test)
 
 ```bash
 cd backend
 npm test          # unit specs (co-located *.spec.ts under src/)
 npm run test:cov  # unit specs with coverage
-npm run test:e2e  # test/*.spec.ts via jest-e2e.json
+npm run test:e2e  # test/app.e2e-spec.ts via jest-e2e.json (matches *.e2e-spec.ts only)
 ```
 
 **Frontend (Vitest, 6 spec files in `frontend/src/`):**
