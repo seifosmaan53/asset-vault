@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { InvoicesController } from './invoices.controller';
 import { InvoicesService } from './invoices.service';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import { QuotaGuard } from '../subscriptions/quota.guard';
 import { ExecutionContext } from '@nestjs/common';
 
 /* The override targeted AuthGuard('jwt') — the Passport guard this controller used
@@ -46,6 +47,10 @@ describe('InvoicesController', () => {
     })
       .overrideGuard(ClerkAuthGuard)
       .useValue(mockAuthGuard)
+      // The controller also carries QuotaGuard (plan usage limits), which pulls in
+      // UsageService and SubscriptionsService. Not what a controller unit test is for.
+      .overrideGuard(QuotaGuard)
+      .useValue({ canActivate: () => true })
       .compile();
 
     controller = module.get<InvoicesController>(InvoicesController);
@@ -102,9 +107,12 @@ describe('InvoicesController', () => {
 
   describe('create', () => {
     it('should create a new invoice', async () => {
+      // CreateInvoiceDto requires issueDate and currency; the fixture predates both.
       const createDto = {
         clientId: 'client-1',
         type: 'invoice' as const,
+        issueDate: '2026-01-15',
+        currency: 'USD',
         items: [],
       };
       const mockInvoice = { id: 'invoice-1', ...createDto };
@@ -114,14 +122,19 @@ describe('InvoicesController', () => {
         user: { userId: 'user-123' },
       } as any);
 
-      expect(result).toEqual(mockInvoice);
+      /* create/update now return an envelope — { data, message } — rather than the
+         bare entity. Asserting on result.data keeps the test about the payload while
+         still proving the wrapper is there. */
+      expect(result.data).toEqual(mockInvoice);
+      expect(result.message).toMatch(/created/i);
       expect(service.create).toHaveBeenCalledWith('user-123', createDto);
     });
   });
 
   describe('update', () => {
     it('should update an invoice', async () => {
-      const updateDto = { status: 'sent' };
+      // status is a union type ('draft' | 'sent' | ...), so the literal needs narrowing.
+      const updateDto = { status: 'sent' as const };
       const mockInvoice = { id: 'invoice-1', ...updateDto };
       mockInvoicesService.update.mockResolvedValue(mockInvoice);
 
@@ -129,7 +142,7 @@ describe('InvoicesController', () => {
         user: { userId: 'user-123' },
       } as any);
 
-      expect(result).toEqual(mockInvoice);
+      expect(result.data).toEqual(mockInvoice);
       expect(service.update).toHaveBeenCalledWith('invoice-1', 'user-123', updateDto);
     });
   });
@@ -159,7 +172,9 @@ describe('InvoicesController', () => {
         user: { userId: 'user-123' },
       } as any);
 
-      expect(result).toEqual(mockStats);
+      // getStats spreads the figures and adds a message alongside them.
+      expect(result).toEqual(expect.objectContaining(mockStats));
+      expect(result.message).toMatch(/statistics/i);
       expect(service.getStats).toHaveBeenCalledWith('user-123');
     });
   });
@@ -183,12 +198,14 @@ describe('InvoicesController', () => {
       const mockResponse = { message: 'Email sent successfully' };
       mockInvoicesService.sendEmail.mockResolvedValue(mockResponse);
 
-      const result = await controller.send('invoice-1', {
+      // send() gained an emailOptions body parameter between the id and the request.
+      const emailOptions = { to: 'client@example.test' };
+      const result = await controller.send('invoice-1', emailOptions, {
         user: { userId: 'user-123' },
       } as any);
 
       expect(result).toEqual(mockResponse);
-      expect(service.sendEmail).toHaveBeenCalledWith('invoice-1', 'user-123');
+      expect(service.sendEmail).toHaveBeenCalledWith('invoice-1', 'user-123', emailOptions);
     });
   });
 });

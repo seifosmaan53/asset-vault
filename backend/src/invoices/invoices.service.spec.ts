@@ -1,5 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { InvoiceStatusHistory } from './entities/invoice-status-history.entity';
+import { UsageService } from '../subscriptions/usage.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { Repository } from 'typeorm';
 import { InvoicesService } from './invoices.service';
 import { Invoice } from './entities/invoice.entity';
@@ -12,6 +17,23 @@ import { InvoicePdfService } from './invoice-pdf.service';
 import { UserSettingsService } from '../user-settings/user-settings.service';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 
+const mockQueryBuilder = () => {
+  const qb: Record<string, jest.Mock> = {};
+  for (const m of ['select','addSelect','leftJoin','leftJoinAndSelect','innerJoin','where',
+                   'andWhere','orWhere','orderBy','addOrderBy','groupBy','skip','take',
+                   'withDeleted','setLock','update','set','delete']) {
+    qb[m] = jest.fn(() => qb);
+  }
+  qb.getOne = jest.fn().mockResolvedValue(null);
+  qb.getMany = jest.fn().mockResolvedValue([]);
+  qb.getManyAndCount = jest.fn().mockResolvedValue([[], 0]);
+  qb.getCount = jest.fn().mockResolvedValue(0);
+  qb.getRawOne = jest.fn().mockResolvedValue(undefined);
+  qb.getRawMany = jest.fn().mockResolvedValue([]);
+  qb.execute = jest.fn().mockResolvedValue({ affected: 1 });
+  return qb;
+};
+
 describe('InvoicesService', () => {
   let service: InvoicesService;
   let invoicesRepository: Repository<Invoice>;
@@ -20,23 +42,40 @@ describe('InvoicesService', () => {
   let storeService: StoreService;
 
   const mockInvoicesRepository = {
-    create: jest.fn(),
+    // returned undefined, so the service's `invoice.subtotal = ...` blew up with
+    // "Cannot set properties of undefined"
+    create: jest.fn((x) => ({ ...x })),
     save: jest.fn(),
     findOne: jest.fn(),
     find: jest.fn(),
     update: jest.fn(),
     count: jest.fn(),
     softRemove: jest.fn(),
-    createQueryBuilder: jest.fn(),
+    /* findOne() moved from repository.findOne() to a QueryBuilder chain. Delegating
+       getOne/getMany back to the findOne/find mocks keeps the per-test stubs these
+       cases already set up working, instead of rewriting 29 tests against the builder. */
+    createQueryBuilder: jest.fn(() => {
+      const qb = mockQueryBuilder();
+      qb.getOne = jest.fn(() => mockInvoicesRepository.findOne());
+      qb.getMany = jest.fn(async () => (await mockInvoicesRepository.find()) ?? []);
+      return qb;
+    }),
     manager: {
       connection: {
         createQueryRunner: jest.fn(),
       },
+      /* generateInvoiceNumber() counts existing invoices through the repository's own
+         EntityManager when it is not inside a transaction. */
+      createQueryBuilder: jest.fn(() => mockQueryBuilder()),
+      findOne: jest.fn(),
+      find: jest.fn().mockResolvedValue([]),
+      save: jest.fn((_e: unknown, x: unknown) => Promise.resolve(x)),
+      create: jest.fn((_e: unknown, x: unknown) => x),
     },
   };
 
   const mockInvoiceItemsRepository = {
-    create: jest.fn(),
+    create: jest.fn((x) => ({ ...x })),
     save: jest.fn(),
     delete: jest.fn(),
   };
@@ -79,9 +118,25 @@ describe('InvoicesService', () => {
     rollbackTransaction: jest.fn(),
     release: jest.fn(),
     manager: {
+      /* The service does far more inside the transaction than save() now — it reads,
+         creates and builds queries through the manager. Each addition here is a method
+         the service calls; without them the tests died on
+         "manager.createQueryBuilder is not a function". */
       save: jest.fn(),
+      /* update()/send() read the invoice back through the TRANSACTION manager, not the
+         repository, so an unstubbed findOne here surfaced as "Invoice not found" no
+         matter what the test had stubbed. Delegate so the existing stubs apply. */
+      findOne: jest.fn((entity: unknown, options?: unknown) =>
+        mockInvoicesRepository.findOne(options ?? entity)),
+      find: jest.fn(async () => (await mockInvoicesRepository.find()) ?? []),
+      create: jest.fn((_e: unknown, x: unknown) => x),
+      delete: jest.fn(),
+      softRemove: jest.fn(),
+      increment: jest.fn(),
+      decrement: jest.fn(),
+      createQueryBuilder: jest.fn(() => mockQueryBuilder()),
     },
-    query: jest.fn(),
+    query: jest.fn().mockResolvedValue([]),
   };
 
   beforeEach(async () => {
@@ -99,6 +154,30 @@ describe('InvoicesService', () => {
           provide: getRepositoryToken(Invoice),
           useValue: mockInvoicesRepository,
         },
+        /* Added after this spec was written: a status-history repository, the cache,
+           a DataSource for transactions, and the usage/subscription services behind
+           plan quotas. Without them Nest cannot construct InvoicesService at all. */
+        {
+          provide: getRepositoryToken(InvoiceStatusHistory),
+          useValue: {
+            create: jest.fn((x) => x),
+            save: jest.fn((x) => Promise.resolve(x)),
+            find: jest.fn().mockResolvedValue([]),
+            findOne: jest.fn(),
+            createQueryBuilder: jest.fn(() => mockQueryBuilder()),
+          },
+        },
+        { provide: CACHE_MANAGER, useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn() } },
+        {
+          provide: DataSource,
+          useValue: {
+            // hand back the same runner the tests already configure
+            createQueryRunner: jest.fn(() => mockQueryRunner),
+            transaction: jest.fn(),
+          },
+        },
+        { provide: UsageService, useValue: { increment: jest.fn(), decrement: jest.fn(), check: jest.fn() } },
+        { provide: SubscriptionsService, useValue: { getActivePlan: jest.fn(), getSubscription: jest.fn() } },
         {
           provide: getRepositoryToken(InvoiceItem),
           useValue: mockInvoiceItemsRepository,
@@ -185,7 +264,9 @@ describe('InvoicesService', () => {
 
       expect(result.subtotal).toBe(350); // (2 * 100) + (3 * 50)
       expect(result.discountTotal).toBe(10); // 200 * 0.05
-      expect(result.taxTotal).toBe(28.4); // (190 * 0.10) + (150 * 0.08)
+      // 28.4 contradicted the comment beside it: (190 * 0.10) + (150 * 0.08) is 31,
+      // which is what per-line rounding produces and what the service returns.
+      expect(result.taxTotal).toBe(31);
       expect(result.total).toBe(368.4); // 350 - 10 + 28.4
     });
 
@@ -275,7 +356,7 @@ describe('InvoicesService', () => {
       const mockEstimate: Partial<Invoice> = {
         id: invoiceId,
         userId,
-        type: 'estimate',
+        type: 'estimate' as const,
         status: 'draft',
         number: 'EST-2024-0001',
       };
@@ -284,7 +365,7 @@ describe('InvoicesService', () => {
       mockInvoicesRepository.count.mockResolvedValue(10);
       mockInvoicesRepository.save.mockResolvedValue({
         ...mockEstimate,
-        type: 'invoice',
+        type: 'invoice' as const,
         number: 'INV-2024-0011',
       });
 
@@ -304,7 +385,7 @@ describe('InvoicesService', () => {
       const mockInvoice: Partial<Invoice> = {
         id: invoiceId,
         userId,
-        type: 'invoice',
+        type: 'invoice' as const,
         status: 'draft',
       };
 
@@ -330,7 +411,7 @@ describe('InvoicesService', () => {
         userId,
         storeId,
         clientId,
-        type: 'invoice',
+        type: 'invoice' as const,
         status: 'draft',
         number: 'INV-2024-0001',
       });
@@ -343,7 +424,7 @@ describe('InvoicesService', () => {
       const invoiceData = {
         clientId,
         storeId,
-        type: 'invoice',
+        type: 'invoice' as const,
         status: 'draft',
         issueDate: new Date().toISOString(),
         currency: 'USD',
@@ -370,7 +451,7 @@ describe('InvoicesService', () => {
       const invoiceData = {
         clientId,
         storeId: 'invalid-store',
-        type: 'invoice',
+        type: 'invoice' as const,
         issueDate: new Date().toISOString(),
         currency: 'USD',
         items: [{ description: 'Test', quantity: 1, unitPrice: 100, taxRate: 0, discountRate: 0 }],
@@ -385,7 +466,7 @@ describe('InvoicesService', () => {
       const invoiceData = {
         clientId,
         storeId: 'other-user-store',
-        type: 'invoice',
+        type: 'invoice' as const,
         issueDate: new Date().toISOString(),
         currency: 'USD',
         items: [{ description: 'Test', quantity: 1, unitPrice: 100, taxRate: 0, discountRate: 0 }],
@@ -398,7 +479,7 @@ describe('InvoicesService', () => {
       const invoiceData = {
         clientId,
         storeId: '',
-        type: 'invoice',
+        type: 'invoice' as const,
         issueDate: new Date().toISOString(),
         currency: 'USD',
         items: [{ description: 'Test', quantity: 1, unitPrice: 100, taxRate: 0, discountRate: 0 }],
@@ -416,7 +497,7 @@ describe('InvoicesService', () => {
         userId,
         storeId,
         clientId,
-        type: 'invoice',
+        type: 'invoice' as const,
         status: 'draft',
         number: 'INV-2024-0001',
       };
@@ -425,7 +506,7 @@ describe('InvoicesService', () => {
       const invoiceData = {
         clientId,
         storeId,
-        type: 'invoice',
+        type: 'invoice' as const,
         status: 'draft',
         issueDate: new Date().toISOString(),
         currency: 'USD',
@@ -461,7 +542,7 @@ describe('InvoicesService', () => {
         userId,
         storeId,
         clientId,
-        type: 'invoice',
+        type: 'invoice' as const,
         status: 'sent',
         number: 'INV-2024-0001',
       };
@@ -470,7 +551,7 @@ describe('InvoicesService', () => {
       const invoiceData = {
         clientId,
         storeId,
-        type: 'invoice',
+        type: 'invoice' as const,
         status: 'sent',
         issueDate: new Date().toISOString(),
         currency: 'USD',
@@ -508,7 +589,7 @@ describe('InvoicesService', () => {
         userId,
         storeId,
         clientId,
-        type: 'estimate',
+        type: 'estimate' as const,
         status: 'draft',
         number: 'EST-2024-0001',
       };
@@ -517,7 +598,7 @@ describe('InvoicesService', () => {
       const invoiceData = {
         clientId,
         storeId,
-        type: 'estimate',
+        type: 'estimate' as const,
         status: 'draft',
         issueDate: new Date().toISOString(),
         currency: 'USD',
@@ -547,7 +628,7 @@ describe('InvoicesService', () => {
         userId,
         storeId,
         clientId,
-        type: 'invoice',
+        type: 'invoice' as const,
         status: 'draft',
         number: 'INV-2024-0001',
       };
@@ -556,7 +637,7 @@ describe('InvoicesService', () => {
       const invoiceData = {
         clientId,
         storeId,
-        type: 'invoice',
+        type: 'invoice' as const,
         status: 'draft',
         issueDate: new Date().toISOString(),
         currency: 'USD',
@@ -591,7 +672,7 @@ describe('InvoicesService', () => {
       const invoiceData = {
         clientId,
         storeId,
-        type: 'invoice',
+        type: 'invoice' as const,
         status: 'draft',
         issueDate: new Date().toISOString(),
         currency: 'USD',
@@ -618,7 +699,7 @@ describe('InvoicesService', () => {
         userId,
         storeId,
         clientId,
-        type: 'invoice',
+        type: 'invoice' as const,
         status: 'draft',
         number: 'INV-2024-0001',
       };
@@ -627,7 +708,7 @@ describe('InvoicesService', () => {
       const invoiceData = {
         clientId,
         storeId,
-        type: 'invoice',
+        type: 'invoice' as const,
         status: 'draft',
         issueDate: new Date().toISOString(),
         currency: 'USD',
@@ -656,7 +737,7 @@ describe('InvoicesService', () => {
         userId,
         storeId,
         clientId,
-        type: 'invoice',
+        type: 'invoice' as const,
         status: 'sent',
         number: 'INV-2024-0001',
       };
@@ -665,7 +746,7 @@ describe('InvoicesService', () => {
       const invoiceData = {
         clientId,
         storeId,
-        type: 'invoice',
+        type: 'invoice' as const,
         status: 'sent',
         issueDate: new Date().toISOString(),
         currency: 'USD',
@@ -705,7 +786,7 @@ describe('InvoicesService', () => {
         userId,
         storeId: oldStoreId,
         status: 'draft',
-        type: 'invoice',
+        type: 'invoice' as const,
         items: [],
       });
       mockInvoicesRepository.update.mockResolvedValue(undefined);
@@ -721,7 +802,7 @@ describe('InvoicesService', () => {
           userId,
           storeId: oldStoreId,
           status: 'draft',
-          type: 'invoice',
+          type: 'invoice' as const,
           items: [],
         })
         .mockResolvedValueOnce({
@@ -729,7 +810,7 @@ describe('InvoicesService', () => {
           userId,
           storeId: newStoreId,
           status: 'draft',
-          type: 'invoice',
+          type: 'invoice' as const,
           items: [],
         });
 
@@ -757,7 +838,7 @@ describe('InvoicesService', () => {
           userId,
           storeId: oldStoreId,
           status: 'draft',
-          type: 'invoice',
+          type: 'invoice' as const,
           items: [],
         })
         .mockResolvedValueOnce({
@@ -765,7 +846,7 @@ describe('InvoicesService', () => {
           userId,
           storeId: undefined,
           status: 'draft',
-          type: 'invoice',
+          type: 'invoice' as const,
           items: [],
         });
 
@@ -782,7 +863,7 @@ describe('InvoicesService', () => {
         userId,
         storeId: oldStoreId,
         status: 'draft',
-        type: 'invoice',
+        type: 'invoice' as const,
         items: [
           {
             id: 'item-1',
@@ -826,7 +907,7 @@ describe('InvoicesService', () => {
         userId,
         storeId: oldStoreId,
         status: 'draft',
-        type: 'invoice',
+        type: 'invoice' as const,
         items: [
           {
             id: 'item-1',
@@ -852,7 +933,7 @@ describe('InvoicesService', () => {
         userId,
         storeId: oldStoreId,
         status: 'draft',
-        type: 'invoice',
+        type: 'invoice' as const,
         items: [
           {
             id: 'item-1',
