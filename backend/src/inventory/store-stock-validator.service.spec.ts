@@ -19,12 +19,35 @@ describe('StoreStockValidatorService', () => {
     findOne: jest.fn(),
   };
 
+  /* The service moved from repository.findOne() to a QueryBuilder chain
+     (.where().andWhere().setLock().getOne()) but these mocks were never updated, so
+     every test in this file died on "createQueryBuilder is not a function" — 53 of
+     them. Each builder method returns the builder so the chain composes; getOne()
+     is what tests stub per-case. */
+  const makeQueryBuilder = (delegate?: jest.Mock) => {
+    const qb: Record<string, jest.Mock> = {};
+    for (const method of ['where', 'andWhere', 'setLock', 'leftJoinAndSelect', 'select', 'orderBy']) {
+      qb[method] = jest.fn(() => qb);
+    }
+    // getOne() delegates to the repository's findOne mock so the existing
+    // `mockStoreRepository.findOne.mockResolvedValue(...)` stubs in these tests keep
+    // working, instead of every case having to be rewritten against the builder.
+    qb.getOne = jest.fn(() => (delegate ? delegate() : undefined));
+    qb.getMany = jest.fn();
+    return qb;
+  };
+
+  let storeQueryBuilder: ReturnType<typeof makeQueryBuilder>;
+  let itemQueryBuilder: ReturnType<typeof makeQueryBuilder>;
+
   const mockStoreRepository = {
     findOne: jest.fn(),
+    createQueryBuilder: jest.fn(() => storeQueryBuilder),
   };
 
   const mockInventoryItemRepository = {
     findOne: jest.fn(),
+    createQueryBuilder: jest.fn(() => itemQueryBuilder),
   };
 
   const mockStoreItemSettingsService = {
@@ -33,6 +56,8 @@ describe('StoreStockValidatorService', () => {
   };
 
   beforeEach(async () => {
+    storeQueryBuilder = makeQueryBuilder(mockStoreRepository.findOne);
+    itemQueryBuilder = makeQueryBuilder(mockInventoryItemRepository.findOne);
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         StoreStockValidatorService,
@@ -87,12 +112,21 @@ describe('StoreStockValidatorService', () => {
       const result = await service.getAvailableStoreStock(storeId, inventoryItemId, userId);
 
       expect(result).toBe(50);
-      expect(mockStoreRepository.findOne).toHaveBeenCalledWith({
-        where: { id: storeId, userId },
-      });
-      expect(mockInventoryItemRepository.findOne).toHaveBeenCalledWith({
-        where: { id: inventoryItemId, userId },
-      });
+      /* These used to assert findOne({ where: { id, userId } }). The lookup moved to a
+         QueryBuilder, but the point of the assertion is unchanged and worth keeping:
+         every read must be scoped by userId, or one tenant could read another's stock. */
+      expect(storeQueryBuilder.where).toHaveBeenCalledWith(
+        'store.userId = :userId',
+        { userId },
+      );
+      expect(storeQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'store.id = :storeId',
+        { storeId },
+      );
+      expect(itemQueryBuilder.where).toHaveBeenCalledWith(
+        'item.userId = :userId',
+        { userId },
+      );
     });
 
     it('should return 0 when no settings exist', async () => {

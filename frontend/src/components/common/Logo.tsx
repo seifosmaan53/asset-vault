@@ -79,7 +79,7 @@ const Logo = ({ size = 48, sx, showText = false }: LogoProps) => {
             backgroundClip: 'text',
           }}
         >
-          InvoiceMe
+          Asset Vault
         </Box>
       )}
     </Box>

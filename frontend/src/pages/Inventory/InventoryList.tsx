@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import ExportProgressDialog from '../../components/common/ExportProgressDialog';
-import { BulkActionsBar } from '../../components/common/BulkActionsBar';
 import { ImportDialog } from '../../components/import/ImportDialog';
 import { ImportPreview } from '../../components/import/ImportPreview';
 import { useNavigate } from 'react-router-dom';
@@ -39,7 +38,6 @@ import DownloadIcon from '@mui/icons-material/Download';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import InventoryIcon from '@mui/icons-material/Inventory';
-import CategoryIcon from '@mui/icons-material/Category';
 import NumbersIcon from '@mui/icons-material/Numbers';
 import WarehouseIcon from '@mui/icons-material/Warehouse';
 import StoreIcon from '@mui/icons-material/Store';

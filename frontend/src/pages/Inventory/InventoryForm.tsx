@@ -27,7 +27,7 @@ import { useInventoryItem, useCreateInventoryItem, useUpdateInventoryItem, useIn
 import { useStores } from '../../hooks/useStore';
 import { useStoreItemSettingsByItem, useCreateOrUpdateStoreItemSettings } from '../../hooks/useStoreItemSettings';
 import type { CreateInventoryItemDto } from '../../api/inventory';
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TIMEOUTS } from '../../constants/timeouts';
 import { inventoryItemSchema } from '../../utils/validationSchemas';
 import { useToast } from '../../contexts/ToastContext';
@@ -40,7 +40,6 @@ import { inventoryApi } from '../../api/inventory';
 import StoreIcon from '@mui/icons-material/Store';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import NumbersIcon from '@mui/icons-material/Numbers';
-import CategoryIcon from '@mui/icons-material/Category';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import WarehouseIcon from '@mui/icons-material/Warehouse';
 import LabelIcon from '@mui/icons-material/Label';
@@ -265,7 +264,7 @@ const InventoryForm = () => {
     // Format: Company Prefix (200) + Date (YYMMDD = 6) + Time (HHMMSS = 6) + Random (1) = 13 digits (EAN-13 compatible)
     // Example: 2002412251430257
     
-    const companyPrefix = '200'; // InvoiceMe company prefix (3 digits)
+    const companyPrefix = '200'; // Asset Vault company prefix (3 digits)
     
     // Get current timestamp components
     const now = new Date();

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Box, Typography, CircularProgress, Alert, Button, Container } from '@mui/material';
+import { Typography, CircularProgress, Alert, Button, Container } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useSubscriptionStore } from '../../store/subscriptionStore';
 import { subscriptionsApi } from '../../api/subscriptions';

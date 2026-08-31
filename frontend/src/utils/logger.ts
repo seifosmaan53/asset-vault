@@ -6,7 +6,8 @@
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-interface LogEntry {
+/** Shape a remote logging service would receive — see the production branch in log(). */
+export interface LogEntry {
   level: LogLevel;
   message: string;
   data?: unknown;
@@ -26,13 +27,6 @@ class Logger {
       // For now, we only log in development
       return;
     }
-
-    const entry: LogEntry = {
-      level,
-      message,
-      data,
-      timestamp: new Date().toISOString(),
-    };
 
     switch (level) {
       case 'debug':

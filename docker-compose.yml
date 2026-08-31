@@ -3,7 +3,7 @@ version: '3.8'
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: invoiceme-postgres
+    container_name: asset-vault-postgres
     environment:
       POSTGRES_USER: ${DB_USERNAME:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
@@ -23,7 +23,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: invoiceme-backend
+    container_name: asset-vault-backend
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
@@ -53,7 +53,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: invoiceme-frontend
+    container_name: asset-vault-frontend
     ports:
       - "80:80"
     depends_on:
@@ -65,7 +65,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
-    container_name: invoiceme-frontend-dev
+    container_name: asset-vault-frontend-dev
     working_dir: /app
     ports:
       - "5173:5173"

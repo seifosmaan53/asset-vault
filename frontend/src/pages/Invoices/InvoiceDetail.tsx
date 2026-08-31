@@ -949,7 +949,7 @@ const InvoiceDetail = () => {
         <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ gap: 3 }}>
           <Box>
             <Typography variant="body1" component="h1" sx={{ fontWeight: 700, color: '#1976d2', fontSize: '0.9375rem', mb: 0.25, lineHeight: 1.2 }}>
-              {settings?.companyName || 'InvoiceMe'}
+              {settings?.companyName || 'Asset Vault'}
             </Typography>
             {settings?.companyEmail && (
               <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>

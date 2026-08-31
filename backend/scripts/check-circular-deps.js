@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Copyright (c) 2024 InvoiceMe
+// Copyright (c) 2024 Asset Vault
 // Circular dependency detection script
 
 const fs = require('fs');

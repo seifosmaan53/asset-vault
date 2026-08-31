@@ -61,14 +61,14 @@ export class UserSettingsController {
     try {
       if (format === 'csv') {
         const csvContent = await this.settingsService.exportUserDataAsCsv(req.user.userId, null);
-        const fileName = `invoiceme_export_${timestamp}.csv`;
+        const fileName = `asset-vault_export_${timestamp}.csv`;
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
         res.send('\uFEFF' + csvContent); // Add BOM for Excel compatibility
         return;
       } else if (format === 'excel') {
         const excelBuffer = await this.settingsService.exportUserDataAsExcel(req.user.userId, null);
-        const fileName = `invoiceme_export_${timestamp}.xlsx`;
+        const fileName = `asset-vault_export_${timestamp}.xlsx`;
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
         res.send(excelBuffer);
@@ -77,7 +77,7 @@ export class UserSettingsController {
         try {
           // Fix Issue #19: Improved error handling for PDF generation
           const pdfBuffer = await this.settingsService.exportUserDataAsPdf(req.user.userId, null);
-          const fileName = `invoiceme_export_${timestamp}.pdf`;
+          const fileName = `asset-vault_export_${timestamp}.pdf`;
           res.setHeader('Content-Type', 'application/pdf');
           res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
           res.send(pdfBuffer);
@@ -96,7 +96,7 @@ export class UserSettingsController {
       } else {
         // Default to JSON
         const result = await this.settingsService.exportUserData(req.user.userId, null);
-        const fileName = `invoiceme_export_${timestamp}.json`;
+        const fileName = `asset-vault_export_${timestamp}.json`;
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
         res.send(JSON.stringify(result.data, null, 2));
@@ -153,7 +153,7 @@ export class UserSettingsController {
       }
 
       const secret = this.twoFactorService.generateSecret();
-      const qrCode = await this.twoFactorService.generateQRCode(secret, user.email, 'InvoiceMe');
+      const qrCode = await this.twoFactorService.generateQRCode(secret, user.email, 'Asset Vault');
 
       return {
         secret,

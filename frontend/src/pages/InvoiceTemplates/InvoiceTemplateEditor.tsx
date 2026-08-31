@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import {
@@ -15,7 +15,6 @@ import {
   CircularProgress,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
-import PreviewIcon from '@mui/icons-material/Preview';
 import { useInvoiceTemplate, useCreateInvoiceTemplate, useUpdateInvoiceTemplate } from '../../hooks/useInvoiceTemplates';
 import { useToast } from '../../contexts/ToastContext';
 import { getErrorMessage } from '../../utils/errorHandling';

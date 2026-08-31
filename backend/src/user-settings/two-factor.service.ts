@@ -26,7 +26,7 @@ export class TwoFactorService {
   /**
    * Generate a QR code data URL for the TOTP secret
    */
-  async generateQRCode(secret: string, email: string, serviceName: string = 'InvoiceMe'): Promise<string> {
+  async generateQRCode(secret: string, email: string, serviceName: string = 'Asset Vault'): Promise<string> {
     try {
       const otpAuthUrl = authenticator.keyuri(email, serviceName, secret);
       const qrCodeDataUrl = await QRCode.toDataURL(otpAuthUrl);

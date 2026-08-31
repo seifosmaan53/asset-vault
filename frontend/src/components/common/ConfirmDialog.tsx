@@ -9,7 +9,7 @@ import {
   Typography,
 } from '@mui/material';
 import WarningIcon from '@mui/icons-material/Warning';
-import { useMemo, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 
 interface ConfirmDialogProps {

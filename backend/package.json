@@ -13,7 +13,7 @@
   "types": "dist/main.d.ts",
   "repository": {
     "type": "git",
-    "url": "https://github.com/invoiceme/backend.git"
+    "url": "https://github.com/seifosmaan53/asset-vault.git"
   },
   "keywords": [
     "nestjs",
@@ -23,9 +23,9 @@
     "management"
   ],
   "bugs": {
-    "url": "https://github.com/invoiceme/backend/issues"
+    "url": "https://github.com/seifosmaan53/asset-vault/issues"
   },
-  "homepage": "https://github.com/invoiceme/backend#readme",
+  "homepage": "https://github.com/seifosmaan53/asset-vault#readme",
   "files": [
     "dist",
     "src",

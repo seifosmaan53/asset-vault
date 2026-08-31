@@ -1,30 +1,9 @@
 import { z } from 'zod';
 
-// Helper function to validate invoice number format
-const isValidInvoiceNumberFormat = (format: string | undefined | null): boolean => {
-  // Optional field - undefined, null, or empty string is valid
-  if (!format || format === '' || (typeof format === 'string' && format.trim() === '')) return true;
-  
-  // Ensure we have a string to work with
-  const trimmedFormat = typeof format === 'string' ? format.trim() : String(format).trim();
-  if (trimmedFormat === '') return true; // Empty after trim is valid
-  
-  // Check for valid placeholders (case-sensitive)
-  const placeholders = ['{YYYY}', '{YY}', '{MM}', '{DD}', '{NUM}', '{####}'];
-  const hasPlaceholder = placeholders.some(placeholder => trimmedFormat.includes(placeholder));
-  if (!hasPlaceholder) {
-    return false; // Must have at least one placeholder
-  }
-  
-  // Check length
-  if (trimmedFormat.length > 100) return false;
-  
-  // Check for valid characters (alphanumeric, spaces, dashes, underscores, hash for {####}, and curly braces for placeholders)
-  const validPattern = /^[A-Za-z0-9\s\-_{}#]+$/;
-  if (!validPattern.test(trimmedFormat)) return false;
-  
-  return true;
-};
+/* The standalone isValidInvoiceNumberFormat() helper that used to live here was dead
+   code: the settingsSchema below validates invoiceNumberFormat inline via superRefine,
+   using the same placeholder list, so the helper had no callers and could silently
+   drift from the rule actually enforced. Removed rather than kept in parallel. */
 
 // Helper function to validate date format
 const isValidDateFormat = (format: string): boolean => {

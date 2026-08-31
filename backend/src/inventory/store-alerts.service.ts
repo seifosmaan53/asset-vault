@@ -338,7 +338,7 @@ export class StoreAlertsService {
               </tbody>
             </table>
             <div class="footer">
-              <p>This is an automated alert from InvoiceMe. Please review and restock as needed.</p>
+              <p>This is an automated alert from Asset Vault. Please review and restock as needed.</p>
             </div>
           </div>
         </body>

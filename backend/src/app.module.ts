@@ -126,6 +126,10 @@ import { DataSource } from 'typeorm';
       port: parseInt(process.env.DB_PORT || '5432'),
       username: process.env.DB_USERNAME || 'postgres',
       password: process.env.DB_PASSWORD || 'postgres',
+      // Legacy default kept on purpose. The project was renamed InvoiceMe -> Asset Vault
+      // in v2.0.0, but this is the fallback DATABASE NAME: changing it would point an
+      // existing deployment at a new, empty database instead of its real one. Set
+      // DB_DATABASE to use any name you like — see README "Database name".
       database: process.env.DB_DATABASE || 'invoiceme',
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       migrations: [__dirname + '/../migrations/*{.ts,.js}'],

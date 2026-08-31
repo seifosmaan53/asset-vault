@@ -315,7 +315,7 @@ export class StoreReportPdfService {
           ` : ''}
 
           <div class="footer">
-            <p>This report was generated automatically by InvoiceMe</p>
+            <p>This report was generated automatically by Asset Vault</p>
             <p>Store: ${storeSummary.storeName} | Code: ${storeSummary.storeCode}</p>
           </div>
         </body>

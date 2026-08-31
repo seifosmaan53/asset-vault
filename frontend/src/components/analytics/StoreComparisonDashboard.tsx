@@ -21,7 +21,6 @@ import { useStoresAnalytics } from '../../hooks/useAnalytics';
 import { analyticsApi } from '../../api/analytics';
 import { useAuthStore } from '../../store/authStore';
 import { formatCurrency } from '../../utils/formatters';
-import type { StoreSummary } from '../../api/analytics';
 import { exportToCSV } from '../../utils/export';
 import DownloadIcon from '@mui/icons-material/Download';
 

@@ -10,12 +10,22 @@
 
 import { createTRPCReact } from '@trpc/react-query';
 import { httpBatchLink } from '@trpc/client';
+import { initTRPC } from '@trpc/server';
 import superjson from 'superjson';
-import { apiClient } from '../api/apiClient';
 
-// Define AppRouter type (this should match backend)
-// For now, we'll use a generic type - in production, generate types from backend
-type AppRouter = any;
+/* This was `type AppRouter = any`, which broke the build. tRPC v11 rejects routers whose
+   procedure names collide with its own built-ins (`useContext`, `useUtils`, `Provider`),
+   and `any` structurally matches every one of them — so all three looked like collisions
+   and `trpc.createClient` resolved to `never`.
+
+   A router type needs a FINITE set of keys to pass that check, so we derive one from a
+   real (empty) router. The client is correctly typed; individual procedures are not
+   inferred. The genuine end-to-end types are exported from
+   backend/src/trpc/trpc.router.ts as `AppRouter` — wiring them up here requires the two
+   packages to share a TypeScript project, which is tracked as follow-up work. */
+const typeOnlyRouterFactory = initTRPC.create();
+const emptyRouter = typeOnlyRouterFactory.router({});
+type AppRouter = typeof emptyRouter;
 
 // Create tRPC React hooks
 export const trpc = createTRPCReact<AppRouter>();
@@ -63,9 +73,11 @@ export const trpcClient = trpc.createClient({
       },
       transformer: superjson,
       // Use fetch with credentials for cookies/auth
+      // tRPC types its own fetch options more loosely than the DOM's RequestInit
+      // (its `body` admits Uint8Array), so narrow back to RequestInit at the boundary.
       fetch: (url, options) => {
         return fetch(url, {
-          ...options,
+          ...(options as RequestInit),
           credentials: 'include',
         });
       },

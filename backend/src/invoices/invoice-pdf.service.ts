@@ -77,7 +77,7 @@ export class InvoicePdfService {
     }).join('') || '<tr><td colspan="6" style="padding: 12px; text-align: center; border-bottom: 1px solid #e0e0e0;">No items</td></tr>';
 
     // Use company info from settings, fallback to user entity
-    const companyName = settings?.companyName || invoice.user?.companyName || invoice.user?.name || 'InvoiceMe';
+    const companyName = settings?.companyName || invoice.user?.companyName || invoice.user?.name || 'Asset Vault';
     const companyAddress = settings?.companyAddress || '';
     const companyPhone = settings?.companyPhone || '';
     const companyEmail = settings?.companyEmail || '';

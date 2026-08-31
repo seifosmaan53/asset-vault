@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Database backup script for InvoiceMe
+# Database backup script for Asset Vault
 # Usage: ./backup.sh [backup_directory]
 
 set -e
@@ -13,7 +13,7 @@ DB_HOST="${DB_HOST:-localhost}"
 DB_PORT="${DB_PORT:-5432}"
 BACKUP_DIR="${1:-./backups}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-BACKUP_FILE="${BACKUP_DIR}/invoiceme_backup_${TIMESTAMP}.sql"
+BACKUP_FILE="${BACKUP_DIR}/asset-vault_backup_${TIMESTAMP}.sql"
 
 # Create backup directory if it doesn't exist
 mkdir -p "$BACKUP_DIR"
@@ -33,7 +33,7 @@ if [ $? -eq 0 ]; then
     echo "Backup compressed: ${BACKUP_FILE}.gz"
     
     # Optional: Keep only last 30 days of backups
-    find "$BACKUP_DIR" -name "invoiceme_backup_*.sql.gz" -mtime +30 -delete
+    find "$BACKUP_DIR" -name "asset-vault_backup_*.sql.gz" -mtime +30 -delete
     echo "Old backups cleaned up (kept last 30 days)"
 else
     echo "Backup failed!"

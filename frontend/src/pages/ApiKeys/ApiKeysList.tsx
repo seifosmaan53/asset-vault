@@ -35,8 +35,6 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
@@ -499,7 +497,7 @@ const ApiKeysList = () => {
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 400, mx: 'auto' }}>
             {searchTerm
               ? `No API keys match "${searchTerm}". Try adjusting your search.`
-              : 'Create API keys to authenticate external applications and services with your InvoiceMe account.'}
+              : 'Create API keys to authenticate external applications and services with your Asset Vault account.'}
           </Typography>
           {!searchTerm && (
             <Button

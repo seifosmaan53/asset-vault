@@ -2626,7 +2626,7 @@ const Settings = () => {
                       const url = URL.createObjectURL(blob);
                       const link = document.createElement('a');
                       link.href = url;
-                      link.download = `invoiceme_backup_${result.backupId}.json`;
+                      link.download = `asset-vault_backup_${result.backupId}.json`;
                       document.body.appendChild(link);
                       link.click();
                       document.body.removeChild(link);
@@ -2713,7 +2713,7 @@ const Settings = () => {
                             const link = document.createElement('a');
                             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
                             link.href = url;
-                            link.download = `invoiceme_export_${timestamp}.${config.extension}`;
+                            link.download = `asset-vault_export_${timestamp}.${config.extension}`;
                             document.body.appendChild(link);
                             link.click();
                             document.body.removeChild(link);

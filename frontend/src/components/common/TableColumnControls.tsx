@@ -12,7 +12,6 @@ import {
   Button,
 } from '@mui/material';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
-import SettingsIcon from '@mui/icons-material/Settings';
 import RestoreIcon from '@mui/icons-material/Restore';
 import { useState } from 'react';
 

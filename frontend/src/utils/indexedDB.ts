@@ -10,7 +10,7 @@ import type { DBSchema, IDBPDatabase } from 'idb';
 import { logger } from './logger';
 
 // Database schema
-interface InvoiceMeDB extends DBSchema {
+interface AssetVaultDB extends DBSchema {
   queryCache: {
     key: string; // Query key as JSON string
     value: {
@@ -44,20 +44,24 @@ interface InvoiceMeDB extends DBSchema {
   };
 }
 
+/* Storage key, not branding. The app was renamed InvoiceMe -> Asset Vault in v2.0.0,
+   but this string names the IndexedDB store in every existing user's browser: changing
+   it would silently orphan their offline drafts and pending sync queue rather than
+   migrate them. Kept deliberately until there is a version bump that migrates the data. */
 const DB_NAME = 'invoiceme-db';
 const DB_VERSION = 1;
 
-let dbInstance: IDBPDatabase<InvoiceMeDB> | null = null;
+let dbInstance: IDBPDatabase<AssetVaultDB> | null = null;
 
 /**
  * Initialize IndexedDB database
  */
-export async function initIndexedDB(): Promise<IDBPDatabase<InvoiceMeDB>> {
+export async function initIndexedDB(): Promise<IDBPDatabase<AssetVaultDB>> {
   if (dbInstance) {
     return dbInstance;
   }
 
-  dbInstance = await openDB<InvoiceMeDB>(DB_NAME, DB_VERSION, {
+  dbInstance = await openDB<AssetVaultDB>(DB_NAME, DB_VERSION, {
     upgrade(db) {
       // Query cache store
       if (!db.objectStoreNames.contains('queryCache')) {
@@ -89,7 +93,7 @@ export async function initIndexedDB(): Promise<IDBPDatabase<InvoiceMeDB>> {
 /**
  * Get database instance
  */
-export async function getDB(): Promise<IDBPDatabase<InvoiceMeDB>> {
+export async function getDB(): Promise<IDBPDatabase<AssetVaultDB>> {
   if (!dbInstance) {
     return await initIndexedDB();
   }

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * InvoiceMe First-Time Startup Script
+ * Asset Vault First-Time Startup Script
  * 
  * Automatically installs dependencies, sets up environment, and starts the application.
  * This is the unified cross-platform script that works on Mac, Linux, and Windows.
@@ -193,11 +193,11 @@ async function checkPrerequisites() {
       }
     } else if (commandExists('docker')) {
       logInfo('Docker detected. You can use PostgreSQL in Docker:');
-      logInfo('  docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=postgres --name invoiceme-db postgres:14');
+      logInfo('  docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=postgres --name asset-vault-db postgres:14');
       const useDocker = await askQuestion('Would you like to start PostgreSQL in Docker? (y/n) [y]:');
       if (useDocker.toLowerCase() !== 'n') {
         logInfo('Starting PostgreSQL in Docker...');
-        execCommand('docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=postgres --name invoiceme-db postgres:14', { silent: false });
+        execCommand('docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=postgres --name asset-vault-db postgres:14', { silent: false });
         logInfo('Waiting for PostgreSQL to be ready...');
         await new Promise(resolve => setTimeout(resolve, 5000));
         logSuccess('PostgreSQL is running in Docker');
@@ -527,7 +527,7 @@ async function skipSeeding() {
 async function startApplication() {
   logStep(8, 'Starting application...');
   logInfo('');
-  logInfo('🚀 Launching InvoiceMe...');
+  logInfo('🚀 Launching Asset Vault...');
   logInfo('   Backend and frontend will run in this terminal');
   logInfo('   Press Ctrl+C to stop both servers');
   logInfo('');
@@ -1012,7 +1012,7 @@ async function startApplication() {
 // Main function
 async function main() {
   log('\n' + '='.repeat(60), 'bright');
-  log('InvoiceMe - First-Time Startup Script', 'bright');
+  log('Asset Vault - First-Time Startup Script', 'bright');
   log('='.repeat(60) + '\n', 'bright');
   
   try {

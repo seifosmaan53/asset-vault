@@ -11,7 +11,6 @@ import {
   removeMutation,
   updateMutationStatus,
   clearQueryCache,
-  initIndexedDB,
 } from './indexedDB';
 import { logger } from './logger';
 

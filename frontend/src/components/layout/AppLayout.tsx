@@ -42,7 +42,6 @@ import LightModeIcon from '@mui/icons-material/LightMode';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import { logger } from '../../utils/logger';
 import { useToast } from '../../contexts/ToastContext';
-import { getErrorMessage } from '../../utils/errorHandling';
 import type { DragEndEvent } from '@dnd-kit/core';
 import {
   DndContext,

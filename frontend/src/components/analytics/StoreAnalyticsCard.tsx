@@ -1,8 +1,7 @@
-import { Card, CardContent, Typography, Box, Chip, IconButton, Divider, Tooltip } from '@mui/material';
+import { Card, CardContent, Typography, Box, Chip, IconButton, Tooltip } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { formatCurrency } from '../../utils/formatters';
 import type { StoreSummary } from '../../api/analytics';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import StoreIcon from '@mui/icons-material/Store';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';

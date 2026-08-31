@@ -1,5 +1,8 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
-// Shared invoice totals calculation - matches backend logic exactly
+/* Mirrors backend/src/invoices/utils/invoice-totals.util.ts. The two are NOT identical:
+   the backend validates its inputs and throws BadRequestException, this copy does not,
+   so the UI can show a total for an invoice the API will reject. Keep the arithmetic in
+   sync by hand until the module is extracted into a package both sides import. */
 
 /**
  * Round cents value symmetrically (round half away from zero)
@@ -31,20 +34,6 @@ function moneyApplyPercent(money: number, percent: number): number {
   const cents = moneyToCents(money);
   const percentCents = roundCents(cents * (percent / 100));
   return percentCents;
-}
-
-/**
- * Add two money amounts (returns cents)
- */
-function moneyAdd(a: number, b: number): number {
-  return moneyToCents(a) + moneyToCents(b);
-}
-
-/**
- * Subtract two money amounts (returns cents)
- */
-function moneySubtract(a: number, b: number): number {
-  return moneyToCents(a) - moneyToCents(b);
 }
 
 export interface InvoiceItemDto {
@@ -90,6 +79,21 @@ export function computeInvoiceTotalsCents(
   taxPolicy: 'afterDiscount' | 'beforeDiscount' = 'afterDiscount',
   roundingPolicy: 'perLine' | 'invoiceOnly' = 'perLine'
 ): InvoiceTotalsResult {
+  /* Both of these are part of the documented signature but are not implemented yet
+     (the body only applies per-line discounts and always rounds per line). Silently
+     ignoring them would hand back a total that is quietly wrong, so fail loudly. */
+  if (invoiceDiscount !== undefined && invoiceDiscount !== 0) {
+    throw new Error(
+      'computeInvoiceTotalsCents: invoice-level discount is not implemented yet — ' +
+      'apply the discount per line item instead.',
+    );
+  }
+  if (roundingPolicy !== 'perLine') {
+    throw new Error(
+      "computeInvoiceTotalsCents: only the 'perLine' rounding policy is implemented.",
+    );
+  }
+
   if (!items || items.length === 0) {
     return {
       lines: [],

@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# Database restore script for InvoiceMe
+# Database restore script for Asset Vault
 # Usage: ./restore.sh <backup_file>
 
 set -e
 
 if [ -z "$1" ]; then
     echo "Usage: $0 <backup_file>"
-    echo "Example: $0 backups/invoiceme_backup_20240101_120000.sql"
+    echo "Example: $0 backups/asset-vault_backup_20240101_120000.sql"
     exit 1
 fi
 

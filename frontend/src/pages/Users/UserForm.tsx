@@ -28,7 +28,6 @@ import { useEffect } from 'react';
 import { createUserSchema, updateUserSchema } from '../../utils/validationSchemas';
 import { useToast } from '../../contexts/ToastContext';
 import type { CreateUserDto, UpdateUserDto } from '../../api/users';
-import { getErrorMessage } from '../../utils/errorHandling';
 import Grid from '../../components/common/Grid';
 
 interface UserFormProps {

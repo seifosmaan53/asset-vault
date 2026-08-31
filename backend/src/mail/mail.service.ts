@@ -139,7 +139,7 @@ export class MailService {
       const smtpPort = config?.port || Number(this.configService.get('SMTP_PORT') ?? 587);
       const smtpUser = config?.user || this.configService.get('SMTP_USER');
       const smtpPass = config?.password || this.configService.get('SMTP_PASS');
-      const emailFrom = config?.from || this.configService.get('SMTP_FROM') || 'InvoiceMe <test@invoiceme.app>';
+      const emailFrom = config?.from || this.configService.get('SMTP_FROM') || 'Asset Vault <test@asset-vault.app>';
 
       // Validate required fields
       if (!smtpHost || !smtpUser || !smtpPass) {
@@ -198,11 +198,11 @@ export class MailService {
       await testTransporter.sendMail({
         from: emailFrom,
         to: testEmailAddress,
-        subject: 'InvoiceMe - Email Connection Test',
+        subject: 'Asset Vault - Email Connection Test',
         html: `
           <div style="font-family: Arial, sans-serif; padding: 20px;">
             <h2>Email Connection Test Successful!</h2>
-            <p>This is a test email from InvoiceMe to verify your SMTP configuration.</p>
+            <p>This is a test email from Asset Vault to verify your SMTP configuration.</p>
             <p>If you received this email, your email settings are working correctly.</p>
             <p><strong>Test time:</strong> ${new Date().toLocaleString()}</p>
           </div>
@@ -282,7 +282,7 @@ export class MailService {
     // Retry logic with exponential backoff
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        const from = this.configService.get('SMTP_FROM') || 'InvoiceMe <no-reply@invoiceme.app>';
+        const from = this.configService.get('SMTP_FROM') || 'Asset Vault <no-reply@asset-vault.app>';
         
         // Verify transporter connection with timeout (only on first attempt)
         if (attempt === 0) {
@@ -380,7 +380,7 @@ export class MailService {
     maxRetries: number = 3,
     retryDelay: number = 1000,
   ): Promise<void> {
-    const fromEmail = options.from || this.configService.get('SMTP_FROM') || 'no-reply@invoiceme.app';
+    const fromEmail = options.from || this.configService.get('SMTP_FROM') || 'no-reply@asset-vault.app';
     
     // Extract email from "Name <email>" format if needed
     const fromMatch = fromEmail.match(/<?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>?/);

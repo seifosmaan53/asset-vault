@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Copyright (c) 2024 InvoiceMe
+// Copyright (c) 2024 Asset Vault
 // Utility script to free a port by killing the process using it
 
 const { execSync } = require('child_process');

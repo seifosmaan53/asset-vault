@@ -615,7 +615,7 @@ export class UserSettingsService {
       await fs.mkdir(backupDir, { recursive: true });
 
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const fileName = `invoiceme_backup_${timestamp}.sql`;
+      const fileName = `asset-vault_backup_${timestamp}.sql`;
       const filePath = path.join(backupDir, fileName);
 
       // Build pg_dump command
@@ -734,7 +734,7 @@ export class UserSettingsService {
       const csvLines: string[] = [];
       
       // Add metadata header
-      csvLines.push('InvoiceMe Data Export');
+      csvLines.push('Asset Vault Data Export');
       csvLines.push(`Export Date: ${new Date().toISOString()}`);
       csvLines.push(`User: ${data.user?.name || data.user?.email || 'Unknown'}`);
       csvLines.push('');
@@ -996,7 +996,7 @@ export class UserSettingsService {
   private buildExportPdfHtml(data: ExportData, settings: Record<string, unknown>): string {
     try {
       const exportData = data;
-      const companyName = (settings?.companyName as string) || 'InvoiceMe';
+      const companyName = (settings?.companyName as string) || 'Asset Vault';
       const exportDate = new Date().toISOString().split('T')[0];
 
       let html = `

@@ -27,8 +27,6 @@ import StoreIcon from '@mui/icons-material/Store';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import WarningIcon from '@mui/icons-material/Warning';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
-import LocationOnIcon from '@mui/icons-material/LocationOn';
-import CodeIcon from '@mui/icons-material/Code';
 import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
 import VisibilityIcon from '@mui/icons-material/Visibility';

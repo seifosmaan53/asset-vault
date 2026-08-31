@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { Box, useTheme, useMediaQuery } from '@mui/material';
+import { useTheme, useMediaQuery } from '@mui/material';
 import { TableContainer, Paper, Table, TableHead, TableBody, TableRow, TableCell } from '@mui/material';
 
 interface ResponsiveTableProps {

@@ -99,8 +99,29 @@ describe('computeInvoiceTotalsCents', () => {
         },
       ];
 
+      /* The rate bound is now checked before the subtotal comparison, so a 150%
+         discount is rejected as an out-of-range percentage rather than reaching the
+         "exceeds subtotal" branch. The old assertion expected the later message and
+         had been failing ever since validation moved earlier. */
       expect(() => computeInvoiceTotalsCents(items)).toThrow(BadRequestException);
-      expect(() => computeInvoiceTotalsCents(items)).toThrow(/discount.*exceeds subtotal/i);
+      expect(() => computeInvoiceTotalsCents(items)).toThrow(/at most 100/i);
+    });
+
+    it('should reject a discount rate below zero', () => {
+      const items: InvoiceItemDto[] = [
+        { quantity: 1, unitPrice: 100, taxRate: 0, discountRate: -5, description: 'Item' },
+      ];
+
+      expect(() => computeInvoiceTotalsCents(items)).toThrow(BadRequestException);
+    });
+
+    it('accepts a 100% discount and returns a zero total', () => {
+      const items: InvoiceItemDto[] = [
+        { quantity: 1, unitPrice: 100, taxRate: 0, discountRate: 100, description: 'Item' },
+      ];
+
+      const result = computeInvoiceTotalsCents(items);
+      expect(result.invoice.totalCents).toBe(0);
     });
 
     it('should reject decimal quantities', () => {

@@ -1,4 +1,4 @@
-import { Container, Box, Typography } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import Logo from '../common/Logo';
 
 interface AuthLayoutProps {
@@ -42,7 +42,7 @@ const AuthLayout = ({ children }: AuthLayoutProps) => {
           {/* Title on the right */}
           <Box>
             <Typography variant="h4" component="h1" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
-              InvoiceMe
+              Asset Vault
             </Typography>
           </Box>
         </Box>

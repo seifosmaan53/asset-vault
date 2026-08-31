@@ -32,7 +32,6 @@ import {
   useTheme,
 } from '@mui/material';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
-import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import { useState, useMemo, useEffect } from 'react';
 import { useTableColumns } from '../../hooks/useTableColumns';
 
