@@ -204,7 +204,7 @@ async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle('Asset Vault API')
     .setDescription('Invoice and Inventory Management API - Complete API documentation for managing invoices, clients, inventory, and analytics.')
-    .setVersion('1.1.0')
+    .setVersion('2.0.0')
     .addBearerAuth(
       {
         type: 'http',
@@ -227,6 +227,9 @@ async function bootstrap() {
     .addTag('feedback', 'Feedback submission')
     .addTag('settings', 'User settings')
     .addTag('analytics', 'Analytics and reporting')
+      .addTag('stores', 'Store management')
+      .addTag('subscriptions', 'Billing and subscriptions')
+      .addTag('health', 'Service health and metrics')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

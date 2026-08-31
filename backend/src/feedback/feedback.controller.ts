@@ -2,7 +2,9 @@ import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { FeedbackService } from './feedback.service';
 import { CreateFeedbackDto } from './dto';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('feedback')
 @Controller('feedback')
 @UseGuards(ClerkAuthGuard)
 export class FeedbackController {

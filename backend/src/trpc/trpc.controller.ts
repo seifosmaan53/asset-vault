@@ -8,6 +8,7 @@ import { TrpcRouter } from './trpc.router';
 import { TrpcService } from './trpc.service';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { createContext } from './trpc.context';
+import { ApiTags } from '@nestjs/swagger';
 
 /**
  * tRPC Controller
@@ -17,6 +18,7 @@ import { createContext } from './trpc.context';
  * 
  * Current implementation provides basic tRPC endpoint that can be extended.
  */
+@ApiTags('trpc')
 @Controller('trpc')
 @UseGuards(ClerkAuthGuard)
 export class TrpcController {

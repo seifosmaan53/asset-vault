@@ -2,7 +2,9 @@ import { Controller, Get } from '@nestjs/common';
 import { AppService } from './app.service';
 import { Public } from './auth/public.decorator';
 import { MetricsService } from './common/services/metrics.service';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('health')
 @Controller()
 export class AppController {
   constructor(

@@ -14,6 +14,8 @@ import { ApiKeysService } from './api-keys.service';
 import { CreateApiKeyDto, UpdateApiKeyDto } from './dto';
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
+import { ApiTags } from '@nestjs/swagger';
+@ApiTags('api-keys')
 @Controller('api-keys')
 @UseGuards(ClerkAuthGuard)
 @Roles(UserRole.ADMIN, UserRole.OWNER)

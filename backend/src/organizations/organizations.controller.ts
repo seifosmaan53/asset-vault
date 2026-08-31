@@ -16,6 +16,7 @@ import { OrganizationRole } from './entities/organization-role.enum';
 import { OrganizationOptional } from './organization-optional.decorator';
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
+import { ApiTags } from '@nestjs/swagger';
 
 interface CreateOrganizationDto {
   name: string;
@@ -58,6 +59,7 @@ interface UpdateUserRoleDto {
   role: OrganizationRole;
 }
 
+@ApiTags('organizations')
 @Controller('organizations')
 @UseGuards(ClerkAuthGuard)
 @OrganizationOptional()

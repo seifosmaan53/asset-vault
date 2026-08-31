@@ -14,6 +14,7 @@ import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { UsersService } from './users.service';
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from './entities/user.entity';
+import { ApiTags } from '@nestjs/swagger';
 
 interface CreateUserDto {
   email: string;
@@ -31,6 +32,7 @@ interface UpdateUserDto {
   password?: string;
 }
 
+@ApiTags('users')
 @Controller('users')
 @UseGuards(ClerkAuthGuard)
 @Roles(UserRole.OWNER, UserRole.ADMIN) // Allow both OWNER and ADMIN to see user list

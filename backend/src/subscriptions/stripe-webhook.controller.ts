@@ -8,7 +8,9 @@ import { StripeService } from './stripe.service';
 import { SubscriptionsService } from './subscriptions.service';
 import { Public } from '../auth/public.decorator';
 import Stripe from 'stripe';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('subscriptions')
 @Controller('subscriptions/webhook')
 export class StripeWebhookController {
   private readonly logger = new Logger(StripeWebhookController.name);

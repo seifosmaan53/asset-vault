@@ -13,6 +13,19 @@
 
 ---
 
+## A look at it
+
+The API ships OpenAPI docs at `/api/docs` — 107 documented endpoints across 21 tagged
+areas, generated from the controllers themselves rather than maintained by hand.
+
+![Asset Vault API documentation — 21 tagged sections](docs/screenshots/api-docs-overview.jpg)
+
+Every route carries its auth requirement, parameters and response schema:
+
+![Invoice endpoints in the API documentation](docs/screenshots/api-docs-invoices.jpg)
+
+---
+
 ## Why this exists
 
 I work in retail/pharmacy operations supporting a network of 890 stores, and the recurring pain there is the same one small multi-location businesses hit everywhere: invoicing, stock levels, and per-store reporting live in separate spreadsheets or disconnected tools. Asset Vault is my take on collapsing that into one self-hosted app — invoices, inventory (with reorder alerts and inter-store transfers), clients, and Stripe-metered subscription plans, scoped per organization.
@@ -136,6 +149,16 @@ Each item below maps to code in `backend/src/` and `frontend/src/` — no unveri
 
 The test story is real but partial: services and utilities are covered, end-to-end HTTP flows less so.
 
+> **Current state, stated plainly.** With CI now running (it was removed in an early
+> commit for lacking the `workflow` OAuth scope and never restored), the suite reports
+> **42 passing / 30 failing across 12 suites**. The failures are drift, not regressions:
+> specs were written against an older API and never updated when the source moved on —
+> mocks that still stub `findOne()` where the service now builds a QueryBuilder, and
+> assertions for methods like `AuthService.validateUser` that no longer exist. Three
+> suites have been repaired so far (`app.controller`, `invoice-totals.util`,
+> `store-stock-validator`); the rest are tracked and being worked through. CI runs them
+> so the number is visible instead of assumed.
+
 **Backend (Jest, 12 unit spec files + 2 integration specs in `backend/`):**
 - `auth/auth.service.spec.ts`
 - `clients/clients.controller.spec.ts`, `clients/clients.service.spec.ts`
@@ -202,7 +225,7 @@ npm run dev
 
 ## Environment Variables
 
-`backend/.env.example` and `frontend/.env.example` cover the base database/JWT/SMTP variables. Clerk and Stripe keys aren't in the checked-in example files but are required by the code (`ClerkAuthGuard` throws on startup without `CLERK_SECRET_KEY`; `stripe.service.ts` needs `STRIPE_SECRET_KEY` for billing routes) — add them yourself:
+`backend/.env.example` and `frontend/.env.example` now list every variable the code reads, generated from the Joi schema in `src/app.module.ts`, with each one marked required or optional. **`CLERK_SECRET_KEY` (backend) and `VITE_CLERK_PUBLISHABLE_KEY` (frontend) are both required** — the API exits at boot with a config validation error without the first, and the frontend renders a configuration screen instead of the UI without the second. Stripe, SMTP, AWS and IP-filtering keys are all optional; those features stay dormant when unset.
 
 ### Backend (`backend/.env`)
 ```env
@@ -213,8 +236,8 @@ DB_USERNAME=postgres
 DB_PASSWORD=yourpassword
 DB_DATABASE=asset_vault
 
-# Auth
-JWT_SECRET=your-jwt-secret
+# Auth — Clerk only. JWT_SECRET is no longer read by the running app
+# (authentication moved to Clerk); it has been dropped from .env.example.
 CLERK_SECRET_KEY=sk_...
 CLERK_WEBHOOK_SECRET=whsec_...
 
@@ -277,8 +300,14 @@ http://localhost:3000/api/docs
 ## Production Build
 
 ```bash
-# Build frontend
+# Build frontend  (vite build — produces dist/)
 cd frontend && npm run build
+
+# Optional: type-check the frontend separately.
+# ~360 pre-existing type errors are still being worked down; they do not affect the
+# bundle, because Vite strips types without checking them. `build` therefore produces
+# a working app, and `typecheck` reports the debt.
+cd frontend && npm run typecheck
 
 # Build backend
 cd backend && npm run build

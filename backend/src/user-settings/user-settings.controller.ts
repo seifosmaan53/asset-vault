@@ -11,6 +11,7 @@ import { UserRole } from '../users/entities/user.entity';
 import { OrganizationId } from '../organizations/organization-context.decorator';
 import { UsersService } from '../users/users.service';
 
+@ApiTags('settings')
 @Controller('user-settings')
 @UseGuards(ClerkAuthGuard)
 @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF) // Allow all authenticated users to access their own settings
