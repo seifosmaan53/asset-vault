@@ -54,7 +54,7 @@ import { useStoreStocks } from '../../hooks/useStoreStock';
 import InventorySelect from '../../components/inventory/InventorySelect';
 import type { InventoryItem } from '../../types/inventory';
 import type { Invoice, InvoiceItem } from '../../types/invoice';
-import { computeInvoiceTotalsCents, invoiceTotalsToMoney, centsToMoney } from '../../utils/invoice-totals.util';
+import { computeInvoiceTotalsCents, invoiceTotalsToMoney, centsToMoney, validateInvoiceItems } from '../../utils/invoice-totals.util';
 import { formatCurrency } from '../../utils/formatters';
 import { formatDate } from '../../utils/dates';
 import { getErrorMessage } from '../../utils/errorHandling';
@@ -414,6 +414,15 @@ const InvoiceForm = () => {
       overallTaxPercent: Math.round(overallTaxPercent * 100) / 100,
     };
   }, [watchedItems]);
+
+  /* The totals above are computed leniently so the form stays responsive while
+     someone is mid-keystroke. The backend is stricter and will reject some of
+     those inputs outright, so ask the shared validator what the API would say.
+     Without this, the form happily shows a total and then fails on submit. */
+  const totalsBlockers = useMemo(
+    () => validateInvoiceItems(watchedItems as Parameters<typeof validateInvoiceItems>[0]),
+    [watchedItems],
+  );
 
   // FIX #148: Batch setValue calls to prevent multiple re-renders
   const handleInventorySelect = (index: number, item: InventoryItem | null) => {
@@ -1601,6 +1610,16 @@ const InvoiceForm = () => {
                 bgcolor: 'background.paper',
               }}
             >
+              {totalsBlockers.length > 0 && (
+                <Alert severity="warning" sx={{ mb: 2.5 }}>
+                  These values will be rejected when saved. Fix them to continue:
+                  <ul style={{ margin: '8px 0 0', paddingInlineStart: '20px' }}>
+                    {totalsBlockers.map((blocker) => (
+                      <li key={blocker.field}>{blocker.message}</li>
+                    ))}
+                  </ul>
+                </Alert>
+              )}
               <Box 
                 display="flex" 
                 gap={2.5} 
@@ -1626,7 +1645,7 @@ const InvoiceForm = () => {
                   variant="contained"
                   size="large"
                   sx={{ minWidth: 180, px: 4 }}
-                  disabled={createInvoice.isPending || updateInvoice.isPending}
+                  disabled={createInvoice.isPending || updateInvoice.isPending || totalsBlockers.length > 0}
                 >
                   {createInvoice.isPending || updateInvoice.isPending 
                     ? 'Saving...' 

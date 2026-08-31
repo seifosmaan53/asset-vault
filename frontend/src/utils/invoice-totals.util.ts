@@ -1,8 +1,18 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
-/* Mirrors backend/src/invoices/utils/invoice-totals.util.ts. The two are NOT identical:
-   the backend validates its inputs and throws BadRequestException, this copy does not,
-   so the UI can show a total for an invoice the API will reject. Keep the arithmetic in
-   sync by hand until the module is extracted into a package both sides import. */
+/* Mirrors backend/src/invoices/utils/invoice-totals.util.ts.
+
+   The arithmetic is identical. The difference is in HOW invalid input is reported:
+   the backend throws BadRequestException, while this copy must not throw — it runs
+   inside a useMemo during render in InvoiceForm, so a throw on a half-typed value
+   (a discount of "150" mid-keystroke) would blank the form.
+
+   Instead, `validateInvoiceItems()` returns the SAME verdicts the backend would throw
+   on, as data. Callers show those errors and block submit, so the UI can no longer
+   display a total for an invoice the API will reject.
+
+   Keep both the arithmetic AND the validation rules in sync by hand until the module
+   is extracted into a package both sides import. The rules mirrored here come from
+   backend/src/common/utils/edge-case-protection.util.ts. */
 
 /**
  * Round cents value symmetrically (round half away from zero)
@@ -200,3 +210,123 @@ export function invoiceTotalsToMoney(result: InvoiceTotalsResult): {
   };
 }
 
+
+/* ------------------------------------------------------------------ *
+ * Validation parity with the backend
+ * ------------------------------------------------------------------ */
+
+/** Largest money value the backend accepts (MAX_SAFE_FINANCIAL_VALUE). */
+const MAX_SAFE_FINANCIAL_VALUE = 999999999999.99;
+
+/** Largest quantity the backend accepts per line item. */
+const MAX_QUANTITY = 1000000;
+
+export interface InvoiceValidationError {
+  /** Dotted path of the offending field, e.g. "items[0].quantity". */
+  field: string;
+  /** Human-readable reason, worded as the backend words it. */
+  message: string;
+}
+
+/** Mirrors backend validateNumber() for a required, finite number. */
+function checkNumber(
+  value: unknown,
+  field: string,
+  opts: { integer?: boolean; min?: number; max?: number; required?: boolean },
+): { ok: true; value: number } | { ok: false; error: InvoiceValidationError } {
+  const { integer = false, min, max, required = true } = opts;
+  const err = (message: string) => ({ ok: false as const, error: { field, message } });
+
+  if (value === null || value === undefined || value === '') {
+    return required ? err(`${field} is required`) : { ok: true, value: 0 };
+  }
+
+  const num = Number(value);
+  if (Number.isNaN(num)) return err(`${field} must be a valid number`);
+  if (!Number.isFinite(num)) return err(`${field} must be a finite number`);
+  if (integer && !Number.isInteger(num)) return err(`${field} must be an integer`);
+  if (min !== undefined && num < min) return err(`${field} must be at least ${min}`);
+  if (max !== undefined && num > max) return err(`${field} must be at most ${max}`);
+
+  return { ok: true, value: num };
+}
+
+/** Mirrors backend validateMoney(): non-negative, finite, at most 2 decimal places. */
+function checkMoney(value: unknown, field: string): InvoiceValidationError | null {
+  const base = checkNumber(value, field, { min: 0, max: MAX_SAFE_FINANCIAL_VALUE });
+  if (!base.ok) return base.error;
+
+  // Backend enforces 2 decimal places via a cents round-trip.
+  const cents = Math.round(base.value * 100);
+  if (Math.abs(base.value - cents / 100) > 1e-8) {
+    return { field, message: `${field} cannot be represented safely in cents` };
+  }
+  return null;
+}
+
+/** Mirrors backend validatePercentage(): a finite number in [0, 100]. */
+function checkPercentage(value: unknown, field: string): InvoiceValidationError | null {
+  if (value === null || value === undefined || value === '') return null; // optional
+  const base = checkNumber(value, field, { min: 0, max: 100 });
+  return base.ok ? null : base.error;
+}
+
+/**
+ * Return every reason the backend would reject these items, as data.
+ *
+ * An empty array means `computeInvoiceTotalsCents` will produce a total the API
+ * will also accept. A non-empty array means the displayed total is not
+ * submittable, and the caller should surface the messages and block submit.
+ */
+export function validateInvoiceItems(
+  items: InvoiceItemDto[] | null | undefined,
+  invoiceDiscount?: number,
+): InvoiceValidationError[] {
+  const errors: InvoiceValidationError[] = [];
+  if (!items || items.length === 0) return errors;
+
+  let subtotalCents = 0;
+
+  items.forEach((item, i) => {
+    const qtyField = `items[${i}].quantity`;
+    const priceField = `items[${i}].unitPrice`;
+
+    const qty = checkNumber(item?.quantity, qtyField, {
+      integer: true,
+      min: 1,
+      max: MAX_QUANTITY,
+    });
+    if (!qty.ok) errors.push(qty.error);
+
+    const priceErr = checkMoney(item?.unitPrice, priceField);
+    if (priceErr) errors.push(priceErr);
+
+    const taxErr = checkPercentage(item?.taxRate, `items[${i}].taxRate`);
+    if (taxErr) errors.push(taxErr);
+
+    const discErr = checkPercentage(item?.discountRate, `items[${i}].discountRate`);
+    if (discErr) errors.push(discErr);
+
+    if (qty.ok && !priceErr) {
+      subtotalCents += qty.value * Math.round(Number(item.unitPrice) * 100);
+    }
+  });
+
+  // Backend rejects an invoice-level discount larger than the subtotal.
+  if (invoiceDiscount !== undefined && invoiceDiscount !== null) {
+    const pctErr = checkPercentage(invoiceDiscount, 'invoiceDiscount');
+    if (pctErr) {
+      errors.push(pctErr);
+    } else {
+      const discountCents = roundCents(subtotalCents * (Number(invoiceDiscount) / 100));
+      if (discountCents > subtotalCents) {
+        errors.push({
+          field: 'invoiceDiscount',
+          message: `Invoice-level discount (${invoiceDiscount}%) exceeds subtotal`,
+        });
+      }
+    }
+  }
+
+  return errors;
+}
