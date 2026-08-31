@@ -1,347 +1,178 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
-import { MailService } from '../mail/mail.service';
+import { OrganizationsService } from '../organizations/organizations.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { User, UserRole } from '../users/entities/user.entity';
-import * as bcrypt from 'bcryptjs';
+
+/* This file used to test login(), register(), validateUser() and refreshToken(). None
+   of them exist: authentication moved to Clerk, and AuthService now only owns the Clerk
+   webhook plus profile and password operations. The suite could not even compile, which
+   is also why it had stopped catching anything.
+
+   Rewritten against the real surface. The most valuable case is the updateProfile field
+   whitelist — it is the thing standing between a caller and writing `role` on their own
+   user record. */
+
+const baseUser = (over: Partial<User> = {}): User =>
+  ({
+    id: 'user-1',
+    email: 'someone@example.com',
+    name: 'Someone',
+    companyName: 'Acme',
+    phone: undefined,
+    address: undefined,
+    timezone: undefined,
+    bio: undefined,
+    role: UserRole.STAFF,
+    clerkUserId: 'clerk_123',
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: new Date('2026-01-02T00:00:00Z'),
+    ...over,
+  }) as unknown as User;
 
 describe('AuthService', () => {
   let service: AuthService;
-  let usersService: UsersService;
-  let jwtService: JwtService;
-  let configService: ConfigService;
-  let usersRepository: Repository<User>;
-  let mailService: MailService;
 
-  const mockUsersRepository = {
-    save: jest.fn(),
-    findOne: jest.fn(),
-    count: jest.fn(),
+  const usersService = {
+    findById: jest.fn(),
     update: jest.fn(),
   };
 
-  const mockUsersService = {
-    findByEmail: jest.fn(),
-    validatePassword: jest.fn(),
-    create: jest.fn(),
-    findById: jest.fn(),
-  };
-
-  const mockJwtService = {
-    sign: jest.fn(),
-    verify: jest.fn(),
-  };
-
-  const mockConfigService = {
-    get: jest.fn((key: string) => {
-      if (key === 'JWT_REFRESH_SECRET') return 'refresh-secret';
-      if (key === 'JWT_REFRESH_EXPIRES_IN') return '7d';
-      return 'test-secret';
-    }),
-  };
-
-  const mockMailService = {
-    sendPasswordResetEmail: jest.fn(),
-  };
-
   beforeEach(async () => {
+    jest.clearAllMocks();
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
-        {
-          provide: UsersService,
-          useValue: mockUsersService,
-        },
-        {
-          provide: JwtService,
-          useValue: mockJwtService,
-        },
-        {
-          provide: ConfigService,
-          useValue: mockConfigService,
-        },
-        {
-          provide: MailService,
-          useValue: mockMailService,
-        },
-        {
-          provide: getRepositoryToken(User),
-          useValue: mockUsersRepository,
-        },
+        { provide: UsersService, useValue: usersService },
+        { provide: OrganizationsService, useValue: {} },
+        { provide: SubscriptionsService, useValue: {} },
+        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue(undefined) } },
+        { provide: getRepositoryToken(User), useValue: {} },
       ],
     }).compile();
 
     service = module.get<AuthService>(AuthService);
-    usersService = module.get<UsersService>(UsersService);
-    jwtService = module.get<JwtService>(JwtService);
-    configService = module.get<ConfigService>(ConfigService);
-    usersRepository = module.get<Repository<User>>(getRepositoryToken(User));
-    mailService = module.get<MailService>(MailService);
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
+  it('is constructed', () => {
+    expect(service).toBeDefined();
   });
 
-  describe('validateUser', () => {
-    const mockUser: User = {
-      id: 'user-123',
-      email: 'test@example.com',
-      password: 'hashed-password',
-      name: 'Test User',
-      companyName: 'Test Company',
-      role: UserRole.ADMIN,
-      failedLoginAttempts: 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    } as User;
+  describe('getProfile', () => {
+    it('returns the profile for a known user', async () => {
+      usersService.findById.mockResolvedValue(baseUser());
 
-    it('should return user without password on valid credentials', async () => {
-      mockUsersService.findByEmail.mockResolvedValue(mockUser);
-      mockUsersService.validatePassword.mockResolvedValue(true);
-      mockUsersRepository.save.mockResolvedValue(mockUser);
+      const profile = await service.getProfile('user-1');
 
-      const result = await service.validateUser('test@example.com', 'password123');
-
-      expect(result).toBeDefined();
-      expect(result?.password).toBeUndefined();
-      expect(result?.email).toBe('test@example.com');
-      expect(mockUsersService.findByEmail).toHaveBeenCalledWith('test@example.com');
-      expect(mockUsersService.validatePassword).toHaveBeenCalledWith(mockUser, 'password123');
+      expect(profile.id).toBe('user-1');
+      expect(profile.email).toBe('someone@example.com');
+      expect(profile.role).toBe(UserRole.STAFF);
     });
 
-    it('should return null for non-existent user', async () => {
-      mockUsersService.findByEmail.mockResolvedValue(null);
+    it('serialises dates as ISO strings, not Date objects', async () => {
+      usersService.findById.mockResolvedValue(baseUser());
 
-      const result = await service.validateUser('nonexistent@example.com', 'password123');
+      const profile = await service.getProfile('user-1');
 
-      expect(result).toBeNull();
-      expect(mockUsersService.validatePassword).not.toHaveBeenCalled();
+      expect(typeof profile.createdAt).toBe('string');
+      expect(profile.createdAt).toBe('2026-01-01T00:00:00.000Z');
     });
 
-    it('should return null for invalid password', async () => {
-      mockUsersService.findByEmail.mockResolvedValue(mockUser);
-      mockUsersService.validatePassword.mockResolvedValue(false);
-      mockUsersRepository.save.mockResolvedValue(mockUser);
+    it('normalises absent optional fields to null rather than undefined', async () => {
+      // undefined disappears from JSON entirely; null keeps the key present so the
+      // client sees "no phone" instead of "no such field".
+      usersService.findById.mockResolvedValue(baseUser({ phone: undefined, bio: undefined }));
 
-      const result = await service.validateUser('test@example.com', 'wrong-password');
+      const profile = await service.getProfile('user-1');
 
-      expect(result).toBeNull();
-      expect(mockUsersRepository.save).toHaveBeenCalled();
-      expect(mockUser.failedLoginAttempts).toBe(1);
+      expect(profile.phone).toBeNull();
+      expect(profile.bio).toBeNull();
     });
 
-    it('should lock account after 5 failed attempts', async () => {
-      const lockedUser = { ...mockUser, failedLoginAttempts: 4 };
-      mockUsersService.findByEmail.mockResolvedValue(lockedUser);
-      mockUsersService.validatePassword.mockResolvedValue(false);
-      mockUsersRepository.save.mockResolvedValue(lockedUser);
+    it('rejects an unknown user', async () => {
+      usersService.findById.mockResolvedValue(null);
 
-      await service.validateUser('test@example.com', 'wrong-password');
-
-      expect(lockedUser.failedLoginAttempts).toBe(5);
-      expect(lockedUser.lockedUntil).toBeDefined();
-    });
-
-    it('should throw UnauthorizedException for locked account', async () => {
-      const lockedUser = {
-        ...mockUser,
-        lockedUntil: new Date(Date.now() + 30 * 60 * 1000),
-      };
-      mockUsersService.findByEmail.mockResolvedValue(lockedUser);
-
-      await expect(
-        service.validateUser('test@example.com', 'password123'),
-      ).rejects.toThrow(UnauthorizedException);
-    });
-
-    it('should reset failed attempts on successful login', async () => {
-      const userWithAttempts = { ...mockUser, failedLoginAttempts: 3 };
-      mockUsersService.findByEmail.mockResolvedValue(userWithAttempts);
-      mockUsersService.validatePassword.mockResolvedValue(true);
-      mockUsersRepository.save.mockResolvedValue(userWithAttempts);
-
-      await service.validateUser('test@example.com', 'password123');
-
-      expect(userWithAttempts.failedLoginAttempts).toBe(0);
-      expect(userWithAttempts.lockedUntil).toBeUndefined();
-    });
-
-    it('should normalize email to lowercase', async () => {
-      mockUsersService.findByEmail.mockResolvedValue(mockUser);
-      mockUsersService.validatePassword.mockResolvedValue(true);
-      mockUsersRepository.save.mockResolvedValue(mockUser);
-
-      await service.validateUser('TEST@EXAMPLE.COM', 'password123');
-
-      expect(mockUsersService.findByEmail).toHaveBeenCalledWith('test@example.com');
+      await expect(service.getProfile('nope')).rejects.toThrow(UnauthorizedException);
     });
   });
 
-  describe('login', () => {
-    const mockUser: Omit<User, 'password'> = {
-      id: 'user-123',
-      email: 'test@example.com',
-      name: 'Test User',
-      companyName: 'Test Company',
-      role: UserRole.ADMIN,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    } as Omit<User, 'password'>;
+  describe('updateProfile', () => {
+    it('passes through the whitelisted fields', async () => {
+      usersService.update.mockResolvedValue(baseUser({ name: 'New Name' }));
 
-    it('should return access and refresh tokens', async () => {
-      mockJwtService.sign.mockReturnValueOnce('access-token').mockReturnValueOnce('refresh-token');
+      await service.updateProfile('user-1', { name: 'New Name', bio: 'hi' });
 
-      const result = await service.login(mockUser);
-
-      expect(result.accessToken).toBe('access-token');
-      expect(result.refreshToken).toBe('refresh-token');
-      expect(result.user.email).toBe('test@example.com');
-      expect(mockJwtService.sign).toHaveBeenCalledTimes(2);
+      expect(usersService.update).toHaveBeenCalledWith('user-1', {
+        name: 'New Name',
+        bio: 'hi',
+      });
     });
 
-    it('should include user information in response', async () => {
-      mockJwtService.sign.mockReturnValue('token');
+    it('drops fields that are not on the whitelist', async () => {
+      usersService.update.mockResolvedValue(baseUser());
 
-      const result = await service.login(mockUser);
-
-      expect(result.user.id).toBe('user-123');
-      expect(result.user.email).toBe('test@example.com');
-      expect(result.user.name).toBe('Test User');
-      expect(result.user.role).toBe(UserRole.ADMIN);
-    });
-  });
-
-  describe('register', () => {
-    it('should create new user and return tokens', async () => {
-      const newUser: User = {
-        id: 'user-456',
-        email: 'newuser@example.com',
-        password: 'hashed-password',
-        name: 'New User',
-        companyName: 'New Company',
-        role: UserRole.ADMIN,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as User;
-
-      mockUsersService.findByEmail.mockResolvedValue(null);
-      mockUsersRepository.count.mockResolvedValue(1);
-      mockUsersService.create.mockResolvedValue(newUser);
-      mockJwtService.sign.mockReturnValue('token');
-
-      const result = await service.register(
-        'newuser@example.com',
-        'password123',
-        'New User',
-        'New Company',
-      );
-
-      expect(mockUsersService.create).toHaveBeenCalledWith(
-        'newuser@example.com',
-        'password123',
-        'New User',
-        'New Company',
-      );
-      expect(result.accessToken).toBeDefined();
-      expect(result.user.email).toBe('newuser@example.com');
-    });
-
-    it('should throw BadRequestException if email already exists', async () => {
-      const existingUser: User = {
-        id: 'user-789',
-        email: 'existing@example.com',
-        password: 'hashed',
-        name: 'Existing',
-        role: UserRole.ADMIN,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as User;
-
-      mockUsersService.findByEmail.mockResolvedValue(existingUser);
-
-      await expect(
-        service.register('existing@example.com', 'password123', 'Existing User'),
-      ).rejects.toThrow(BadRequestException);
-      expect(mockUsersService.create).not.toHaveBeenCalled();
-    });
-
-    it('should assign OWNER role to first user', async () => {
-      const firstUser: User = {
-        id: 'user-001',
-        email: 'first@example.com',
-        password: 'hashed',
-        name: 'First User',
-        role: UserRole.ADMIN,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as User;
-
-      mockUsersService.findByEmail.mockResolvedValue(null);
-      mockUsersRepository.count.mockResolvedValue(0);
-      mockUsersService.create.mockResolvedValue(firstUser);
-      mockUsersRepository.update.mockResolvedValue({ affected: 1 });
-      mockJwtService.sign.mockReturnValue('token');
-
-      await service.register('first@example.com', 'password123', 'First User');
-
-      expect(mockUsersRepository.update).toHaveBeenCalledWith('user-001', {
+      await service.updateProfile('user-1', {
+        name: 'New Name',
+        // a caller trying to escalate themselves, or edit identity fields directly
         role: UserRole.OWNER,
-      });
+        email: 'attacker@example.com',
+        id: 'someone-else',
+      } as never);
+
+      const [, patch] = usersService.update.mock.calls[0];
+      expect(patch).toEqual({ name: 'New Name' });
+      expect(patch).not.toHaveProperty('role');
+      expect(patch).not.toHaveProperty('email');
+      expect(patch).not.toHaveProperty('id');
     });
 
-    it('should throw BadRequestException if password contains email', async () => {
-      mockUsersService.findByEmail.mockResolvedValue(null);
+    it('distinguishes an omitted field from one explicitly cleared', async () => {
+      usersService.update.mockResolvedValue(baseUser());
 
-      await expect(
-        service.register('test@example.com', 'test@example.com123', 'Test User'),
-      ).rejects.toThrow(BadRequestException);
+      await service.updateProfile('user-1', { phone: '' });
+
+      // '' is a real value the user chose; only `undefined` means "leave it alone".
+      expect(usersService.update.mock.calls[0][1]).toEqual({ phone: '' });
+    });
+
+    it('sends nothing when given nothing', async () => {
+      usersService.update.mockResolvedValue(baseUser());
+
+      await service.updateProfile('user-1', {});
+
+      expect(usersService.update).toHaveBeenCalledWith('user-1', {});
     });
   });
 
-  describe('refreshToken', () => {
-    it('should return new access token for valid refresh token', async () => {
-      const mockUser: User = {
-        id: 'user-123',
-        email: 'test@example.com',
-        password: 'hashed',
-        name: 'Test',
-        role: UserRole.ADMIN,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as User;
+  describe('changePassword', () => {
+    const dto = { currentPassword: 'old', newPassword: 'new-password-1' };
 
-      mockJwtService.verify.mockReturnValue({ sub: 'user-123', email: 'test@example.com' });
-      mockUsersService.findById.mockResolvedValue(mockUser);
-      mockJwtService.sign.mockReturnValue('new-access-token');
+    it('rejects an unknown user', async () => {
+      usersService.findById.mockResolvedValue(null);
 
-      const result = await service.refreshToken('valid-refresh-token');
-
-      expect(result.accessToken).toBe('new-access-token');
-      expect(mockJwtService.verify).toHaveBeenCalledWith('valid-refresh-token', {
-        secret: 'refresh-secret',
-      });
+      await expect(service.changePassword('nope', dto)).rejects.toThrow(UnauthorizedException);
     });
 
-    it('should throw UnauthorizedException for invalid refresh token', async () => {
-      mockJwtService.verify.mockImplementation(() => {
-        throw new Error('Invalid token');
-      });
+    it('rejects a user with no linked Clerk account', async () => {
+      usersService.findById.mockResolvedValue(baseUser({ clerkUserId: undefined }));
 
-      await expect(service.refreshToken('invalid-token')).rejects.toThrow(UnauthorizedException);
+      await expect(service.changePassword('user-1', dto)).rejects.toThrow(BadRequestException);
     });
 
-    it('should throw UnauthorizedException if user not found', async () => {
-      mockJwtService.verify.mockReturnValue({ sub: 'nonexistent-id', email: 'test@example.com' });
-      mockUsersService.findById.mockResolvedValue(null);
+    it('rejects when Clerk is not configured', async () => {
+      // ConfigService returns undefined for CLERK_SECRET_KEY in this module, so the
+      // client is never constructed — the service must say so rather than throw a
+      // TypeError on an undefined client.
+      usersService.findById.mockResolvedValue(baseUser());
 
-      await expect(service.refreshToken('valid-token')).rejects.toThrow(UnauthorizedException);
+      await expect(service.changePassword('user-1', dto)).rejects.toThrow(
+        /Clerk is not configured/i,
+      );
     });
   });
 });
-

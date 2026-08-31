@@ -1,218 +1,184 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
+import { NotFoundException } from '@nestjs/common';
 import { ClientsService } from './clients.service';
 import { Client } from './entities/client.entity';
-import { NotFoundException, ConflictException } from '@nestjs/common';
+import { ImportService } from '../common/services/import.service';
+
+/* Rewritten. The previous version could not be constructed at all — ClientsService
+   gained a DataSource and an ImportService and the spec still provided only a
+   repository, so Nest failed to resolve it and every test in the file died before
+   running. The assertions were stale on top of that: they expected
+   findOne({ where: { id, userId } }), while the service now goes through QueryBuilder.
+
+   What is worth testing here is tenant isolation. findOne deliberately looks a client up
+   by ID ALONE first, then compares ownership — so the interesting cases are the three
+   ways it must refuse: missing, soft-deleted, and belonging to somebody else. */
+
+const makeClient = (over: Partial<Client> = {}): Client =>
+  ({
+    id: 'client-1',
+    userId: 'user-1',
+    name: 'Acme Ltd',
+    email: 'billing@acme.test',
+    deletedAt: null,
+    ...over,
+  }) as unknown as Client;
 
 describe('ClientsService', () => {
   let service: ClientsService;
-  let repository: Repository<Client>;
 
-  const mockRepository = {
-    create: jest.fn(),
-    save: jest.fn(),
+  const makeQueryBuilder = () => {
+    const qb: Record<string, jest.Mock> = {};
+    for (const m of [
+      'select', 'addSelect', 'from', 'leftJoin', 'leftJoinAndSelect', 'innerJoin',
+      'where', 'andWhere', 'orWhere', 'orderBy', 'addOrderBy', 'groupBy', 'having',
+      'skip', 'take', 'limit', 'offset', 'withDeleted', 'update', 'set', 'delete',
+      'softDelete', 'setLock', 'relation', 'of',
+    ]) {
+      qb[m] = jest.fn(() => qb);
+    }
+    qb.getOne = jest.fn().mockResolvedValue(null);
+    qb.getMany = jest.fn().mockResolvedValue([]);
+    qb.getManyAndCount = jest.fn().mockResolvedValue([[], 0]);
+    qb.getCount = jest.fn().mockResolvedValue(0);
+    qb.getRawOne = jest.fn().mockResolvedValue(undefined);
+    qb.getRawMany = jest.fn().mockResolvedValue([]);
+    qb.execute = jest.fn().mockResolvedValue({ affected: 1 });
+    return qb;
+  };
+
+  let qb: ReturnType<typeof makeQueryBuilder>;
+  let managerQb: ReturnType<typeof makeQueryBuilder>;
+
+  const repo = {
+    create: jest.fn((x) => x),
+    save: jest.fn((x) => Promise.resolve({ id: 'client-new', ...x })),
     findOne: jest.fn(),
     find: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
-    createQueryBuilder: jest.fn(),
+    createQueryBuilder: jest.fn(() => qb),
+  };
+
+  const manager = {
+    findOne: jest.fn(),
+    save: jest.fn(),
+    delete: jest.fn(),
+    createQueryBuilder: jest.fn(() => managerQb),
+  };
+
+  const queryRunner = {
+    connect: jest.fn(),
+    startTransaction: jest.fn(),
+    commitTransaction: jest.fn(),
+    rollbackTransaction: jest.fn(),
+    release: jest.fn(),
+    manager,
+  };
+
+  const dataSource = {
+    createQueryRunner: jest.fn(() => queryRunner),
+    transaction: jest.fn((cb: (m: unknown) => unknown) => cb(manager)),
   };
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+    qb = makeQueryBuilder();
+    managerQb = makeQueryBuilder();
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ClientsService,
-        {
-          provide: getRepositoryToken(Client),
-          useValue: mockRepository,
-        },
+        { provide: getRepositoryToken(Client), useValue: repo },
+        { provide: DataSource, useValue: dataSource },
+        { provide: ImportService, useValue: { parseCsv: jest.fn(), importRows: jest.fn() } },
       ],
     }).compile();
 
     service = module.get<ClientsService>(ClientsService);
-    repository = module.get<Repository<Client>>(getRepositoryToken(Client));
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
+  it('is constructed with all three of its dependencies', () => {
+    expect(service).toBeDefined();
+  });
+
+  describe('findOne — tenant isolation', () => {
+    it('returns a client the actor owns', async () => {
+      qb.getOne.mockResolvedValue(makeClient({ userId: 'user-1' }));
+
+      const result = await service.findOne('client-1', 'user-1');
+
+      expect(result.id).toBe('client-1');
+    });
+
+    it('refuses a client owned by a different user', async () => {
+      // The lookup is by id alone, so ownership is enforced here and nowhere else.
+      qb.getOne.mockResolvedValue(makeClient({ userId: 'someone-else' }));
+
+      await expect(service.findOne('client-1', 'user-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('does not reveal that a client exists when it belongs to someone else', async () => {
+      // "Not found" rather than "forbidden": a 403 would confirm the id is real.
+      qb.getOne.mockResolvedValue(makeClient({ userId: 'someone-else' }));
+
+      await expect(service.findOne('client-1', 'user-1')).rejects.toThrow(/not found/i);
+    });
+
+    it('refuses a client that does not exist', async () => {
+      qb.getOne.mockResolvedValue(null);
+
+      await expect(service.findOne('missing', 'user-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('refuses a soft-deleted client even though the row is still there', async () => {
+      qb.getOne.mockResolvedValue(makeClient({ deletedAt: new Date() }));
+
+      await expect(service.findOne('client-1', 'user-1')).rejects.toThrow(/deleted/i);
+    });
+
+    it('includes soft-deleted rows in the lookup so it can tell them apart from missing ones', async () => {
+      qb.getOne.mockResolvedValue(makeClient());
+
+      await service.findOne('client-1', 'user-1');
+
+      expect(qb.withDeleted).toHaveBeenCalled();
+    });
   });
 
   describe('create', () => {
-    it('should create a client successfully', async () => {
-      const userId = 'user-123';
-      const createDto = {
-        name: 'Test Client',
-        email: 'test@example.com',
-        phone: '123-456-7890',
-        street: '123 Main St',
-        city: 'New York',
-        state: 'NY',
-        zip: '10001',
-        country: 'USA',
-      };
+    it('sanitises the name before persisting', async () => {
+      await service.create('user-1', { name: '  <script>alert(1)</script>Acme  ' } as Partial<Client>);
 
-      const mockClient = { id: 'client-123', userId, ...createDto };
-      mockRepository.create.mockReturnValue(mockClient);
-      mockRepository.save.mockResolvedValue(mockClient);
-
-      const result = await service.create(userId, createDto);
-
-      expect(result).toEqual(mockClient);
-      expect(mockRepository.create).toHaveBeenCalledWith({
-        userId,
-        ...createDto,
-        addressJson: {
-          street: createDto.street,
-          city: createDto.city,
-          state: createDto.state,
-          zip: createDto.zip,
-          country: createDto.country,
-        },
-      });
-      expect(mockRepository.save).toHaveBeenCalledWith(mockClient);
+      const [saved] = repo.save.mock.calls[0];
+      expect(saved.name).not.toContain('<script>');
     });
 
-    it('should create a client without address', async () => {
-      const userId = 'user-123';
-      const createDto = {
-        name: 'Test Client',
-        email: 'test@example.com',
-      };
+    it('normalises a null email to undefined so the column is left unset', async () => {
+      await service.create('user-1', { name: 'Acme', email: null } as unknown as Partial<Client>);
 
-      const mockClient = { id: 'client-123', userId, ...createDto };
-      mockRepository.create.mockReturnValue(mockClient);
-      mockRepository.save.mockResolvedValue(mockClient);
-
-      const result = await service.create(userId, createDto);
-
-      expect(result).toEqual(mockClient);
-      expect(mockRepository.create).toHaveBeenCalledWith({
-        userId,
-        ...createDto,
-        addressJson: null,
-      });
-    });
-  });
-
-  describe('findAll', () => {
-    it('should return all clients for a user', async () => {
-      const userId = 'user-123';
-      const mockClients = [
-        { id: 'client-1', userId, name: 'Client 1' },
-        { id: 'client-2', userId, name: 'Client 2' },
-      ];
-
-      mockRepository.find.mockResolvedValue(mockClients);
-
-      const result = await service.findAll(userId);
-
-      expect(result).toEqual(mockClients);
-      expect(mockRepository.find).toHaveBeenCalledWith({
-        where: { userId },
-        order: { createdAt: 'DESC' },
-      });
-    });
-  });
-
-  describe('findOne', () => {
-    it('should return a client by id', async () => {
-      const userId = 'user-123';
-      const clientId = 'client-123';
-      const mockClient = { id: clientId, userId, name: 'Test Client' };
-
-      mockRepository.findOne.mockResolvedValue(mockClient);
-
-      const result = await service.findOne(clientId, userId);
-
-      expect(result).toEqual(mockClient);
-      expect(mockRepository.findOne).toHaveBeenCalledWith({
-        where: { id: clientId, userId },
-      });
+      const [saved] = repo.save.mock.calls[0];
+      expect(saved.email).toBeUndefined();
     });
 
-    it('should throw NotFoundException if client not found', async () => {
-      const userId = 'user-123';
-      const clientId = 'client-123';
+    it('stamps the client with the acting user', async () => {
+      await service.create('user-1', { name: 'Acme' } as Partial<Client>);
 
-      mockRepository.findOne.mockResolvedValue(null);
-
-      await expect(service.findOne(clientId, userId)).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  describe('update', () => {
-    it('should update a client successfully', async () => {
-      const userId = 'user-123';
-      const clientId = 'client-123';
-      const updateDto = { name: 'Updated Client' };
-      const existingClient = { id: clientId, userId, name: 'Test Client' };
-      const updatedClient = { ...existingClient, ...updateDto };
-
-      mockRepository.findOne.mockResolvedValue(existingClient);
-      mockRepository.save.mockResolvedValue(updatedClient);
-
-      const result = await service.update(clientId, userId, updateDto);
-
-      expect(result).toEqual(updatedClient);
-      expect(mockRepository.findOne).toHaveBeenCalledWith({
-        where: { id: clientId, userId },
-      });
-      expect(mockRepository.save).toHaveBeenCalled();
-    });
-
-    it('should throw NotFoundException if client not found', async () => {
-      const userId = 'user-123';
-      const clientId = 'client-123';
-      const updateDto = { name: 'Updated Client' };
-
-      mockRepository.findOne.mockResolvedValue(null);
-
-      await expect(service.update(clientId, userId, updateDto)).rejects.toThrow(NotFoundException);
+      const [saved] = repo.save.mock.calls[0];
+      expect(saved.userId).toBe('user-1');
     });
   });
 
   describe('remove', () => {
-    it('should delete a client successfully', async () => {
-      const userId = 'user-123';
-      const clientId = 'client-123';
-      const mockClient = { id: clientId, userId, name: 'Test Client' };
-
-      mockRepository.findOne.mockResolvedValue(mockClient);
-      mockRepository.delete.mockResolvedValue({ affected: 1 });
-
-      await service.remove(clientId, userId);
-
-      expect(mockRepository.findOne).toHaveBeenCalledWith({
-        where: { id: clientId, userId },
-        relations: ['invoices'],
-      });
-      expect(mockRepository.delete).toHaveBeenCalledWith({ id: clientId, userId });
+    it('rejects an empty id without opening a transaction', async () => {
+      await expect(service.remove('', 'user-1')).rejects.toThrow(NotFoundException);
+      expect(dataSource.createQueryRunner).not.toHaveBeenCalled();
     });
 
-    it('should throw NotFoundException if client not found', async () => {
-      const userId = 'user-123';
-      const clientId = 'client-123';
-
-      mockRepository.findOne.mockResolvedValue(null);
-
-      await expect(service.remove(clientId, userId)).rejects.toThrow(NotFoundException);
-    });
-
-    it('should throw ConflictException if client has invoices', async () => {
-      const userId = 'user-123';
-      const clientId = 'client-123';
-      const mockClient = {
-        id: clientId,
-        userId,
-        name: 'Test Client',
-        invoices: [{ id: 'invoice-1' }],
-      };
-
-      mockRepository.findOne.mockResolvedValue(mockClient);
-
-      await expect(service.remove(clientId, userId)).rejects.toThrow(ConflictException);
+    it('rejects a whitespace-only id', async () => {
+      await expect(service.remove('   ', 'user-1')).rejects.toThrow(NotFoundException);
     });
   });
 });
-

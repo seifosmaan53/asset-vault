@@ -1,9 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { InvoicesController } from './invoices.controller';
 import { InvoicesService } from './invoices.service';
-import { AuthGuard } from '@nestjs/passport';
+import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { ExecutionContext } from '@nestjs/common';
 
+/* The override targeted AuthGuard('jwt') — the Passport guard this controller used
+   before authentication moved to Clerk. Nest therefore tried to construct the REAL
+   ClerkAuthGuard, which needs UsersService, OrganizationsService and ConfigService, and
+   failed to resolve them. Overriding the guard the controller actually declares keeps
+   this a controller unit test rather than an auth-stack integration test. */
 describe('InvoicesController', () => {
   let controller: InvoicesController;
   let service: InvoicesService;
@@ -39,7 +44,7 @@ describe('InvoicesController', () => {
         },
       ],
     })
-      .overrideGuard(AuthGuard('jwt'))
+      .overrideGuard(ClerkAuthGuard)
       .useValue(mockAuthGuard)
       .compile();
 

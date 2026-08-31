@@ -3,307 +3,189 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UsersService } from './users.service';
 import { User, UserRole } from './entities/user.entity';
-import * as bcrypt from 'bcryptjs';
+
+/* This file used to test create() and validatePassword(). Neither exists: user creation
+   is driven by the Clerk webhook via createFromClerk(), and passwords are Clerk's
+   problem now. The suite failed to compile, so it had stopped protecting anything.
+
+   Rewritten against the real surface. The cases worth having are the ones around email
+   identity — normalisation, and the three ways an account can already exist when Clerk
+   says to create one. Getting those wrong either duplicates a user or attaches a Clerk
+   identity to somebody else's row. */
+
+const makeUser = (over: Partial<User> = {}): User =>
+  ({
+    id: 'user-1',
+    email: 'someone@example.com',
+    name: 'Someone',
+    role: UserRole.OWNER,
+    clerkUserId: 'clerk_123',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...over,
+  }) as unknown as User;
 
 describe('UsersService', () => {
   let service: UsersService;
-  let repository: Repository<User>;
-
-  const mockRepository = {
-    create: jest.fn(),
-    save: jest.fn(),
-    findOne: jest.fn(),
-    find: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-  };
+  let repo: jest.Mocked<Partial<Repository<User>>>;
 
   beforeEach(async () => {
+    repo = {
+      findOne: jest.fn(),
+      find: jest.fn(),
+      create: jest.fn((x) => x as User),
+      save: jest.fn((x) => Promise.resolve(x as User)),
+      update: jest.fn(),
+      delete: jest.fn(),
+    } as unknown as jest.Mocked<Partial<Repository<User>>>;
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        UsersService,
-        {
-          provide: getRepositoryToken(User),
-          useValue: mockRepository,
-        },
-      ],
+      providers: [UsersService, { provide: getRepositoryToken(User), useValue: repo }],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
-    repository = module.get<Repository<User>>(getRepositoryToken(User));
-  });
-
-  afterEach(() => {
-    jest.clearAllMocks();
-  });
-
-  describe('create', () => {
-    it('should create a new user with hashed password', async () => {
-      const email = 'test@example.com';
-      const password = 'password123';
-      const name = 'Test User';
-      const companyName = 'Test Company';
-
-      const mockUser: User = {
-        id: 'user-123',
-        email: email.toLowerCase(),
-        password: 'hashed-password',
-        name: 'Test User',
-        companyName: 'Test Company',
-        role: UserRole.ADMIN,
-        failedLoginAttempts: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as User;
-
-      mockRepository.create.mockReturnValue(mockUser);
-      mockRepository.save.mockResolvedValue(mockUser);
-
-      const result = await service.create(email, password, name, companyName);
-
-      expect(mockRepository.create).toHaveBeenCalled();
-      expect(mockRepository.save).toHaveBeenCalled();
-      expect(result.email).toBe(email.toLowerCase());
-      expect(result.name).toBe('Test User');
-      expect(result.companyName).toBe('Test Company');
-      expect(result.failedLoginAttempts).toBe(0);
-    });
-
-    it('should normalize email to lowercase', async () => {
-      const mockUser: User = {
-        id: 'user-123',
-        email: 'test@example.com',
-        password: 'hashed',
-        name: 'Test',
-        role: UserRole.ADMIN,
-        failedLoginAttempts: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as User;
-
-      mockRepository.create.mockReturnValue(mockUser);
-      mockRepository.save.mockResolvedValue(mockUser);
-
-      await service.create('TEST@EXAMPLE.COM', 'password', 'Test');
-
-      expect(mockRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          email: 'test@example.com',
-        }),
-      );
-    });
-
-    it('should trim name and companyName', async () => {
-      const mockUser: User = {
-        id: 'user-123',
-        email: 'test@example.com',
-        password: 'hashed',
-        name: 'Test User',
-        companyName: 'Test Company',
-        role: UserRole.ADMIN,
-        failedLoginAttempts: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as User;
-
-      mockRepository.create.mockReturnValue(mockUser);
-      mockRepository.save.mockResolvedValue(mockUser);
-
-      await service.create('test@example.com', 'password', '  Test User  ', '  Test Company  ');
-
-      expect(mockRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: 'Test User',
-          companyName: 'Test Company',
-        }),
-      );
-    });
   });
 
   describe('findByEmail', () => {
-    it('should find user by email', async () => {
-      const mockUser: User = {
-        id: 'user-123',
-        email: 'test@example.com',
-        password: 'hashed',
-        name: 'Test',
-        role: UserRole.ADMIN,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as User;
+    it('lower-cases and trims before looking up', async () => {
+      (repo.findOne as jest.Mock).mockResolvedValue(null);
 
-      mockRepository.findOne.mockResolvedValue(mockUser);
+      await service.findByEmail('  Someone@EXAMPLE.com  ');
 
-      const result = await service.findByEmail('test@example.com');
-
-      expect(result).toEqual(mockUser);
-      expect(mockRepository.findOne).toHaveBeenCalledWith({
-        where: { email: 'test@example.com' },
+      expect(repo.findOne).toHaveBeenCalledWith({
+        where: { email: 'someone@example.com' },
       });
-    });
-
-    it('should normalize email to lowercase', async () => {
-      mockRepository.findOne.mockResolvedValue(null);
-
-      await service.findByEmail('TEST@EXAMPLE.COM');
-
-      expect(mockRepository.findOne).toHaveBeenCalledWith({
-        where: { email: 'test@example.com' },
-      });
-    });
-
-    it('should return null if user not found', async () => {
-      mockRepository.findOne.mockResolvedValue(null);
-
-      const result = await service.findByEmail('nonexistent@example.com');
-
-      expect(result).toBeNull();
     });
   });
 
-  describe('findById', () => {
-    it('should find user by id', async () => {
-      const mockUser: User = {
-        id: 'user-123',
-        email: 'test@example.com',
-        password: 'hashed',
-        name: 'Test',
-        role: UserRole.ADMIN,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as User;
+  describe('createFromClerk', () => {
+    const payload = {
+      clerkUserId: 'clerk_new',
+      email: '  NewUser@Example.COM ',
+      name: '  New User  ',
+      companyName: '  Acme  ',
+    };
 
-      mockRepository.findOne.mockResolvedValue(mockUser);
+    it('normalises the email and trims the names', async () => {
+      (repo.findOne as jest.Mock).mockResolvedValue(null);
 
-      const result = await service.findById('user-123');
+      await service.createFromClerk(payload);
 
-      expect(result).toEqual(mockUser);
-      expect(mockRepository.findOne).toHaveBeenCalledWith({
-        where: { id: 'user-123' },
-      });
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'newuser@example.com',
+          name: 'New User',
+          companyName: 'Acme',
+        }),
+      );
     });
 
-    it('should return null if user not found', async () => {
-      mockRepository.findOne.mockResolvedValue(null);
+    it('marks the email verified and grants owner, since Clerk already verified it', async () => {
+      (repo.findOne as jest.Mock).mockResolvedValue(null);
 
-      const result = await service.findById('nonexistent-id');
+      await service.createFromClerk(payload);
 
-      expect(result).toBeNull();
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ emailVerified: true, role: UserRole.OWNER }),
+      );
+    });
+
+    it('links Clerk to an existing account that has no Clerk id yet', async () => {
+      // Someone who predates Clerk signing in for the first time: adopt the row rather
+      // than creating a second account on the same email.
+      const existing = makeUser({ clerkUserId: undefined });
+      (repo.findOne as jest.Mock).mockResolvedValue(existing);
+
+      const result = await service.createFromClerk(payload);
+
+      expect(repo.create).not.toHaveBeenCalled();
+      expect(result.clerkUserId).toBe('clerk_new');
+      expect(repo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ clerkUserId: 'clerk_new' }),
+      );
+    });
+
+    it('refuses to re-point an account that already belongs to a different Clerk id', async () => {
+      // Silently overwriting here would hand one person's data to another identity.
+      (repo.findOne as jest.Mock).mockResolvedValue(makeUser({ clerkUserId: 'clerk_someone_else' }));
+
+      await expect(service.createFromClerk(payload)).rejects.toThrow(
+        /already exists with different Clerk ID/i,
+      );
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('recovers from a duplicate-email race by linking instead of failing', async () => {
+      // Two webhook deliveries at once: the pre-check finds nothing, then the insert
+      // loses the race. Re-read and link rather than surfacing a 500.
+      const dup = Object.assign(new Error('duplicate key'), {
+        code: '23505',
+        constraint: 'UQ_users_email',
+      });
+      (repo.findOne as jest.Mock)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(makeUser({ clerkUserId: undefined }));
+      (repo.save as jest.Mock).mockRejectedValueOnce(dup).mockImplementationOnce((x) => x);
+
+      const result = await service.createFromClerk(payload);
+
+      expect(result.clerkUserId).toBe('clerk_new');
+    });
+
+    it('rethrows database errors that are not the duplicate-email constraint', async () => {
+      (repo.findOne as jest.Mock).mockResolvedValue(null);
+      (repo.save as jest.Mock).mockRejectedValueOnce(
+        Object.assign(new Error('connection lost'), { code: '08006' }),
+      );
+
+      await expect(service.createFromClerk(payload)).rejects.toThrow(/connection lost/i);
+    });
+  });
+
+  describe('linkToClerk', () => {
+    it('sets the Clerk id on an existing user', async () => {
+      (repo.findOne as jest.Mock).mockResolvedValue(makeUser({ clerkUserId: undefined }));
+
+      const result = await service.linkToClerk('user-1', 'clerk_abc');
+
+      expect(result.clerkUserId).toBe('clerk_abc');
+    });
+
+    it('throws for an unknown user', async () => {
+      (repo.findOne as jest.Mock).mockResolvedValue(null);
+
+      await expect(service.linkToClerk('nope', 'clerk_abc')).rejects.toThrow(/not found/i);
     });
   });
 
   describe('update', () => {
-    it('should update user and return updated user', async () => {
-      const existingUser: User = {
-        id: 'user-123',
-        email: 'test@example.com',
-        password: 'hashed',
-        name: 'Old Name',
-        role: UserRole.ADMIN,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as User;
+    it('re-reads the row so the caller gets the persisted state', async () => {
+      (repo.findOne as jest.Mock).mockResolvedValue(makeUser({ name: 'Updated' }));
 
-      const updatedUser: User = {
-        ...existingUser,
-        name: 'New Name',
-      };
+      const result = await service.update('user-1', { name: 'Updated' });
 
-      mockRepository.update.mockResolvedValue({ affected: 1 });
-      mockRepository.findOne.mockResolvedValue(updatedUser);
-
-      const result = await service.update('user-123', { name: 'New Name' });
-
-      expect(mockRepository.update).toHaveBeenCalledWith('user-123', { name: 'New Name' });
-      expect(result.name).toBe('New Name');
+      expect(repo.update).toHaveBeenCalledWith('user-1', { name: 'Updated' });
+      expect(result.name).toBe('Updated');
     });
 
-    it('should throw error if user not found after update', async () => {
-      mockRepository.update.mockResolvedValue({ affected: 1 });
-      mockRepository.findOne.mockResolvedValue(null);
+    it('throws if the row vanished between the write and the read', async () => {
+      (repo.findOne as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.update('nonexistent-id', { name: 'New Name' })).rejects.toThrow();
+      await expect(service.update('user-1', { name: 'x' })).rejects.toThrow(/not found/i);
     });
   });
 
-  describe('validatePassword', () => {
-    it('should return true for valid password', async () => {
-      const password = 'password123';
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const user: User = {
-        id: 'user-123',
-        email: 'test@example.com',
-        password: hashedPassword,
-        name: 'Test',
-        role: UserRole.ADMIN,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as User;
+  describe('findAll / delete', () => {
+    it('returns every user', async () => {
+      (repo.find as jest.Mock).mockResolvedValue([makeUser(), makeUser({ id: 'user-2' })]);
 
-      const result = await service.validatePassword(user, password);
-
-      expect(result).toBe(true);
+      expect(await service.findAll()).toHaveLength(2);
     });
 
-    it('should return false for invalid password', async () => {
-      const password = 'password123';
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const user: User = {
-        id: 'user-123',
-        email: 'test@example.com',
-        password: hashedPassword,
-        name: 'Test',
-        role: UserRole.ADMIN,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as User;
+    it('deletes by id', async () => {
+      await service.delete('user-1');
 
-      const result = await service.validatePassword(user, 'wrong-password');
-
-      expect(result).toBe(false);
-    });
-  });
-
-  describe('findAll', () => {
-    it('should return all users', async () => {
-      const mockUsers: User[] = [
-        {
-          id: 'user-1',
-          email: 'user1@example.com',
-          password: 'hashed1',
-          name: 'User 1',
-          role: UserRole.ADMIN,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          id: 'user-2',
-          email: 'user2@example.com',
-          password: 'hashed2',
-          name: 'User 2',
-          role: UserRole.STAFF,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ] as User[];
-
-      mockRepository.find.mockResolvedValue(mockUsers);
-
-      const result = await service.findAll();
-
-      expect(result).toEqual(mockUsers);
-      expect(mockRepository.find).toHaveBeenCalled();
-    });
-  });
-
-  describe('delete', () => {
-    it('should delete user', async () => {
-      mockRepository.delete.mockResolvedValue({ affected: 1 });
-
-      await service.delete('user-123');
-
-      expect(mockRepository.delete).toHaveBeenCalledWith('user-123');
+      expect(repo.delete).toHaveBeenCalledWith('user-1');
     });
   });
 });
-

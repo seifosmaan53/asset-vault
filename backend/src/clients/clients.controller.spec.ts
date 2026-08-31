@@ -1,9 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ClientsController } from './clients.controller';
 import { ClientsService } from './clients.service';
-import { AuthGuard } from '@nestjs/passport';
+import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { ExecutionContext } from '@nestjs/common';
 
+/* The override targeted AuthGuard('jwt') — the Passport guard this controller used
+   before authentication moved to Clerk. Nest therefore tried to construct the REAL
+   ClerkAuthGuard, which needs UsersService, OrganizationsService and ConfigService, and
+   failed to resolve them. Overriding the guard the controller actually declares keeps
+   this a controller unit test rather than an auth-stack integration test. */
 describe('ClientsController', () => {
   let controller: ClientsController;
   let service: ClientsService;
@@ -34,7 +39,7 @@ describe('ClientsController', () => {
         },
       ],
     })
-      .overrideGuard(AuthGuard('jwt'))
+      .overrideGuard(ClerkAuthGuard)
       .useValue(mockAuthGuard)
       .compile();
 
@@ -59,7 +64,9 @@ describe('ClientsController', () => {
       } as any);
 
       expect(result).toEqual(mockClients);
-      expect(service.findAll).toHaveBeenCalledWith('user-123');
+      // findAll gained a second `filters` argument (search / date range); it is
+      // undefined when the request carries no query parameters.
+      expect(service.findAll).toHaveBeenCalledWith('user-123', undefined);
     });
   });
 
