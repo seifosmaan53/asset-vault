@@ -17,6 +17,17 @@ describe('StoreStockValidatorService', () => {
 
   const mockStoreItemSettingsRepository = {
     findOne: jest.fn(),
+    find: jest.fn().mockResolvedValue([]),
+    /* Outside a transaction the service uses `this.repo.manager`, which the mock did
+       not have — hence "Cannot read properties of undefined (reading 'findOne')".
+       The manager takes (Entity, options), so this adapts onto the repo-level stub. */
+    manager: {
+      findOne: jest.fn((_entity: unknown, options: unknown) =>
+        mockStoreItemSettingsRepository.findOne(options)),
+      find: jest.fn(async () => (await mockStoreItemSettingsRepository.find()) ?? []),
+      save: jest.fn((_entity: unknown, data: unknown) => Promise.resolve(data)),
+      create: jest.fn((_entity: unknown, data: unknown) => data),
+    },
   };
 
   /* The service moved from repository.findOne() to a QueryBuilder chain
@@ -26,14 +37,20 @@ describe('StoreStockValidatorService', () => {
      is what tests stub per-case. */
   const makeQueryBuilder = (delegate?: jest.Mock) => {
     const qb: Record<string, jest.Mock> = {};
+    /* The builder accumulates the parameters passed to where()/andWhere() and hands
+       them to the delegate, so a stub can answer based on WHICH row was asked for
+       rather than on call order. That matters for the multi-item cases: the service
+       does not guarantee one findOne per item, so a mockResolvedValueOnce sequence
+       silently lines up against the wrong lookup. */
+    const params: Record<string, unknown> = {};
     for (const method of ['where', 'andWhere', 'setLock', 'leftJoinAndSelect', 'select', 'orderBy']) {
-      qb[method] = jest.fn(() => qb);
+      qb[method] = jest.fn((_sql?: unknown, p?: Record<string, unknown>) => {
+        if (p) Object.assign(params, p);
+        return qb;
+      });
     }
-    // getOne() delegates to the repository's findOne mock so the existing
-    // `mockStoreRepository.findOne.mockResolvedValue(...)` stubs in these tests keep
-    // working, instead of every case having to be rewritten against the builder.
-    qb.getOne = jest.fn(() => (delegate ? delegate() : undefined));
-    qb.getMany = jest.fn();
+    qb.getOne = jest.fn(() => (delegate ? delegate({ where: { ...params } }) : undefined));
+    qb.getMany = jest.fn(() => []);
     return qb;
   };
 
@@ -102,7 +119,7 @@ describe('StoreStockValidatorService', () => {
 
     it('should return stock from existing settings', async () => {
       const mockStore = { id: storeId, userId, name: 'Test Store' };
-      const mockInventoryItem = { id: inventoryItemId, userId, name: 'Test Item' };
+      const mockInventoryItem = { id: inventoryItemId, userId, name: 'Test Item', currentStock: 1000 };
       const mockSettings = { storeId, inventoryItemId, currentStock: 50 };
 
       mockStoreRepository.findOne.mockResolvedValue(mockStore);
@@ -131,7 +148,7 @@ describe('StoreStockValidatorService', () => {
 
     it('should return 0 when no settings exist', async () => {
       const mockStore = { id: storeId, userId, name: 'Test Store' };
-      const mockInventoryItem = { id: inventoryItemId, userId, name: 'Test Item' };
+      const mockInventoryItem = { id: inventoryItemId, userId, name: 'Test Item', currentStock: 1000 };
 
       mockStoreRepository.findOne.mockResolvedValue(mockStore);
       mockInventoryItemRepository.findOne.mockResolvedValue(mockInventoryItem);
@@ -163,7 +180,7 @@ describe('StoreStockValidatorService', () => {
 
     it('should return 0 when currentStock is null', async () => {
       const mockStore = { id: storeId, userId, name: 'Test Store' };
-      const mockInventoryItem = { id: inventoryItemId, userId, name: 'Test Item' };
+      const mockInventoryItem = { id: inventoryItemId, userId, name: 'Test Item', currentStock: 1000 };
       const mockSettings = { storeId, inventoryItemId, currentStock: null };
 
       mockStoreRepository.findOne.mockResolvedValue(mockStore);
@@ -183,7 +200,7 @@ describe('StoreStockValidatorService', () => {
 
     beforeEach(() => {
       const mockStore = { id: storeId, userId, name: 'Test Store' };
-      const mockInventoryItem = { id: inventoryItemId, userId, name: 'Test Item' };
+      const mockInventoryItem = { id: inventoryItemId, userId, name: 'Test Item', currentStock: 1000 };
 
       mockStoreRepository.findOne.mockResolvedValue(mockStore);
       mockInventoryItemRepository.findOne.mockResolvedValue(mockInventoryItem);
@@ -267,8 +284,8 @@ describe('StoreStockValidatorService', () => {
     });
 
     it('should validate all items successfully', async () => {
-      const item1 = { id: 'item-1', userId, name: 'Item 1' };
-      const item2 = { id: 'item-2', userId, name: 'Item 2' };
+      const item1 = { id: 'item-1', userId, name: 'Item 1', currentStock: 1000 };
+      const item2 = { id: 'item-2', userId, name: 'Item 2', currentStock: 1000 };
       const settings1 = { storeId, inventoryItemId: 'item-1', currentStock: 100 };
       const settings2 = { storeId, inventoryItemId: 'item-2', currentStock: 50 };
 
@@ -295,8 +312,8 @@ describe('StoreStockValidatorService', () => {
     });
 
     it('should fail when any item has insufficient stock', async () => {
-      const item1 = { id: 'item-1', userId, name: 'Item 1' };
-      const item2 = { id: 'item-2', userId, name: 'Item 2' };
+      const item1 = { id: 'item-1', userId, name: 'Item 1', currentStock: 1000 };
+      const item2 = { id: 'item-2', userId, name: 'Item 2', currentStock: 1000 };
       const settings1 = { storeId, inventoryItemId: 'item-1', currentStock: 100 };
       const settings2 = { storeId, inventoryItemId: 'item-2', currentStock: 20 };
 
@@ -327,7 +344,7 @@ describe('StoreStockValidatorService', () => {
         { quantity: 30, description: 'Item without inventory' },
       ];
 
-      const item1 = { id: 'item-1', userId, name: 'Item 1' };
+      const item1 = { id: 'item-1', userId, name: 'Item 1', currentStock: 1000 };
       const settings1 = { storeId, inventoryItemId: 'item-1', currentStock: 100 };
 
       mockInventoryItemRepository.findOne.mockResolvedValueOnce(item1).mockResolvedValueOnce(item1);
@@ -340,12 +357,16 @@ describe('StoreStockValidatorService', () => {
     });
 
     it('should handle errors gracefully for individual items', async () => {
-      const item1 = { id: 'item-1', userId, name: 'Item 1' };
+      const item1 = { id: 'item-1', userId, name: 'Item 1', currentStock: 1000 };
       const settings1 = { storeId, inventoryItemId: 'item-1', currentStock: 100 };
 
-      mockInventoryItemRepository.findOne
-        .mockResolvedValueOnce(item1)
-        .mockResolvedValueOnce(null); // Item 2 not found
+      // keyed on the requested id rather than call order — see makeQueryBuilder above
+      mockInventoryItemRepository.findOne.mockImplementation(
+        (opts?: { where?: { inventoryItemId?: string; id?: string } }) => {
+          const wanted = opts?.where?.inventoryItemId ?? opts?.where?.id;
+          return Promise.resolve(wanted === 'item-1' ? item1 : null);
+        },
+      );
       mockStoreItemSettingsRepository.findOne.mockResolvedValueOnce(settings1);
 
       const items = [
@@ -372,7 +393,7 @@ describe('StoreStockValidatorService', () => {
     });
 
     it('should not throw when validation passes', async () => {
-      const item = { id: 'item-1', userId, name: 'Item 1' };
+      const item = { id: 'item-1', userId, name: 'Item 1', currentStock: 1000 };
       const settings = { storeId, inventoryItemId: 'item-1', currentStock: 100 };
 
       mockInventoryItemRepository.findOne.mockResolvedValue(item).mockResolvedValue(item);
@@ -386,7 +407,7 @@ describe('StoreStockValidatorService', () => {
     });
 
     it('should throw BadRequestException when validation fails', async () => {
-      const item = { id: 'item-1', userId, name: 'Item 1' };
+      const item = { id: 'item-1', userId, name: 'Item 1', currentStock: 1000 };
       const settings = { storeId, inventoryItemId: 'item-1', currentStock: 30 };
 
       mockInventoryItemRepository.findOne.mockResolvedValue(item).mockResolvedValue(item);
@@ -400,7 +421,7 @@ describe('StoreStockValidatorService', () => {
     });
 
     it('should include error details in exception message', async () => {
-      const item = { id: 'item-1', userId, name: 'Item 1' };
+      const item = { id: 'item-1', userId, name: 'Item 1', currentStock: 1000 };
       const settings = { storeId, inventoryItemId: 'item-1', currentStock: 30 };
 
       mockInventoryItemRepository.findOne.mockResolvedValue(item).mockResolvedValue(item);
