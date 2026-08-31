@@ -13,23 +13,67 @@ describe('StoreItemSettingsService', () => {
   let storeRepository: Repository<Store>;
   let inventoryItemRepository: Repository<InventoryItem>;
 
+  /* The service moved to QueryBuilder chains but these mocks only had findOne, so
+     createQueryBuilder() returned undefined and the suite died. Each chain step returns
+     the builder; getOne/getMany delegate to the repositories' findOne/find so the
+     existing stubs in these tests keep working. */
+  const makeQb = (one?: jest.Mock, many?: jest.Mock) => {
+    const qb: Record<string, jest.Mock> = {};
+    for (const m of ['where','andWhere','orWhere','leftJoinAndSelect','leftJoin','orderBy',
+                     'addOrderBy','select','addSelect','skip','take','withDeleted','setLock',
+                     'groupBy','update','set']) {
+      qb[m] = jest.fn(() => qb);
+    }
+    qb.getOne = jest.fn(() => (one ? one() : null));
+    qb.getMany = jest.fn(() => (many ? many() : []));
+    qb.getCount = jest.fn().mockResolvedValue(0);
+    qb.execute = jest.fn().mockResolvedValue({ affected: 1 });
+    return qb;
+  };
+
+  let settingsQb: ReturnType<typeof makeQb>;
+  let storeQb: ReturnType<typeof makeQb>;
+  let itemQb: ReturnType<typeof makeQb>;
+
   const mockStoreItemSettingsRepository = {
     create: jest.fn(),
     save: jest.fn(),
     findOne: jest.fn(),
     find: jest.fn(),
-    createQueryBuilder: jest.fn(),
+    createQueryBuilder: jest.fn(() => settingsQb),
+    /* The service does `queryRunner?.manager || this.repo.manager`, so outside a
+       transaction it goes through the repository's EntityManager — which the mock did
+       not have, hence "Cannot read properties of undefined (reading 'findOne')".
+       The manager takes (Entity, options), so these adapt to the repo-level stubs the
+       tests already set up. */
+    manager: {
+      findOne: jest.fn((_entity: unknown, options: unknown) =>
+        mockStoreItemSettingsRepository.findOne(options)),
+      // default to [] — the service reduces over the result, and an unstubbed find()
+      // returning undefined blows up with "Cannot read properties of undefined"
+      find: jest.fn(async (_entity: unknown, options: unknown) =>
+        (await mockStoreItemSettingsRepository.find(options)) ?? []),
+      create: jest.fn((_entity: unknown, data: unknown) =>
+        mockStoreItemSettingsRepository.create(data)),
+      save: jest.fn((_entity: unknown, data: unknown) =>
+        mockStoreItemSettingsRepository.save(data)),
+    },
   };
 
   const mockStoreRepository = {
     findOne: jest.fn(),
+    createQueryBuilder: jest.fn(() => storeQb),
   };
 
   const mockInventoryItemRepository = {
     findOne: jest.fn(),
+    createQueryBuilder: jest.fn(() => itemQb),
   };
 
   beforeEach(async () => {
+    settingsQb = makeQb(mockStoreItemSettingsRepository.findOne, mockStoreItemSettingsRepository.find);
+    storeQb = makeQb(mockStoreRepository.findOne);
+    itemQb = makeQb(mockInventoryItemRepository.findOne);
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         StoreItemSettingsService,
@@ -95,9 +139,11 @@ describe('StoreItemSettingsService', () => {
       const result = await service.getOrCreateSettings(storeId, inventoryItemId, userId);
 
       expect(result).toEqual(mockSettings);
-      expect(mockStoreItemSettingsRepository.findOne).toHaveBeenCalledWith({
-        where: { storeId, inventoryItemId },
-      });
+      // The lookup now takes a pessimistic write lock so two concurrent adjustments
+      // cannot both read the same starting stock.
+      expect(mockStoreItemSettingsRepository.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { storeId, inventoryItemId } }),
+      );
       expect(mockStoreItemSettingsRepository.create).not.toHaveBeenCalled();
     });
 
@@ -161,16 +207,30 @@ describe('StoreItemSettingsService', () => {
       userId,
       name: 'Test Item',
       sku: 'TEST-001',
+      /* Global warehouse stock. The service later gained a rule that the sum of all
+         store allocations may not exceed this, and without the field it reads as 0 —
+         so every increase was (correctly) refused and these tests failed. */
+      currentStock: 500,
     };
-    const mockSettings = {
-      id: 'settings-123',
-      storeId,
-      inventoryItemId,
-      currentStock: 50,
-      minQty: 10,
+    /* The service mutates the settings object it is handed before saving it, so a
+       fixture shared across tests carried state between them: 'increase' left it at 70,
+       and 'decrease' then computed 70-20=50 while asserting 30. Rebuild it per test. */
+    let mockSettings: {
+      id: string;
+      storeId: string;
+      inventoryItemId: string;
+      currentStock: number;
+      minQty: number;
     };
 
     beforeEach(() => {
+      mockSettings = {
+        id: 'settings-123',
+        storeId,
+        inventoryItemId,
+        currentStock: 50,
+        minQty: 10,
+      };
       mockStoreRepository.findOne.mockResolvedValue(mockStore);
       mockInventoryItemRepository.findOne.mockResolvedValue(mockInventoryItem);
       mockStoreItemSettingsRepository.findOne.mockResolvedValue(mockSettings);
@@ -201,25 +261,27 @@ describe('StoreItemSettingsService', () => {
         'decrease',
       );
 
-      expect(mockSettings.currentStock).toBe(30);
+      /* Asserting on mockSettings.currentStock required the service to MUTATE the
+         shared fixture in place. It builds a new object now, so the fixture stayed at
+         50 and this failed. Checking the saved payload tests the same thing without
+         depending on mutation — and without leaking state into the next test, since
+         the fixture is a const shared across this describe block. */
       expect(mockStoreItemSettingsRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({ currentStock: 30 }),
       );
     });
 
-    it('should prevent negative stock', async () => {
-      const result = await service.adjustStoreStock(
-        storeId,
-        inventoryItemId,
-        100,
-        userId,
-        'decrease',
-      );
+    it('refuses a decrease larger than the stock on hand', async () => {
+      /* This used to assert that the stock clamped to 0. The service now throws
+         instead (see "CRITICAL FIX #82: Don't mask the problem" in the source), and
+         that is the better behaviour: silently clamping turns an oversell into a
+         correct-looking zero, so the books balance while the shelf does not. The error
+         names both numbers so the caller can act on it. */
+      await expect(
+        service.adjustStoreStock(storeId, inventoryItemId, 100, userId, 'decrease'),
+      ).rejects.toThrow(/insufficient store stock/i);
 
-      expect(mockSettings.currentStock).toBe(0);
-      expect(mockStoreItemSettingsRepository.save).toHaveBeenCalledWith(
-        expect.objectContaining({ currentStock: 0 }),
-      );
+      expect(mockStoreItemSettingsRepository.save).not.toHaveBeenCalled();
     });
 
     it('should create settings if they do not exist', async () => {
