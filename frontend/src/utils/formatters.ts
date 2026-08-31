@@ -79,7 +79,12 @@ export const formatCurrency = (
   const decimalSep = effectiveSettings.decimalSeparator;
   const thousandsSep = effectiveSettings.thousandsSeparator;
   
-  // Build number part first
+  // Build number part first.
+  // NOTE: Intl.formatToParts(-100) emits a 'minusSign' part. This loop only consumed
+  // group/decimal/fraction/integer, so the sign was dropped and formatCurrency(-100)
+  // returned "$100.00" — a refund, credit note or negative adjustment displayed as a
+  // positive charge. Capture it explicitly rather than relying on the digits alone.
+  const isNegative = parts.some((part) => part.type === 'minusSign');
   let numberPart = '';
   parts.forEach((part) => {
     if (part.type === 'group') {
@@ -91,15 +96,18 @@ export const formatCurrency = (
     }
   });
 
+  // The sign leads the whole value in both symbol positions: "-$100.00", "-100.00 €".
+  const sign = isNegative ? '-' : '';
+
   // Add currency symbol based on position
   if (effectiveSettings.showCurrencySymbol) {
     if (effectiveSettings.currencySymbolPosition === 'right') {
-      return numberPart + ' ' + currencySymbol;
+      return sign + numberPart + ' ' + currencySymbol;
     } else {
-      return currencySymbol + numberPart;
+      return sign + currencySymbol + numberPart;
     }
   } else {
-    return numberPart;
+    return sign + numberPart;
   }
 };
 

@@ -225,10 +225,13 @@ describe('InvoiceForm', () => {
       const storeSelect = screen.getByLabelText(/store/i);
       await userEvent.click(storeSelect);
 
-      await waitFor(() => {
-        const storeOption = screen.getByText(/Store A \(SA1\)/i);
-        await userEvent.click(storeOption);
-      });
+      /* This was `await waitFor(() => { ... await userEvent.click(...) })`. The callback
+         was not async, so the `await` inside it was a syntax error and esbuild refused
+         to transform the file — taking the whole suite down. It was also the wrong
+         shape: waitFor retries its callback, so a click in there fires repeatedly.
+         findByText waits for the option, then it is clicked exactly once. */
+      const storeOption = await screen.findByText(/Store A \(SA1\)/i);
+      await userEvent.click(storeOption);
 
       // Verify store is selected (value should be store-1)
       expect(storeSelect).toHaveValue('store-1');
