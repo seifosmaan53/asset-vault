@@ -54,4 +54,3 @@ export class InvoiceItem {
   // This ensures all calculations use the same cents-based arithmetic and
   // prevents discrepancies between entity hooks and service calculations.
 }
-

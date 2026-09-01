@@ -1,6 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import type { Repository } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { InvoicesService } from '../src/invoices/invoices.service';
 import { InventoryService } from '../src/inventory/inventory.service';
 import { StoreService } from '../src/inventory/store.service';
@@ -117,11 +119,19 @@ describe('Invoices-Store Integration', () => {
     invoicesService = module.get<InvoicesService>(InvoicesService);
     inventoryService = module.get<InventoryService>(InventoryService);
     storeService = module.get<StoreService>(StoreService);
-    storeItemSettingsService = module.get<StoreItemSettingsService>(StoreItemSettingsService);
+    storeItemSettingsService = module.get<StoreItemSettingsService>(
+      StoreItemSettingsService,
+    );
 
-    invoiceRepository = module.get<Repository<Invoice>>(getRepositoryToken(Invoice));
-    invoiceItemsRepository = module.get<Repository<InvoiceItem>>(getRepositoryToken(InvoiceItem));
-    inventoryRepository = module.get<Repository<InventoryItem>>(getRepositoryToken(InventoryItem));
+    invoiceRepository = module.get<Repository<Invoice>>(
+      getRepositoryToken(Invoice),
+    );
+    invoiceItemsRepository = module.get<Repository<InvoiceItem>>(
+      getRepositoryToken(InvoiceItem),
+    );
+    inventoryRepository = module.get<Repository<InventoryItem>>(
+      getRepositoryToken(InventoryItem),
+    );
     storeRepository = module.get<Repository<Store>>(getRepositoryToken(Store));
     storeItemSettingsRepository = module.get<Repository<StoreItemSettings>>(
       getRepositoryToken(StoreItemSettings),
@@ -129,12 +139,18 @@ describe('Invoices-Store Integration', () => {
     stockMovementRepository = module.get<Repository<StockMovement>>(
       getRepositoryToken(StockMovement),
     );
-    clientRepository = module.get<Repository<Client>>(getRepositoryToken(Client));
+    clientRepository = module.get<Repository<Client>>(
+      getRepositoryToken(Client),
+    );
     userRepository = module.get<Repository<User>>(getRepositoryToken(User));
 
     // Setup test data
     testUser = { id: 'user-123', email: 'test@example.com' } as User;
-    testClient = { id: 'client-123', userId: testUser.id, name: 'Test Client' } as Client;
+    testClient = {
+      id: 'client-123',
+      userId: testUser.id,
+      name: 'Test Client',
+    } as Client;
     testStore = {
       id: 'store-123',
       userId: testUser.id,
@@ -207,7 +223,9 @@ describe('Invoices-Store Integration', () => {
 
       // Mock store validation
       (storeRepository.findOne as jest.Mock).mockResolvedValue(testStore);
-      (invoiceRepository.manager.connection.createQueryRunner as jest.Mock).mockReturnValue({
+      (
+        invoiceRepository.manager.connection.createQueryRunner as jest.Mock
+      ).mockReturnValue({
         connect: jest.fn().mockResolvedValue(undefined),
         startTransaction: jest.fn().mockResolvedValue(undefined),
         commitTransaction: jest.fn().mockResolvedValue(undefined),
@@ -218,9 +236,15 @@ describe('Invoices-Store Integration', () => {
         query: jest.fn().mockResolvedValue(undefined),
       });
       (invoiceRepository.count as jest.Mock).mockResolvedValue(0);
-      (inventoryRepository.findOne as jest.Mock).mockResolvedValue(testInventoryItem);
-      (inventoryRepository.save as jest.Mock).mockResolvedValue(testInventoryItem);
-      (storeItemSettingsRepository.findOne as jest.Mock).mockResolvedValue(null);
+      (inventoryRepository.findOne as jest.Mock).mockResolvedValue(
+        testInventoryItem,
+      );
+      (inventoryRepository.save as jest.Mock).mockResolvedValue(
+        testInventoryItem,
+      );
+      (storeItemSettingsRepository.findOne as jest.Mock).mockResolvedValue(
+        null,
+      );
       (storeItemSettingsRepository.create as jest.Mock).mockReturnValue({
         storeId: testStore.id,
         inventoryItemId: testInventoryItem.id,
@@ -292,7 +316,9 @@ describe('Invoices-Store Integration', () => {
         ...testInventoryItem,
         reservedStock: 5,
       });
-      (inventoryRepository.save as jest.Mock).mockResolvedValue(testInventoryItem);
+      (inventoryRepository.save as jest.Mock).mockResolvedValue(
+        testInventoryItem,
+      );
       (stockMovementRepository.create as jest.Mock).mockReturnValue({});
       (stockMovementRepository.save as jest.Mock).mockResolvedValue({});
 
@@ -317,7 +343,9 @@ describe('Invoices-Store Integration', () => {
       } as Invoice;
 
       (storeRepository.findOne as jest.Mock).mockResolvedValue(testStore);
-      (invoiceRepository.manager.connection.createQueryRunner as jest.Mock).mockReturnValue({
+      (
+        invoiceRepository.manager.connection.createQueryRunner as jest.Mock
+      ).mockReturnValue({
         connect: jest.fn().mockResolvedValue(undefined),
         startTransaction: jest.fn().mockResolvedValue(undefined),
         commitTransaction: jest.fn().mockResolvedValue(undefined),
@@ -328,11 +356,17 @@ describe('Invoices-Store Integration', () => {
         query: jest.fn().mockResolvedValue(undefined),
       });
       (invoiceRepository.count as jest.Mock).mockResolvedValue(0);
-      (inventoryRepository.findOne as jest.Mock).mockResolvedValue(testInventoryItem);
-      (inventoryRepository.save as jest.Mock).mockResolvedValue(testInventoryItem);
+      (inventoryRepository.findOne as jest.Mock).mockResolvedValue(
+        testInventoryItem,
+      );
+      (inventoryRepository.save as jest.Mock).mockResolvedValue(
+        testInventoryItem,
+      );
       (stockMovementRepository.create as jest.Mock).mockReturnValue({});
       (stockMovementRepository.save as jest.Mock).mockResolvedValue({});
-      (storeItemSettingsRepository.findOne as jest.Mock).mockResolvedValue(null);
+      (storeItemSettingsRepository.findOne as jest.Mock).mockResolvedValue(
+        null,
+      );
       (storeItemSettingsRepository.create as jest.Mock).mockReturnValue({
         storeId: testStore.id,
         inventoryItemId: testInventoryItem.id,
@@ -382,7 +416,9 @@ describe('Invoices-Store Integration', () => {
         number: 'INV-2024-0001',
       } as Invoice;
 
-      (invoiceRepository.manager.connection.createQueryRunner as jest.Mock).mockReturnValue({
+      (
+        invoiceRepository.manager.connection.createQueryRunner as jest.Mock
+      ).mockReturnValue({
         connect: jest.fn().mockResolvedValue(undefined),
         startTransaction: jest.fn().mockResolvedValue(undefined),
         commitTransaction: jest.fn().mockResolvedValue(undefined),
@@ -393,8 +429,12 @@ describe('Invoices-Store Integration', () => {
         query: jest.fn().mockResolvedValue(undefined),
       });
       (invoiceRepository.count as jest.Mock).mockResolvedValue(0);
-      (inventoryRepository.findOne as jest.Mock).mockResolvedValue(testInventoryItem);
-      (inventoryRepository.save as jest.Mock).mockResolvedValue(testInventoryItem);
+      (inventoryRepository.findOne as jest.Mock).mockResolvedValue(
+        testInventoryItem,
+      );
+      (inventoryRepository.save as jest.Mock).mockResolvedValue(
+        testInventoryItem,
+      );
       (stockMovementRepository.create as jest.Mock).mockReturnValue({});
       (stockMovementRepository.save as jest.Mock).mockResolvedValue({});
 
@@ -446,7 +486,9 @@ describe('Invoices-Store Integration', () => {
         ],
       };
 
-      await expect(invoicesService.create(testUser.id, invoiceData)).rejects.toThrow();
+      await expect(
+        invoicesService.create(testUser.id, invoiceData),
+      ).rejects.toThrow();
     });
 
     it('should reject invoice creation with storeId from different user', async () => {
@@ -479,8 +521,9 @@ describe('Invoices-Store Integration', () => {
         ],
       };
 
-      await expect(invoicesService.create(testUser.id, invoiceData)).rejects.toThrow();
+      await expect(
+        invoicesService.create(testUser.id, invoiceData),
+      ).rejects.toThrow();
     });
   });
 });
-

@@ -44,7 +44,7 @@ async function checkUserJWT() {
     console.log('JWT TOKEN VERIFICATION GUIDE');
     console.log('='.repeat(70));
     console.log('\n📋 All users in database:\n');
-    
+
     for (const user of allUsers) {
       const isDemo = user.email.toLowerCase() === 'demo@example.com';
       const marker = isDemo ? ' 👈 DEMO' : '';
@@ -72,7 +72,9 @@ async function checkUserJWT() {
       console.log(`   ${user.email}: ${user.id}`);
     }
     console.log('');
-    console.log('⚠️  If the "sub" in your JWT token doesn\'t match your userId:');
+    console.log(
+      '⚠️  If the "sub" in your JWT token doesn\'t match your userId:',
+    );
     console.log('   1. Log out completely');
     console.log('   2. Clear browser localStorage');
     console.log('   3. Clear browser cache');
@@ -88,18 +90,24 @@ async function checkUserJWT() {
         console.log('-'.repeat(70));
         console.log(`  User ID (sub): ${decoded.sub}`);
         console.log(`  Email: ${decoded.email}`);
-        console.log(`  Expires: ${new Date(decoded.exp * 1000).toLocaleString()}`);
+        console.log(
+          `  Expires: ${new Date(decoded.exp * 1000).toLocaleString()}`,
+        );
         console.log('');
-        
-        const user = allUsers.find(u => u.id === decoded.sub);
+
+        const user = allUsers.find((u) => u.id === decoded.sub);
         if (user) {
           console.log(`✅ Token belongs to: ${user.email}`);
           if (user.email.toLowerCase() === 'demo@example.com') {
             console.log('⚠️  WARNING: This is the demo account token!');
-            console.log('   If you\'re logged in as a different user, you need to log out and log back in.');
+            console.log(
+              "   If you're logged in as a different user, you need to log out and log back in.",
+            );
           }
         } else {
-          console.log('❌ ERROR: Token userId does not match any user in database!');
+          console.log(
+            '❌ ERROR: Token userId does not match any user in database!',
+          );
         }
       } catch (error: any) {
         console.error('❌ Failed to decode token:', error.message);
@@ -120,4 +128,3 @@ async function checkUserJWT() {
 }
 
 checkUserJWT();
-

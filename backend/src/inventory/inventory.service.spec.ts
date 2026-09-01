@@ -1,4 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
@@ -30,9 +31,24 @@ import { ImportService } from '../common/services/import.service';
 const makeQb = () => {
   const qb: Record<string, jest.Mock> = {};
   for (const m of [
-    'select', 'addSelect', 'leftJoin', 'leftJoinAndSelect', 'innerJoin', 'innerJoinAndSelect',
-    'where', 'andWhere', 'orWhere', 'orderBy', 'addOrderBy', 'groupBy', 'skip', 'take',
-    'withDeleted', 'setLock', 'update', 'set',
+    'select',
+    'addSelect',
+    'leftJoin',
+    'leftJoinAndSelect',
+    'innerJoin',
+    'innerJoinAndSelect',
+    'where',
+    'andWhere',
+    'orWhere',
+    'orderBy',
+    'addOrderBy',
+    'groupBy',
+    'skip',
+    'take',
+    'withDeleted',
+    'setLock',
+    'update',
+    'set',
   ]) {
     qb[m] = jest.fn(() => qb);
   }
@@ -83,17 +99,53 @@ describe('InventoryService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         InventoryService,
-        { provide: getRepositoryToken(InventoryItem), useValue: { ...repo(() => itemQb), createQueryBuilder: jest.fn(() => itemQb) } },
-        { provide: getRepositoryToken(StockMovement), useValue: { ...repo(() => movementQb), createQueryBuilder: jest.fn(() => movementQb) } },
-        { provide: getRepositoryToken(InvoiceItem), useValue: { ...repo(() => invoiceItemQb), createQueryBuilder: jest.fn(() => invoiceItemQb) } },
+        {
+          provide: getRepositoryToken(InventoryItem),
+          useValue: {
+            ...repo(() => itemQb),
+            createQueryBuilder: jest.fn(() => itemQb),
+          },
+        },
+        {
+          provide: getRepositoryToken(StockMovement),
+          useValue: {
+            ...repo(() => movementQb),
+            createQueryBuilder: jest.fn(() => movementQb),
+          },
+        },
+        {
+          provide: getRepositoryToken(InvoiceItem),
+          useValue: {
+            ...repo(() => invoiceItemQb),
+            createQueryBuilder: jest.fn(() => invoiceItemQb),
+          },
+        },
         { provide: getRepositoryToken(Invoice), useValue: repo(makeQb) },
         { provide: getRepositoryToken(UserSettings), useValue: repo(makeQb) },
-        { provide: getRepositoryToken(StoreItemSettings), useValue: repo(makeQb) },
+        {
+          provide: getRepositoryToken(StoreItemSettings),
+          useValue: repo(makeQb),
+        },
         { provide: getRepositoryToken(Store), useValue: repo(makeQb) },
-        { provide: StoreItemSettingsService, useValue: { getOrCreateSettings: jest.fn(), adjustStoreStock: jest.fn() } },
-        { provide: DataSource, useValue: { createQueryRunner: jest.fn(), transaction: jest.fn() } },
-        { provide: CACHE_MANAGER, useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn() } },
-        { provide: ImportService, useValue: { parseCsv: jest.fn(), importRows: jest.fn() } },
+        {
+          provide: StoreItemSettingsService,
+          useValue: {
+            getOrCreateSettings: jest.fn(),
+            adjustStoreStock: jest.fn(),
+          },
+        },
+        {
+          provide: DataSource,
+          useValue: { createQueryRunner: jest.fn(), transaction: jest.fn() },
+        },
+        {
+          provide: CACHE_MANAGER,
+          useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn() },
+        },
+        {
+          provide: ImportService,
+          useValue: { parseCsv: jest.fn(), importRows: jest.fn() },
+        },
       ],
     }).compile();
 
@@ -120,7 +172,9 @@ describe('InventoryService', () => {
 
       await service.findOne('item-1', 'user-1');
 
-      expect(itemQb.where).toHaveBeenCalledWith('item.id = :id', { id: 'item-1' });
+      expect(itemQb.where).toHaveBeenCalledWith('item.id = :id', {
+        id: 'item-1',
+      });
       expect(itemQb.andWhere).toHaveBeenCalledWith('item.userId = :userId', {
         userId: 'user-1',
       });
@@ -129,7 +183,9 @@ describe('InventoryService', () => {
     it('throws when nothing matches, which covers both missing and not-yours', async () => {
       itemQb.getOne.mockResolvedValue(null);
 
-      await expect(service.findOne('item-1', 'user-1')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('item-1', 'user-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -141,13 +197,17 @@ describe('InventoryService', () => {
     it('refuses to delete an item that appears on an invoice', async () => {
       invoiceItemQb.getCount.mockResolvedValue(3);
 
-      await expect(service.remove('item-1', 'user-1')).rejects.toThrow(ConflictException);
+      await expect(service.remove('item-1', 'user-1')).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('says why, naming invoices, rather than failing opaquely', async () => {
       invoiceItemQb.getCount.mockResolvedValue(1);
 
-      await expect(service.remove('item-1', 'user-1')).rejects.toThrow(/linked to existing invoices/i);
+      await expect(service.remove('item-1', 'user-1')).rejects.toThrow(
+        /linked to existing invoices/i,
+      );
     });
 
     it('counts invoice links even for soft-deleted invoices, to preserve the audit trail', async () => {
@@ -155,8 +215,13 @@ describe('InventoryService', () => {
       // referenced this item historically.
       invoiceItemQb.getCount.mockResolvedValue(1);
 
-      await expect(service.remove('item-1', 'user-1')).rejects.toThrow(ConflictException);
-      expect(invoiceItemQb.innerJoin).toHaveBeenCalledWith('invoiceItem.invoice', 'invoice');
+      await expect(service.remove('item-1', 'user-1')).rejects.toThrow(
+        ConflictException,
+      );
+      expect(invoiceItemQb.innerJoin).toHaveBeenCalledWith(
+        'invoiceItem.invoice',
+        'invoice',
+      );
     });
 
     it('checks stock movements once the invoice check passes', async () => {
@@ -171,7 +236,9 @@ describe('InventoryService', () => {
     it('refuses an item that does not exist', async () => {
       itemQb.getOne.mockResolvedValue(null);
 
-      await expect(service.remove('nope', 'user-1')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('nope', 'user-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

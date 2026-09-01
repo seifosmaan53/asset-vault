@@ -1,6 +1,8 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class RemovePrintSpecifications1757000000000 implements MigrationInterface {
+export class RemovePrintSpecifications1757000000000
+  implements MigrationInterface
+{
   name = 'RemovePrintSpecifications1757000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -31,4 +33,3 @@ export class RemovePrintSpecifications1757000000000 implements MigrationInterfac
     `);
   }
 }
-

@@ -28,11 +28,15 @@ async function checkUserLogin() {
 
     console.log(`Checking user: ${normalizedEmail}\n`);
 
-    const user = await userRepository.findOne({ where: { email: normalizedEmail } });
+    const user = await userRepository.findOne({
+      where: { email: normalizedEmail },
+    });
 
     if (!user) {
       console.log('❌ User not found in database');
-      console.log('\nTo create this user, use the registration endpoint or run:');
+      console.log(
+        '\nTo create this user, use the registration endpoint or run:',
+      );
       console.log('  npm run seed  (for demo user)');
       console.log('\nOr register via the API:');
       console.log('  POST /api/v1/auth/register');
@@ -62,7 +66,9 @@ async function checkUserLogin() {
         console.log('\nIf you forgot the password, you can:');
         console.log('  1. Use password reset feature');
         console.log('  2. Delete and recreate the user');
-        console.log('  3. Update password directly in database (not recommended)');
+        console.log(
+          '  3. Update password directly in database (not recommended)',
+        );
       }
     } else {
       console.log('\n💡 To test password, run:');
@@ -83,4 +89,3 @@ async function checkUserLogin() {
 }
 
 checkUserLogin();
-

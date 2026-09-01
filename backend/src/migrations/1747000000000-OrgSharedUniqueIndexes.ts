@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class OrgSharedUniqueIndexes1747000000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -66,11 +66,15 @@ export class OrgSharedUniqueIndexes1747000000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS "UX_inventory_items_org_sku";`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "UX_inventory_items_user_sku_legacy";`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "UX_inventory_items_org_sku";`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "UX_inventory_items_user_sku_legacy";`,
+    );
     await queryRunner.query(`DROP INDEX IF EXISTS "UX_stores_org_code";`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "UX_stores_user_code_legacy";`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "UX_stores_user_code_legacy";`,
+    );
   }
 }
-
-

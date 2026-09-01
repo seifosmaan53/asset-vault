@@ -18,7 +18,11 @@ import { Store } from '../inventory/entities/store.entity';
 import { StoreItemSettings } from '../inventory/entities/store-item-settings.entity';
 import { createExcelWorkbook } from '../common/utils/excel-export.util';
 import { PuppeteerService } from '../common/services/puppeteer.service';
-import { sanitizeString, sanitizeEmail, sanitizeUrl } from '../common/utils/security.util';
+import {
+  sanitizeString,
+  sanitizeEmail,
+  sanitizeUrl,
+} from '../common/utils/security.util';
 
 const execAsync = promisify(exec);
 
@@ -39,26 +43,38 @@ interface ExportData extends Record<string, unknown> {
   } | null;
   settings?: Record<string, unknown> | null;
   clients: Client[];
-  stores: Array<Store & {
-    itemSettings?: Array<Omit<StoreItemSettings, 'store'>>;
-    client?: { id: string; name: string; email: string } | null;
-  }>;
-  storeItemSettings: Array<StoreItemSettings & {
-    store?: { id: string; name: string; code: string } | null;
-    inventoryItem?: { id: string; name: string; sku: string } | null;
-  }>;
-  invoices: Array<Invoice & {
-    items: Array<InvoiceItem & {
+  stores: Array<
+    Store & {
+      itemSettings?: Array<Omit<StoreItemSettings, 'store'>>;
+      client?: { id: string; name: string; email: string } | null;
+    }
+  >;
+  storeItemSettings: Array<
+    StoreItemSettings & {
+      store?: { id: string; name: string; code: string } | null;
       inventoryItem?: { id: string; name: string; sku: string } | null;
-    }>;
-    client?: { id: string; name: string; email: string } | null;
-  }>;
-  inventory: Array<InventoryItem & {
-    movements?: Array<Omit<StockMovement, 'inventoryItem'>>;
-  }>;
-  stockMovements: Array<StockMovement & {
-    inventoryItem?: { id: string; name: string; sku: string } | null;
-  }>;
+    }
+  >;
+  invoices: Array<
+    Invoice & {
+      items: Array<
+        InvoiceItem & {
+          inventoryItem?: { id: string; name: string; sku: string } | null;
+        }
+      >;
+      client?: { id: string; name: string; email: string } | null;
+    }
+  >;
+  inventory: Array<
+    InventoryItem & {
+      movements?: Array<Omit<StockMovement, 'inventoryItem'>>;
+    }
+  >;
+  stockMovements: Array<
+    StockMovement & {
+      inventoryItem?: { id: string; name: string; sku: string } | null;
+    }
+  >;
   // recurringInvoices: Array<RecurringInvoice & {
   //   client?: { id: string; name: string; email: string } | null;
   // }>; // Removed
@@ -108,7 +124,9 @@ export class UserSettingsService {
 
     // If settings don't exist, create default settings
     if (!settings) {
-    const user = await this.usersRepository.findOne({ where: { id: userId } });
+      const user = await this.usersRepository.findOne({
+        where: { id: userId },
+      });
       if (!user) {
         throw new NotFoundException('User not found');
       }
@@ -116,12 +134,12 @@ export class UserSettingsService {
       settings = this.settingsRepository.create({
         userId,
         // Organizations removed - no organizationId needed
-      invoiceNumberFormat: 'INV-{YYYY}-{####}',
-      defaultCurrency: 'USD',
-      defaultTaxRate: 0,
+        invoiceNumberFormat: 'INV-{YYYY}-{####}',
+        defaultCurrency: 'USD',
+        defaultTaxRate: 0,
         companyName: user.companyName || '',
-      companyAddress: '',
-      companyPhone: '',
+        companyAddress: '',
+        companyPhone: '',
         companyEmail: user.email || '',
       });
       settings = await this.settingsRepository.save(settings);
@@ -134,7 +152,10 @@ export class UserSettingsService {
    * Get raw settings entity (not serialized) for internal use
    * This is needed when we need access to sensitive fields like twoFactorSecret
    */
-  async getRawSettings(userId: string, organizationId: string | null): Promise<UserSettings | null> {
+  async getRawSettings(
+    userId: string,
+    organizationId: string | null,
+  ): Promise<UserSettings | null> {
     let settings = await this.settingsRepository
       .createQueryBuilder('settings')
       .where('settings.userId = :userId', { userId })
@@ -144,7 +165,9 @@ export class UserSettingsService {
 
     if (!settings) {
       // Create default settings if they don't exist
-      const user = await this.dataSource.getRepository(User).findOne({ where: { id: userId } });
+      const user = await this.dataSource
+        .getRepository(User)
+        .findOne({ where: { id: userId } });
       if (!user) {
         return null;
       }
@@ -166,7 +189,11 @@ export class UserSettingsService {
     return settings;
   }
 
-  async updateSettings(userId: string, data: Partial<UserSettings>, organizationId: string | null): Promise<Record<string, unknown>> {
+  async updateSettings(
+    userId: string,
+    data: Partial<UserSettings>,
+    organizationId: string | null,
+  ): Promise<Record<string, unknown>> {
     // Create query runner for transaction
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -186,12 +213,20 @@ export class UserSettingsService {
 
       // Encrypt SMTP password if provided and not already encrypted
       // Fix Issue #1: Use proper bcrypt validation - bcrypt hashes have format: $2[abxy]$[cost]$[22 char salt][31 char hash]
-      if (sanitizedData.smtpPassword && sanitizedData.smtpPassword.trim() !== '') {
+      if (
+        sanitizedData.smtpPassword &&
+        sanitizedData.smtpPassword.trim() !== ''
+      ) {
         // Proper bcrypt hash validation: $2[abxy]$[cost]$[22 char salt][31 char hash] = 60 chars total
         // Cost is 2 digits (04-31), salt is base64 encoded (22 chars), hash is base64 encoded (31 chars)
-        const isValidBcryptHash = /^\$2[abxy]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(sanitizedData.smtpPassword);
+        const isValidBcryptHash = /^\$2[abxy]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(
+          sanitizedData.smtpPassword,
+        );
         if (!isValidBcryptHash) {
-          sanitizedData.smtpPassword = await bcrypt.hash(sanitizedData.smtpPassword, 10);
+          sanitizedData.smtpPassword = await bcrypt.hash(
+            sanitizedData.smtpPassword,
+            10,
+          );
           // Fix Issue #5: Remove password-related logging for security
         } else {
           // Password is already hashed, don't hash again
@@ -204,7 +239,9 @@ export class UserSettingsService {
       let settings: UserSettings;
 
       if (!existingSettings) {
-        const user = await queryRunner.manager.findOne(User, { where: { id: userId } });
+        const user = await queryRunner.manager.findOne(User, {
+          where: { id: userId },
+        });
         if (!user) {
           throw new NotFoundException('User not found');
         }
@@ -213,7 +250,8 @@ export class UserSettingsService {
           userId,
           organizationId: organizationId || undefined,
           ...sanitizedData,
-          invoiceNumberFormat: sanitizedData.invoiceNumberFormat || 'INV-{YYYY}-{####}',
+          invoiceNumberFormat:
+            sanitizedData.invoiceNumberFormat || 'INV-{YYYY}-{####}',
           defaultCurrency: sanitizedData.defaultCurrency || 'USD',
           defaultTaxRate: sanitizedData.defaultTaxRate ?? 0,
           companyName: sanitizedData.companyName || user.companyName || '',
@@ -224,7 +262,9 @@ export class UserSettingsService {
       } else {
         settings = existingSettings;
         // Update existing settings - only update fields that are provided and exist in the entity
-        const validFields = Object.keys(this.settingsRepository.metadata.propertiesMap);
+        const validFields = Object.keys(
+          this.settingsRepository.metadata.propertiesMap,
+        );
         Object.keys(sanitizedData).forEach((key) => {
           if (sanitizedData[key] !== undefined && validFields.includes(key)) {
             settings[key] = sanitizedData[key];
@@ -246,7 +286,7 @@ export class UserSettingsService {
       // Fix Issue #2: Proper transaction rollback - ensure all operations are rolled back
       await queryRunner.rollbackTransaction();
       this.logger.error(`Failed to update settings for user ${userId}:`, error);
-      
+
       // Fix Issue #2: Don't attempt fallback save outside transaction - this causes data inconsistency
       // If transaction fails, all changes must be rolled back completely
       throw error;
@@ -262,7 +302,7 @@ export class UserSettingsService {
   private sanitizeInput(data: Partial<UserSettings>): Partial<UserSettings> {
     // Issue #48: Improved type safety - use proper import instead of require
     const sanitized = { ...data };
-    
+
     // Fix Issue #20: Sanitize all text fields including missing ones
     const textFields: Array<{ field: string; maxLength: number }> = [
       { field: 'companyName', maxLength: 255 },
@@ -292,11 +332,15 @@ export class UserSettingsService {
       if (sanitized[field] && typeof sanitized[field] === 'string') {
         // Special handling for URLs and emails
         if (field === 'companyWebsite' || field === 'companyLogo') {
-          sanitized[field] = sanitizeUrl(sanitized[field] as string) || sanitizeString(sanitized[field] as string, maxLength);
+          sanitized[field] =
+            sanitizeUrl(sanitized[field]) ||
+            sanitizeString(sanitized[field], maxLength);
         } else if (field === 'companyEmail' || field === 'emailFromAddress') {
-          sanitized[field] = sanitizeEmail(sanitized[field] as string) || sanitizeString(sanitized[field] as string, maxLength);
+          sanitized[field] =
+            sanitizeEmail(sanitized[field]) ||
+            sanitizeString(sanitized[field], maxLength);
         } else {
-          sanitized[field] = sanitizeString(sanitized[field] as string, maxLength);
+          sanitized[field] = sanitizeString(sanitized[field], maxLength);
         }
       }
     });
@@ -308,7 +352,11 @@ export class UserSettingsService {
    * Log audit trail for settings changes
    * Fix Issue #16: Track all sensitive field changes including SMTP password changes
    */
-  private logAuditTrail(userId: string, oldSettings: UserSettings | null, newSettings: UserSettings): void {
+  private logAuditTrail(
+    userId: string,
+    oldSettings: UserSettings | null,
+    newSettings: UserSettings,
+  ): void {
     if (!oldSettings) {
       this.logger.log(`Settings created for user ${userId}`);
       return;
@@ -317,12 +365,25 @@ export class UserSettingsService {
     const changes: string[] = [];
     // Fix Issue #16: Track all fields including sensitive ones (but mask sensitive values)
     const fieldsToTrack = [
-      'companyName', 'companyAddress', 'companyPhone', 'companyEmail',
-      'defaultCurrency', 'defaultTaxRate', 'dateFormat', 'timeFormat',
-      'timezone', 'smtpHost', 'smtpPort', 'smtpUser', 'smtpSecure',
-      'emailFromAddress', 'emailFromName', 'theme', 'language',
+      'companyName',
+      'companyAddress',
+      'companyPhone',
+      'companyEmail',
+      'defaultCurrency',
+      'defaultTaxRate',
+      'dateFormat',
+      'timeFormat',
+      'timezone',
+      'smtpHost',
+      'smtpPort',
+      'smtpUser',
+      'smtpSecure',
+      'emailFromAddress',
+      'emailFromName',
+      'theme',
+      'language',
     ];
-    
+
     // Sensitive fields that should be masked in logs
     const sensitiveFields = ['smtpPassword'];
 
@@ -333,7 +394,7 @@ export class UserSettingsService {
         changes.push(`${field}: "${oldValue}" → "${newValue}"`);
       }
     });
-    
+
     // Track sensitive field changes (but don't log values)
     sensitiveFields.forEach((field) => {
       const oldValue = oldSettings[field];
@@ -344,7 +405,9 @@ export class UserSettingsService {
     });
 
     if (changes.length > 0) {
-      this.logger.log(`Settings updated for user ${userId}: ${changes.join(', ')}`);
+      this.logger.log(
+        `Settings updated for user ${userId}: ${changes.join(', ')}`,
+      );
     }
   }
 
@@ -411,7 +474,10 @@ export class UserSettingsService {
    * Export all user data as JSON including stores and store item settings
    * Fix Issue #3, #18: Add organizationId parameter for proper organization scoping
    */
-  async exportUserData(userId: string, organizationId?: string | null): Promise<{
+  async exportUserData(
+    userId: string,
+    organizationId?: string | null,
+  ): Promise<{
     data: ExportData;
     timestamp: string;
     backupId: string;
@@ -434,7 +500,10 @@ export class UserSettingsService {
       ] = await Promise.all([
         this.usersRepository.findOne({ where: { id: userId } }),
         this.settingsRepository.findOne({ where: { userId } }),
-        this.clientsRepository.find({ where: { userId }, order: { createdAt: 'DESC' } }),
+        this.clientsRepository.find({
+          where: { userId },
+          order: { createdAt: 'DESC' },
+        }),
         this.storeRepository.find({
           where: { userId },
           relations: ['client'],
@@ -452,7 +521,10 @@ export class UserSettingsService {
           relations: ['client', 'items'],
           order: { createdAt: 'DESC' },
         }),
-        this.inventoryRepository.find({ where: { userId }, order: { createdAt: 'DESC' } }),
+        this.inventoryRepository.find({
+          where: { userId },
+          order: { createdAt: 'DESC' },
+        }),
         this.stockMovementsRepository.find({
           where: { userId },
           relations: ['inventoryItem'],
@@ -522,23 +594,38 @@ export class UserSettingsService {
               createdAt: setting.createdAt,
               updatedAt: setting.updatedAt,
             })),
-          client: store.client ? { id: store.client.id, name: store.client.name, email: store.client.email } : null,
+          client: store.client
+            ? {
+                id: store.client.id,
+                name: store.client.name,
+                email: store.client.email,
+              }
+            : null,
         })) as ExportData['stores'],
         storeItemSettings: storeItemSettings.map((setting) => ({
           ...setting,
-          store: setting.store ? { id: setting.store.id, name: setting.store.name, code: setting.store.code } : null,
-          inventoryItem: setting.inventoryItem ? { 
-            id: setting.inventoryItem.id, 
-            name: setting.inventoryItem.name, 
-            sku: setting.inventoryItem.sku 
-          } : null,
+          store: setting.store
+            ? {
+                id: setting.store.id,
+                name: setting.store.name,
+                code: setting.store.code,
+              }
+            : null,
+          inventoryItem: setting.inventoryItem
+            ? {
+                id: setting.inventoryItem.id,
+                name: setting.inventoryItem.name,
+                sku: setting.inventoryItem.sku,
+              }
+            : null,
         })) as ExportData['storeItemSettings'],
         invoices: invoices.map((inv) => {
           // Use items from relation if available, otherwise use the separately loaded items
-          const invoiceItems = inv.items && inv.items.length > 0 
-            ? inv.items 
-            : allInvoiceItems.filter((item) => item.invoiceId === inv.id);
-          
+          const invoiceItems =
+            inv.items && inv.items.length > 0
+              ? inv.items
+              : allInvoiceItems.filter((item) => item.invoiceId === inv.id);
+
           return {
             ...inv,
             items: invoiceItems.map((item: InvoiceItem) => ({
@@ -552,13 +639,21 @@ export class UserSettingsService {
               discountRate: item.discountRate,
               lineTotal: item.lineTotal,
               createdAt: item.createdAt,
-              inventoryItem: item.inventoryItem ? { 
-                id: item.inventoryItem.id, 
-                name: item.inventoryItem.name, 
-                sku: item.inventoryItem.sku 
-              } : null,
+              inventoryItem: item.inventoryItem
+                ? {
+                    id: item.inventoryItem.id,
+                    name: item.inventoryItem.name,
+                    sku: item.inventoryItem.sku,
+                  }
+                : null,
             })),
-            client: inv.client ? { id: inv.client.id, name: inv.client.name, email: inv.client.email } : null,
+            client: inv.client
+              ? {
+                  id: inv.client.id,
+                  name: inv.client.name,
+                  email: inv.client.email,
+                }
+              : null,
           };
         }) as ExportData['invoices'],
         inventory: inventoryItems.map((item) => ({
@@ -572,7 +667,13 @@ export class UserSettingsService {
         })) as ExportData['inventory'],
         stockMovements: stockMovements.map((mov) => ({
           ...mov,
-          inventoryItem: mov.inventoryItem ? { id: mov.inventoryItem.id, name: mov.inventoryItem.name, sku: mov.inventoryItem.sku } : null,
+          inventoryItem: mov.inventoryItem
+            ? {
+                id: mov.inventoryItem.id,
+                name: mov.inventoryItem.name,
+                sku: mov.inventoryItem.sku,
+              }
+            : null,
         })) as ExportData['stockMovements'],
         // recurringInvoices: recurringInvoices.map((rec) => ({ // Removed
         //   ...rec,
@@ -590,7 +691,10 @@ export class UserSettingsService {
         backupId,
       };
     } catch (error: unknown) {
-      this.logger.error(`Failed to export user data for user ${userId}:`, error);
+      this.logger.error(
+        `Failed to export user data for user ${userId}:`,
+        error,
+      );
       throw error;
     }
   }
@@ -628,8 +732,11 @@ export class UserSettingsService {
         this.logger.log(`SQL backup completed: ${filePath}`);
       } catch (execError: unknown) {
         // If pg_dump fails, try without compression
-        const errorMessage = execError instanceof Error ? execError.message : String(execError);
-        this.logger.warn(`pg_dump failed, trying alternative method: ${errorMessage}`);
+        const errorMessage =
+          execError instanceof Error ? execError.message : String(execError);
+        this.logger.warn(
+          `pg_dump failed, trying alternative method: ${errorMessage}`,
+        );
         throw new Error(`Failed to create SQL backup: ${errorMessage}`);
       }
 
@@ -664,7 +771,9 @@ export class UserSettingsService {
       const timestamp = new Date().toISOString();
       const backupId = `backup_${Date.now()}`;
 
-      this.logger.log(`Manual backup requested by user ${userId} at ${timestamp}`);
+      this.logger.log(
+        `Manual backup requested by user ${userId} at ${timestamp}`,
+      );
 
       // Export user data as JSON
       const exportResult = await this.exportUserData(userId, organizationId);
@@ -678,8 +787,11 @@ export class UserSettingsService {
           sqlBackupPath = sqlBackup.filePath;
           this.logger.log(`SQL backup created: ${sqlBackupPath}`);
         } catch (sqlError: unknown) {
-          const errorMessage = sqlError instanceof Error ? sqlError.message : String(sqlError);
-          this.logger.warn(`SQL backup failed, continuing with JSON export only: ${errorMessage}`);
+          const errorMessage =
+            sqlError instanceof Error ? sqlError.message : String(sqlError);
+          this.logger.warn(
+            `SQL backup failed, continuing with JSON export only: ${errorMessage}`,
+          );
         }
       }
 
@@ -713,7 +825,9 @@ export class UserSettingsService {
       emailFromName?: string;
     },
   ): Promise<{ success: boolean; message: string }> {
-    this.logger.warn(`Email test connection requested by user ${userId} - email functionality has been disabled`);
+    this.logger.warn(
+      `Email test connection requested by user ${userId} - email functionality has been disabled`,
+    );
     return {
       success: false,
       message: 'Email functionality has been disabled',
@@ -724,19 +838,24 @@ export class UserSettingsService {
    * Export user data as CSV
    * Fix Issue #3, #18: Add organizationId parameter
    */
-  async exportUserDataAsCsv(userId: string, organizationId?: string | null): Promise<string> {
+  async exportUserDataAsCsv(
+    userId: string,
+    organizationId?: string | null,
+  ): Promise<string> {
     try {
       this.logger.log(`Exporting user data as CSV for user ${userId}`);
       const exportResult = await this.exportUserData(userId, organizationId);
-      const data = exportResult.data as ExportData;
+      const data = exportResult.data;
 
       // Build CSV content
       const csvLines: string[] = [];
-      
+
       // Add metadata header
       csvLines.push('Asset Vault Data Export');
       csvLines.push(`Export Date: ${new Date().toISOString()}`);
-      csvLines.push(`User: ${data.user?.name || data.user?.email || 'Unknown'}`);
+      csvLines.push(
+        `User: ${data.user?.name || data.user?.email || 'Unknown'}`,
+      );
       csvLines.push('');
 
       // Export Clients
@@ -744,13 +863,19 @@ export class UserSettingsService {
         csvLines.push('=== CLIENTS ===');
         csvLines.push('Name,Email,Phone,Address,Created At');
         data.clients.forEach((client: Client) => {
-          csvLines.push([
-            this.escapeCsvValue(client.name || ''),
-            this.escapeCsvValue(client.email || ''),
-            this.escapeCsvValue(client.phone || ''),
-            this.escapeCsvValue(client.addressJson ? `${client.addressJson.street || ''}, ${client.addressJson.city || ''}, ${client.addressJson.state || ''} ${client.addressJson.zip || ''}`.trim() : ''),
-            client.createdAt || '',
-          ].join(','));
+          csvLines.push(
+            [
+              this.escapeCsvValue(client.name || ''),
+              this.escapeCsvValue(client.email || ''),
+              this.escapeCsvValue(client.phone || ''),
+              this.escapeCsvValue(
+                client.addressJson
+                  ? `${client.addressJson.street || ''}, ${client.addressJson.city || ''}, ${client.addressJson.state || ''} ${client.addressJson.zip || ''}`.trim()
+                  : '',
+              ),
+              client.createdAt || '',
+            ].join(','),
+          );
         });
         csvLines.push('');
       }
@@ -758,19 +883,23 @@ export class UserSettingsService {
       // Export Invoices
       if (data.invoices && data.invoices.length > 0) {
         csvLines.push('=== INVOICES ===');
-        csvLines.push('Invoice Number,Client,Status,Issue Date,Due Date,Subtotal,Tax,Total,Currency');
+        csvLines.push(
+          'Invoice Number,Client,Status,Issue Date,Due Date,Subtotal,Tax,Total,Currency',
+        );
         data.invoices.forEach((invoice: Invoice) => {
-          csvLines.push([
-            this.escapeCsvValue(invoice.number || ''),
-            this.escapeCsvValue(invoice.client?.name || ''),
-            this.escapeCsvValue(invoice.status || ''),
-            invoice.issueDate || '',
-            invoice.dueDate || '',
-            invoice.subtotal || 0,
-            invoice.taxTotal || 0,
-            invoice.total || 0,
-            this.escapeCsvValue(invoice.currency || 'USD'),
-          ].join(','));
+          csvLines.push(
+            [
+              this.escapeCsvValue(invoice.number || ''),
+              this.escapeCsvValue(invoice.client?.name || ''),
+              this.escapeCsvValue(invoice.status || ''),
+              invoice.issueDate || '',
+              invoice.dueDate || '',
+              invoice.subtotal || 0,
+              invoice.taxTotal || 0,
+              invoice.total || 0,
+              this.escapeCsvValue(invoice.currency || 'USD'),
+            ].join(','),
+          );
         });
         csvLines.push('');
       }
@@ -780,21 +909,26 @@ export class UserSettingsService {
         csvLines.push('=== INVENTORY ===');
         csvLines.push('Name,SKU,Quantity,Unit Price,Reorder Level,Status');
         data.inventory.forEach((item: InventoryItem) => {
-          csvLines.push([
-            this.escapeCsvValue(item.name || ''),
-            this.escapeCsvValue(item.sku || ''),
-            item.currentStock || 0,
-            item.defaultUnitPrice || 0,
-            item.reorderLevel || 0,
-            this.escapeCsvValue(item.status || ''),
-          ].join(','));
+          csvLines.push(
+            [
+              this.escapeCsvValue(item.name || ''),
+              this.escapeCsvValue(item.sku || ''),
+              item.currentStock || 0,
+              item.defaultUnitPrice || 0,
+              item.reorderLevel || 0,
+              this.escapeCsvValue(item.status || ''),
+            ].join(','),
+          );
         });
         csvLines.push('');
       }
 
       return csvLines.join('\r\n');
     } catch (error: unknown) {
-      this.logger.error(`Failed to export user data as CSV for user ${userId}:`, error);
+      this.logger.error(
+        `Failed to export user data as CSV for user ${userId}:`,
+        error,
+      );
       throw error;
     }
   }
@@ -805,7 +939,12 @@ export class UserSettingsService {
   private escapeCsvValue(value: unknown): string {
     if (value === null || value === undefined) return '';
     const str = String(value);
-    if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+    if (
+      str.includes(',') ||
+      str.includes('"') ||
+      str.includes('\n') ||
+      str.includes('\r')
+    ) {
       return `"${str.replace(/"/g, '""')}"`;
     }
     return str;
@@ -815,11 +954,14 @@ export class UserSettingsService {
    * Export user data as Excel
    * Fix Issue #3, #18: Add organizationId parameter
    */
-  async exportUserDataAsExcel(userId: string, organizationId?: string | null): Promise<Buffer> {
+  async exportUserDataAsExcel(
+    userId: string,
+    organizationId?: string | null,
+  ): Promise<Buffer> {
     try {
       this.logger.log(`Exporting user data as Excel for user ${userId}`);
       const exportResult = await this.exportUserData(userId, organizationId);
-      const data = exportResult.data as ExportData;
+      const data = exportResult.data;
 
       interface ExcelSheet {
         name: string;
@@ -837,8 +979,12 @@ export class UserSettingsService {
             client.name || '',
             client.email || '',
             client.phone || '',
-            client.addressJson ? `${client.addressJson.street || ''}, ${client.addressJson.city || ''}, ${client.addressJson.state || ''} ${client.addressJson.zip || ''}`.trim() : '',
-            client.createdAt ? new Date(client.createdAt).toLocaleDateString() : '',
+            client.addressJson
+              ? `${client.addressJson.street || ''}, ${client.addressJson.city || ''}, ${client.addressJson.state || ''} ${client.addressJson.zip || ''}`.trim()
+              : '',
+            client.createdAt
+              ? new Date(client.createdAt).toLocaleDateString()
+              : '',
           ]),
         });
       }
@@ -847,13 +993,27 @@ export class UserSettingsService {
       if (data.invoices && data.invoices.length > 0) {
         sheets.push({
           name: 'Invoices',
-          headers: ['Invoice Number', 'Client', 'Status', 'Issue Date', 'Due Date', 'Subtotal', 'Tax', 'Total', 'Currency'],
+          headers: [
+            'Invoice Number',
+            'Client',
+            'Status',
+            'Issue Date',
+            'Due Date',
+            'Subtotal',
+            'Tax',
+            'Total',
+            'Currency',
+          ],
           data: data.invoices.map((invoice: Invoice) => [
             invoice.number || '',
             invoice.client?.name || '',
             invoice.status || '',
-            invoice.issueDate ? new Date(invoice.issueDate).toLocaleDateString() : '',
-            invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : '',
+            invoice.issueDate
+              ? new Date(invoice.issueDate).toLocaleDateString()
+              : '',
+            invoice.dueDate
+              ? new Date(invoice.dueDate).toLocaleDateString()
+              : '',
             invoice.subtotal || 0,
             invoice.taxTotal || 0,
             invoice.total || 0,
@@ -866,7 +1026,14 @@ export class UserSettingsService {
       if (data.inventory && data.inventory.length > 0) {
         sheets.push({
           name: 'Inventory',
-          headers: ['Name', 'SKU', 'Quantity', 'Unit Price', 'Reorder Level', 'Status'],
+          headers: [
+            'Name',
+            'SKU',
+            'Quantity',
+            'Unit Price',
+            'Reorder Level',
+            'Status',
+          ],
           data: data.inventory.map((item: InventoryItem) => [
             item.name || '',
             item.sku || '',
@@ -887,7 +1054,9 @@ export class UserSettingsService {
             movement.inventoryItem?.name || '',
             movement.type || '',
             movement.quantity || 0,
-            movement.createdAt ? new Date(movement.createdAt).toLocaleDateString() : '',
+            movement.createdAt
+              ? new Date(movement.createdAt).toLocaleDateString()
+              : '',
             movement.note || '',
           ]),
         });
@@ -897,7 +1066,20 @@ export class UserSettingsService {
       if (data.stores && data.stores.length > 0) {
         sheets.push({
           name: 'Stores',
-          headers: ['Name', 'Code', 'Client', 'Address', 'Phone', 'Email', 'City', 'State', 'Zip', 'Country', 'Active', 'Created At'],
+          headers: [
+            'Name',
+            'Code',
+            'Client',
+            'Address',
+            'Phone',
+            'Email',
+            'City',
+            'State',
+            'Zip',
+            'Country',
+            'Active',
+            'Created At',
+          ],
           data: data.stores.map((store: Store) => [
             store.name || '',
             store.code || '',
@@ -910,7 +1092,9 @@ export class UserSettingsService {
             store.zip || '',
             store.country || '',
             store.active ? 'Yes' : 'No',
-            store.createdAt ? new Date(store.createdAt).toLocaleDateString() : '',
+            store.createdAt
+              ? new Date(store.createdAt).toLocaleDateString()
+              : '',
           ]),
         });
       }
@@ -919,7 +1103,17 @@ export class UserSettingsService {
       if (data.storeItemSettings && data.storeItemSettings.length > 0) {
         sheets.push({
           name: 'Store Item Settings',
-          headers: ['Store', 'Store Code', 'Inventory Item', 'SKU', 'Current Stock', 'Min Qty', 'Target Qty', 'Weekly Usage', 'Updated At'],
+          headers: [
+            'Store',
+            'Store Code',
+            'Inventory Item',
+            'SKU',
+            'Current Stock',
+            'Min Qty',
+            'Target Qty',
+            'Weekly Usage',
+            'Updated At',
+          ],
           data: data.storeItemSettings.map((setting: StoreItemSettings) => [
             setting.store?.name || '',
             setting.store?.code || '',
@@ -929,7 +1123,9 @@ export class UserSettingsService {
             setting.minQty || 0,
             setting.targetQty || '',
             setting.weeklyUsage || '',
-            setting.updatedAt ? new Date(setting.updatedAt).toLocaleDateString() : '',
+            setting.updatedAt
+              ? new Date(setting.updatedAt).toLocaleDateString()
+              : '',
           ]),
         });
       }
@@ -945,7 +1141,10 @@ export class UserSettingsService {
 
       return await createExcelWorkbook({ sheets });
     } catch (error: unknown) {
-      this.logger.error(`Failed to export user data as Excel for user ${userId}:`, error);
+      this.logger.error(
+        `Failed to export user data as Excel for user ${userId}:`,
+        error,
+      );
       throw error;
     }
   }
@@ -955,37 +1154,55 @@ export class UserSettingsService {
    * Fix Issue #3, #18: Add organizationId parameter
    * Fix Issue #19: Improved error handling
    */
-  async exportUserDataAsPdf(userId: string, organizationId?: string | null): Promise<Buffer> {
+  async exportUserDataAsPdf(
+    userId: string,
+    organizationId?: string | null,
+  ): Promise<Buffer> {
     try {
       this.logger.log(`Exporting user data as PDF for user ${userId}`);
       const exportResult = await this.exportUserData(userId, organizationId);
-      const data = exportResult.data as ExportData;
+      const data = exportResult.data;
       // For PDF export, get first available settings or use defaults
       // This is a user-level operation, so we get the first org's settings
-      const firstSettings = await this.settingsRepository.findOne({ 
+      const firstSettings = await this.settingsRepository.findOne({
         where: { userId },
         order: { createdAt: 'ASC' },
       });
-      const settings = firstSettings ? this.serializeSettings(firstSettings) : {};
+      const settings = firstSettings
+        ? this.serializeSettings(firstSettings)
+        : {};
 
       // Build HTML for PDF
       const html = this.buildExportPdfHtml(data, settings);
-      
-      this.logger.log(`Generated HTML for PDF export (${html.length} characters)`);
+
+      this.logger.log(
+        `Generated HTML for PDF export (${html.length} characters)`,
+      );
 
       // Generate PDF with error handling
       try {
         const pdfBuffer = await this.puppeteerService.generatePdfFromHtml(html);
-        this.logger.log(`PDF generated successfully (${pdfBuffer.length} bytes)`);
+        this.logger.log(
+          `PDF generated successfully (${pdfBuffer.length} bytes)`,
+        );
         return pdfBuffer;
       } catch (puppeteerError: unknown) {
-        const errorMessage = puppeteerError instanceof Error ? puppeteerError.message : String(puppeteerError);
+        const errorMessage =
+          puppeteerError instanceof Error
+            ? puppeteerError.message
+            : String(puppeteerError);
         this.logger.error(`Puppeteer PDF generation failed: ${errorMessage}`);
-        throw new Error(`Failed to generate PDF: ${errorMessage}. Please ensure Puppeteer is properly installed and configured.`);
+        throw new Error(
+          `Failed to generate PDF: ${errorMessage}. Please ensure Puppeteer is properly installed and configured.`,
+        );
       }
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to export user data as PDF for user ${userId}:`, errorMessage);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `Failed to export user data as PDF for user ${userId}:`,
+        errorMessage,
+      );
       throw error;
     }
   }
@@ -993,7 +1210,10 @@ export class UserSettingsService {
   /**
    * Build HTML for PDF export
    */
-  private buildExportPdfHtml(data: ExportData, settings: Record<string, unknown>): string {
+  private buildExportPdfHtml(
+    data: ExportData,
+    settings: Record<string, unknown>,
+  ): string {
     try {
       const exportData = data;
       const companyName = (settings?.companyName as string) || 'Asset Vault';
@@ -1135,9 +1355,9 @@ export class UserSettingsService {
   </div>
 `;
 
-    // Clients section
-    if (exportData.clients && exportData.clients.length > 0) {
-      html += `
+      // Clients section
+      if (exportData.clients && exportData.clients.length > 0) {
+        html += `
   <h2>Clients (${exportData.clients.length})</h2>
   <table>
     <thead>
@@ -1150,10 +1370,11 @@ export class UserSettingsService {
     </thead>
     <tbody>
 `;
-      exportData.clients.forEach((client: any) => {
-        const addressJson = client.addressJson || {};
-        const address = `${addressJson.street || ''}, ${addressJson.city || ''}, ${addressJson.state || ''} ${addressJson.zip || ''}`.trim();
-        html += `
+        exportData.clients.forEach((client: any) => {
+          const addressJson = client.addressJson || {};
+          const address =
+            `${addressJson.street || ''}, ${addressJson.city || ''}, ${addressJson.state || ''} ${addressJson.zip || ''}`.trim();
+          html += `
       <tr>
         <td>${this.escapeHtml(client.name || '')}</td>
         <td>${this.escapeHtml(client.email || '')}</td>
@@ -1161,21 +1382,24 @@ export class UserSettingsService {
         <td>${this.escapeHtml(address)}</td>
       </tr>
 `;
-      });
-      html += `
+        });
+        html += `
     </tbody>
   </table>
 `;
-    }
+      }
 
-    // Invoices section
-    if (exportData.invoices && exportData.invoices.length > 0) {
-      const totalRevenue = exportData.invoices.reduce((sum: number, inv: any) => {
-        const total = Number(inv.total) || 0;
-        return sum + total;
-      }, 0);
-      const firstInvoice = exportData.invoices[0] as any;
-      html += `
+      // Invoices section
+      if (exportData.invoices && exportData.invoices.length > 0) {
+        const totalRevenue = exportData.invoices.reduce(
+          (sum: number, inv: any) => {
+            const total = Number(inv.total) || 0;
+            return sum + total;
+          },
+          0,
+        );
+        const firstInvoice = exportData.invoices[0] as any;
+        html += `
   <h2>Invoices (${exportData.invoices.length})</h2>
   <div class="summary no-break">
     <strong>Total Revenue:</strong> ${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${this.escapeHtml(firstInvoice?.currency || 'USD')}
@@ -1193,9 +1417,9 @@ export class UserSettingsService {
     </thead>
     <tbody>
 `;
-      // Ensure ALL invoices are included - no limits
-      exportData.invoices.forEach((invoice: any) => {
-        html += `
+        // Ensure ALL invoices are included - no limits
+        exportData.invoices.forEach((invoice: any) => {
+          html += `
       <tr>
         <td>${this.escapeHtml(invoice.number || '')}</td>
         <td>${this.escapeHtml(invoice.client?.name || '')}</td>
@@ -1205,16 +1429,16 @@ export class UserSettingsService {
         <td>${(Number(invoice.total) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${this.escapeHtml(invoice.currency || 'USD')}</td>
       </tr>
 `;
-      });
-      html += `
+        });
+        html += `
     </tbody>
   </table>
 `;
-    }
+      }
 
-    // Inventory section
-    if (exportData.inventory && exportData.inventory.length > 0) {
-      html += `
+      // Inventory section
+      if (exportData.inventory && exportData.inventory.length > 0) {
+        html += `
   <h2>Inventory (${exportData.inventory.length} items)</h2>
   <table>
     <thead>
@@ -1228,8 +1452,8 @@ export class UserSettingsService {
     </thead>
     <tbody>
 `;
-      exportData.inventory.forEach((item: any) => {
-        html += `
+        exportData.inventory.forEach((item: any) => {
+          html += `
       <tr>
         <td>${this.escapeHtml(item.name || '')}</td>
         <td>${this.escapeHtml(item.sku || '')}</td>
@@ -1238,16 +1462,16 @@ export class UserSettingsService {
         <td>${item.reorderLevel || 0}</td>
       </tr>
 `;
-      });
-      html += `
+        });
+        html += `
     </tbody>
   </table>
 `;
-    }
+      }
 
-    // Stores section
-    if (exportData.stores && exportData.stores.length > 0) {
-      html += `
+      // Stores section
+      if (exportData.stores && exportData.stores.length > 0) {
+        html += `
   <h2>Stores (${exportData.stores.length})</h2>
   <table>
     <thead>
@@ -1263,8 +1487,8 @@ export class UserSettingsService {
     </thead>
     <tbody>
 `;
-      exportData.stores.forEach((store: any) => {
-        html += `
+        exportData.stores.forEach((store: any) => {
+          html += `
       <tr>
         <td>${this.escapeHtml(store.name || '')}</td>
         <td>${this.escapeHtml(store.code || '')}</td>
@@ -1275,16 +1499,19 @@ export class UserSettingsService {
         <td>${store.active ? 'Yes' : 'No'}</td>
       </tr>
 `;
-      });
-      html += `
+        });
+        html += `
     </tbody>
   </table>
 `;
-    }
+      }
 
-    // Store Item Settings section
-    if (exportData.storeItemSettings && exportData.storeItemSettings.length > 0) {
-      html += `
+      // Store Item Settings section
+      if (
+        exportData.storeItemSettings &&
+        exportData.storeItemSettings.length > 0
+      ) {
+        html += `
   <h2>Store Item Settings (${exportData.storeItemSettings.length})</h2>
   <table>
     <thead>
@@ -1300,9 +1527,9 @@ export class UserSettingsService {
     </thead>
     <tbody>
 `;
-      // Ensure ALL store item settings are included - no limits
-      exportData.storeItemSettings.forEach((setting: any) => {
-        html += `
+        // Ensure ALL store item settings are included - no limits
+        exportData.storeItemSettings.forEach((setting: any) => {
+          html += `
       <tr>
         <td>${this.escapeHtml(setting.store?.name || '')}</td>
         <td>${this.escapeHtml(setting.inventoryItem?.name || '')}</td>
@@ -1313,16 +1540,16 @@ export class UserSettingsService {
         <td>${setting.weeklyUsage ?? ''}</td>
       </tr>
 `;
-      });
-      html += `
+        });
+        html += `
     </tbody>
   </table>
 `;
-    }
+      }
 
-    // Stock Movements section
-    if (exportData.stockMovements && exportData.stockMovements.length > 0) {
-      html += `
+      // Stock Movements section
+      if (exportData.stockMovements && exportData.stockMovements.length > 0) {
+        html += `
   <h2>Stock Movements (${exportData.stockMovements.length})</h2>
   <table>
     <thead>
@@ -1336,9 +1563,9 @@ export class UserSettingsService {
     </thead>
     <tbody>
 `;
-      // Ensure ALL stock movements are included - no limits
-      exportData.stockMovements.forEach((movement: any) => {
-        html += `
+        // Ensure ALL stock movements are included - no limits
+        exportData.stockMovements.forEach((movement: any) => {
+          html += `
       <tr>
         <td>${this.escapeHtml(movement.inventoryItem?.name || '')}</td>
         <td>${this.escapeHtml(movement.type || '')}</td>
@@ -1347,23 +1574,24 @@ export class UserSettingsService {
         <td>${this.escapeHtml(movement.note || '')}</td>
       </tr>
 `;
-      });
-      html += `
+        });
+        html += `
     </tbody>
   </table>
 `;
-    }
+      }
 
-    // Recurring Invoices and Invoice Templates sections removed
+      // Recurring Invoices and Invoice Templates sections removed
 
-    html += `
+      html += `
 </body>
 </html>
 `;
 
       return html;
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       this.logger.error(`Error building PDF HTML: ${errorMessage}`, error);
       throw new Error(`Failed to build PDF HTML: ${errorMessage}`);
     }
@@ -1386,4 +1614,3 @@ export class UserSettingsService {
     return textStr.replace(/[&<>"']/g, (m) => map[m]);
   }
 }
-

@@ -1,6 +1,13 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  NestInterceptor,
+  ExecutionContext,
+  CallHandler,
+  Logger,
+  Inject,
+} from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { DataSource } from 'typeorm';
@@ -31,13 +38,13 @@ export class QueryLoggingInterceptor implements NestInterceptor {
       tap({
         next: () => {
           const duration = Date.now() - startTime;
-          
+
           // Log slow queries
           if (duration > this.slowQueryThreshold) {
             this.logger.warn(
               `Slow request detected: ${request.method} ${request.url} took ${duration}ms`,
             );
-            
+
             // In production, you might want to log EXPLAIN plans for slow queries
             // This would require hooking into TypeORM's query execution
           }

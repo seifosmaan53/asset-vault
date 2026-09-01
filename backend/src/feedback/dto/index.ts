@@ -8,4 +8,3 @@ export class CreateFeedbackDto {
   @IsEnum(['bug', 'feature', 'improvement', 'other'])
   type?: 'bug' | 'feature' | 'improvement' | 'other';
 }
-

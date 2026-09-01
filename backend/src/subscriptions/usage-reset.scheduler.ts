@@ -31,10 +31,14 @@ export class UsageResetScheduler {
         periodStart: previousMonthStart,
       });
 
-      this.logger.log(`Reset usage for ${result.affected || 0} records from ${previousMonthStart.toISOString()}`);
+      this.logger.log(
+        `Reset usage for ${result.affected || 0} records from ${previousMonthStart.toISOString()}`,
+      );
     } catch (error: any) {
-      this.logger.error(`Failed to reset monthly usage: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to reset monthly usage: ${error.message}`,
+        error.stack,
+      );
     }
   }
 }
-

@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import * as puppeteer from 'puppeteer';
 import { Browser, Page } from 'puppeteer';
 import * as os from 'os';
@@ -40,27 +45,28 @@ export class PuppeteerService implements OnModuleInit, OnModuleDestroy {
     // Check if running x64 Node.js on Apple Silicon Mac (Rosetta translation)
     // Apple Silicon CPUs have "Apple" in their model name
     const isAppleSilicon = cpuModel.includes('Apple');
-    const isRosettaMode = platform === 'darwin' && nodeArch === 'x64' && isAppleSilicon;
+    const isRosettaMode =
+      platform === 'darwin' && nodeArch === 'x64' && isAppleSilicon;
 
     if (isRosettaMode) {
       // Use error level to make it more visible, and log it multiple times for visibility
       this.logger.error(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
-        '⚠️  ARCHITECTURE MISMATCH DETECTED\n' +
-        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
-        'You are running x64 Node.js on Mac Silicon (arm64), which causes Rosetta translation.\n' +
-        'This results in degraded Puppeteer performance.\n' +
-        '\n' +
-        'RECOMMENDED FIX:\n' +
-        '  1. Install arm64 Node.js using Homebrew:\n' +
-        '     arch -arm64 brew install node\n' +
-        '  2. Or download arm64 Node.js from: https://nodejs.org/\n' +
-        '  3. Verify with: node -p "process.arch" (should show "arm64")\n' +
-        '\n' +
-        'NOTE: You will see a Puppeteer warning below - this is expected and will disappear\n' +
-        '      once you install arm64 Node.js. The application will continue to work but\n' +
-        '      may be slower until you fix this.\n' +
-        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+          '⚠️  ARCHITECTURE MISMATCH DETECTED\n' +
+          '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+          'You are running x64 Node.js on Mac Silicon (arm64), which causes Rosetta translation.\n' +
+          'This results in degraded Puppeteer performance.\n' +
+          '\n' +
+          'RECOMMENDED FIX:\n' +
+          '  1. Install arm64 Node.js using Homebrew:\n' +
+          '     arch -arm64 brew install node\n' +
+          '  2. Or download arm64 Node.js from: https://nodejs.org/\n' +
+          '  3. Verify with: node -p "process.arch" (should show "arm64")\n' +
+          '\n' +
+          'NOTE: You will see a Puppeteer warning below - this is expected and will disappear\n' +
+          '      once you install arm64 Node.js. The application will continue to work but\n' +
+          '      may be slower until you fix this.\n' +
+          '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
     }
   }
@@ -73,10 +79,11 @@ export class PuppeteerService implements OnModuleInit, OnModuleDestroy {
     // If pre-warm fails, it's not critical - browser will launch on first PDF request
     // Bug #86: Enhanced error logging with full error details
     this.browserLaunchPromise = this.launchBrowser().catch((error) => {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
       const errorName = error instanceof Error ? error.name : 'UnknownError';
-      
+
       this.logger.warn(
         `Failed to pre-warm browser (non-critical - will launch on first PDF request): ${errorMessage}`,
       );
@@ -107,11 +114,14 @@ export class PuppeteerService implements OnModuleInit, OnModuleDestroy {
       try {
         await this.launchBrowser();
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        this.logger.error(`Critical: Failed to launch browser for PDF generation: ${errorMessage}`);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        this.logger.error(
+          `Critical: Failed to launch browser for PDF generation: ${errorMessage}`,
+        );
         throw new Error(
           `Puppeteer browser launch failed: ${errorMessage}. PDF generation unavailable. ` +
-          `Please check Puppeteer installation and browser dependencies.`,
+            `Please check Puppeteer installation and browser dependencies.`,
         );
       }
     }
@@ -157,14 +167,17 @@ export class PuppeteerService implements OnModuleInit, OnModuleDestroy {
       this.browser.on('disconnected', () => {
         // Only log warning if it's an unexpected disconnect (not during shutdown)
         if (!this.isShuttingDown) {
-          this.logger.warn('Browser disconnected unexpectedly - will relaunch on next request');
+          this.logger.warn(
+            'Browser disconnected unexpectedly - will relaunch on next request',
+          );
         } else {
           this.logger.debug('Browser disconnected (expected during shutdown)');
         }
         this.browser = null;
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       // Log as error but don't throw during pre-warm (onModuleInit handles it)
       // Only throw if called from getPage() where we actually need the browser
       this.logger.error(`Failed to launch browser: ${errorMessage}`);
@@ -177,37 +190,47 @@ export class PuppeteerService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleDestroy(): Promise<void> {
     this.isShuttingDown = true;
-    
+
     // Wait for any active pages to finish before closing browser
     if (this.activePages > 0) {
-      this.logger.log(`Waiting for ${this.activePages} active page(s) to finish...`);
+      this.logger.log(
+        `Waiting for ${this.activePages} active page(s) to finish...`,
+      );
       let waitCount = 0;
       const maxWait = 30; // Wait up to 3 seconds (30 * 100ms)
-      
+
       while (this.activePages > 0 && waitCount < maxWait) {
         await new Promise((resolve) => setTimeout(resolve, 100));
         waitCount++;
       }
-      
+
       if (this.activePages > 0) {
-        this.logger.warn(`Force closing browser with ${this.activePages} active page(s) still open`);
+        this.logger.warn(
+          `Force closing browser with ${this.activePages} active page(s) still open`,
+        );
       }
     }
-    
+
     if (this.browser) {
       this.logger.log('Closing Puppeteer browser...');
       try {
         // Get all pages and close them
         const pages = await this.browser.pages();
-        await Promise.allSettled(pages.map(page => page.close().catch(() => {
-          // Ignore errors closing individual pages
-        })));
-        
+        await Promise.allSettled(
+          pages.map((page) =>
+            page.close().catch(() => {
+              // Ignore errors closing individual pages
+            }),
+          ),
+        );
+
         await this.browser.close();
         this.logger.log('Puppeteer browser closed successfully');
       } catch (error) {
         // Browser may already be closed/disconnected
-        this.logger.debug('Browser already closed or disconnected during shutdown');
+        this.logger.debug(
+          'Browser already closed or disconnected during shutdown',
+        );
       } finally {
         this.browser = null;
         this.activePages = 0;
@@ -215,9 +238,12 @@ export class PuppeteerService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async generatePdfFromHtml(html: string, options?: puppeteer.PDFOptions): Promise<Buffer> {
+  async generatePdfFromHtml(
+    html: string,
+    options?: puppeteer.PDFOptions,
+  ): Promise<Buffer> {
     const page = await this.getPage();
-    
+
     try {
       // Use 'domcontentloaded' for faster rendering - CSS will still be applied
       // This is faster than 'load' since we don't wait for all resources
@@ -236,10 +262,9 @@ export class PuppeteerService implements OnModuleInit, OnModuleDestroy {
       });
 
       // Convert Uint8Array to Buffer
-      return Buffer.from(pdfBuffer as Uint8Array);
+      return Buffer.from(pdfBuffer);
     } finally {
       await this.closePage(page);
     }
   }
 }
-

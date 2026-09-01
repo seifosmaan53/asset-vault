@@ -1,6 +1,8 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddEnhancedSettingsFields1733700000000 implements MigrationInterface {
+export class AddEnhancedSettingsFields1733700000000
+  implements MigrationInterface
+{
   name = 'AddEnhancedSettingsFields1733700000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -195,4 +197,3 @@ export class AddEnhancedSettingsFields1733700000000 implements MigrationInterfac
     }
   }
 }
-

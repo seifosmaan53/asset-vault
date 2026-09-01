@@ -35,7 +35,9 @@ async function createInvoiceStatusHistoryTable() {
     `);
 
     if (tableExists[0].exists) {
-      console.log('⚠️  Table "invoice_status_history" already exists. Skipping creation.');
+      console.log(
+        '⚠️  Table "invoice_status_history" already exists. Skipping creation.',
+      );
       await queryRunner.release();
       await dataSource.destroy();
       process.exit(0);
@@ -96,7 +98,9 @@ async function createInvoiceStatusHistoryTable() {
     await queryRunner.release();
     await dataSource.destroy();
 
-    console.log('\n✅ Successfully created invoice_status_history table and indexes!');
+    console.log(
+      '\n✅ Successfully created invoice_status_history table and indexes!',
+    );
     process.exit(0);
   } catch (error) {
     console.error('❌ Error creating table:', error);
@@ -108,4 +112,3 @@ async function createInvoiceStatusHistoryTable() {
 }
 
 createInvoiceStatusHistoryTable();
-

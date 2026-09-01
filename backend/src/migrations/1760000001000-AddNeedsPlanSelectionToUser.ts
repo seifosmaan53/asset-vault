@@ -1,8 +1,11 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
+import { TableColumn } from 'typeorm';
 
-export class AddNeedsPlanSelectionToUser1760000001000 implements MigrationInterface {
+export class AddNeedsPlanSelectionToUser1760000001000
+  implements MigrationInterface
+{
   name = 'AddNeedsPlanSelectionToUser1760000001000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -21,4 +24,3 @@ export class AddNeedsPlanSelectionToUser1760000001000 implements MigrationInterf
     await queryRunner.dropColumn('users', 'needsPlanSelection');
   }
 }
-

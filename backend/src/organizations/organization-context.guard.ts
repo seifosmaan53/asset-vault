@@ -1,15 +1,21 @@
-import { Injectable, CanActivate, ExecutionContext, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { OrganizationsService } from './organizations.service';
 import { IS_ORGANIZATION_OPTIONAL_KEY } from './organization-optional.decorator';
 
 /**
  * Organization Context Guard
- * 
+ *
  * This guard extracts the organizationId from the request (header or query param)
  * and verifies the user has access to it. It attaches the organization context
  * to the request object for use in services.
- * 
+ *
  * If organizationId is not provided, the guard will:
  * - Allow the request if @OrganizationOptional() decorator is used
  * - Otherwise, try to use the user's default organization (first one they belong to)
@@ -40,4 +46,3 @@ export class OrganizationContextGuard implements CanActivate {
     return true;
   }
 }
-

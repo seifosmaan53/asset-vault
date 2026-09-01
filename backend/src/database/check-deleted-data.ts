@@ -30,16 +30,25 @@ async function checkDeletedData() {
 
     if (deletedInvoices.length > 0) {
       console.log('Top deleted invoices:');
-      deletedInvoices.forEach(inv => {
+      deletedInvoices.forEach((inv) => {
         const total = parseFloat(inv.total.toString());
-        console.log(`  - ${inv.number}: $${total.toFixed(2)} (${inv.status}) - Deleted: ${inv.deletedAt}`);
+        console.log(
+          `  - ${inv.number}: $${total.toFixed(2)} (${inv.status}) - Deleted: ${inv.deletedAt}`,
+        );
       });
 
-      const totalDeleted = deletedInvoices.reduce((sum, inv) => sum + parseFloat(inv.total.toString()), 0);
-      console.log(`\nTotal amount of deleted invoices: $${totalDeleted.toFixed(2)}`);
+      const totalDeleted = deletedInvoices.reduce(
+        (sum, inv) => sum + parseFloat(inv.total.toString()),
+        0,
+      );
+      console.log(
+        `\nTotal amount of deleted invoices: $${totalDeleted.toFixed(2)}`,
+      );
       console.log(`\nThese invoices can be restored if needed.`);
     } else {
-      console.log('No deleted invoices found. Data may have been permanently deleted.');
+      console.log(
+        'No deleted invoices found. Data may have been permanently deleted.',
+      );
     }
 
     // Check deleted clients
@@ -53,7 +62,7 @@ async function checkDeletedData() {
     console.log(`\n=== DELETED CLIENTS ===`);
     console.log(`Found ${deletedClients.length} deleted clients`);
     if (deletedClients.length > 0) {
-      deletedClients.forEach(client => {
+      deletedClients.forEach((client) => {
         console.log(`  - ${client.name} - Deleted: ${client.deletedAt}`);
       });
     }
@@ -67,4 +76,3 @@ async function checkDeletedData() {
 }
 
 checkDeletedData();
-

@@ -22,12 +22,14 @@ async function verifyData() {
     // Get all users
     const allUsers = await userRepository.find();
     console.log(`Total users: ${allUsers.length}`);
-    allUsers.forEach(user => {
+    allUsers.forEach((user) => {
       console.log(`  - ${user.email} (ID: ${user.id}, Role: ${user.role})`);
     });
 
     // Get demo user
-    const demoUser = await userRepository.findOne({ where: { email: 'demo@example.com' } });
+    const demoUser = await userRepository.findOne({
+      where: { email: 'demo@example.com' },
+    });
     if (!demoUser) {
       console.log('\n❌ Demo user NOT found!');
       process.exit(1);
@@ -36,10 +38,18 @@ async function verifyData() {
     console.log(`\n✅ Demo user found: ${demoUser.email} (ID: ${demoUser.id})`);
 
     // Count data for demo user
-    const clients = await clientRepository.count({ where: { userId: demoUser.id } });
-    const stores = await storeRepository.count({ where: { userId: demoUser.id } });
-    const invoices = await invoiceRepository.count({ where: { userId: demoUser.id } });
-    const inventoryItems = await inventoryRepository.count({ where: { userId: demoUser.id } });
+    const clients = await clientRepository.count({
+      where: { userId: demoUser.id },
+    });
+    const stores = await storeRepository.count({
+      where: { userId: demoUser.id },
+    });
+    const invoices = await invoiceRepository.count({
+      where: { userId: demoUser.id },
+    });
+    const inventoryItems = await inventoryRepository.count({
+      where: { userId: demoUser.id },
+    });
 
     console.log(`\nData counts for demo user:`);
     console.log(`  Clients: ${clients}`);
@@ -57,7 +67,9 @@ async function verifyData() {
         console.log(`  Name: ${sampleStore.name}`);
         console.log(`  Code: ${sampleStore.code}`);
         console.log(`  Client ID: ${sampleStore.clientId}`);
-        console.log(`  Client Name: ${sampleStore.client?.name || 'NOT LOADED'}`);
+        console.log(
+          `  Client Name: ${sampleStore.client?.name || 'NOT LOADED'}`,
+        );
       }
     }
 
@@ -77,4 +89,3 @@ async function verifyData() {
 }
 
 verifyData();
-

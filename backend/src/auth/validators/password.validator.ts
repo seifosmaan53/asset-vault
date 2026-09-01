@@ -7,36 +7,38 @@ import {
 } from 'class-validator';
 
 @ValidatorConstraint({ name: 'isStrongPassword', async: false })
-export class IsStrongPasswordConstraint implements ValidatorConstraintInterface {
+export class IsStrongPasswordConstraint
+  implements ValidatorConstraintInterface
+{
   validate(password: string, args: ValidationArguments): boolean {
     if (!password) return false;
-    
+
     // Minimum 8 characters, maximum 128 characters
     if (password.length < 8 || password.length > 128) {
       return false;
     }
-    
+
     // Must contain at least one uppercase letter
     if (!/[A-Z]/.test(password)) {
       return false;
     }
-    
+
     // Must contain at least one lowercase letter
     if (!/[a-z]/.test(password)) {
       return false;
     }
-    
+
     // Must contain at least one number
     if (!/[0-9]/.test(password)) {
       return false;
     }
-    
+
     // Optional: Must contain at least one special character (recommended but not required)
     // Uncomment if you want to require special characters:
     // if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
     //   return false;
     // }
-    
+
     return true;
   }
 
@@ -46,7 +48,7 @@ export class IsStrongPasswordConstraint implements ValidatorConstraintInterface 
 }
 
 export function IsStrongPassword(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
@@ -56,4 +58,3 @@ export function IsStrongPassword(validationOptions?: ValidationOptions) {
     });
   };
 }
-

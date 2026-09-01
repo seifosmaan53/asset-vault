@@ -26,7 +26,11 @@ export class RolesGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest();
-    const user = request.user as { role?: UserRole; userId?: string; email?: string };
+    const user = request.user as {
+      role?: UserRole;
+      userId?: string;
+      email?: string;
+    };
 
     if (!user || !user.role) {
       this.logger.warn(
@@ -45,4 +49,3 @@ export class RolesGuard implements CanActivate {
     return true;
   }
 }
-

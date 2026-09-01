@@ -1,4 +1,5 @@
-import { MigrationInterface, QueryRunner, Table, TableForeignKey, TableIndex } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
+import { Table, TableForeignKey, TableIndex } from 'typeorm';
 
 export class CreateOrganizations1745000000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -181,7 +182,8 @@ export class CreateOrganizations1745000000000 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Drop foreign keys
-    const userOrganizationsTable = await queryRunner.getTable('user_organizations');
+    const userOrganizationsTable =
+      await queryRunner.getTable('user_organizations');
     if (userOrganizationsTable) {
       const foreignKeys = userOrganizationsTable.foreignKeys;
       for (const fk of foreignKeys) {
@@ -190,11 +192,13 @@ export class CreateOrganizations1745000000000 implements MigrationInterface {
     }
 
     // Drop indexes
-    await queryRunner.dropIndex('user_organizations', 'IDX_user_organizations_user_org');
+    await queryRunner.dropIndex(
+      'user_organizations',
+      'IDX_user_organizations_user_org',
+    );
 
     // Drop tables
     await queryRunner.dropTable('user_organizations');
     await queryRunner.dropTable('organizations');
   }
 }
-

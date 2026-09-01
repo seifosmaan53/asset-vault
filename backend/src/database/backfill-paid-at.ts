@@ -22,10 +22,14 @@ async function backfillPaidAtDates() {
       },
     });
 
-    console.log(`Found ${paidInvoicesWithoutPaidAt.length} paid invoices without paidAt date`);
+    console.log(
+      `Found ${paidInvoicesWithoutPaidAt.length} paid invoices without paidAt date`,
+    );
 
     if (paidInvoicesWithoutPaidAt.length === 0) {
-      console.log('No invoices need to be updated. All paid invoices already have paidAt dates.');
+      console.log(
+        'No invoices need to be updated. All paid invoices already have paidAt dates.',
+      );
       await AppDataSource.destroy();
       process.exit(0);
     }
@@ -35,19 +39,25 @@ async function backfillPaidAtDates() {
       // Use updatedAt if available (when invoice was last updated, likely when it was marked as paid)
       // Otherwise fall back to issueDate
       const paidAtDate = invoice.updatedAt || invoice.issueDate || new Date();
-      
+
       await invoiceRepository.update(
         { id: invoice.id },
-        { paidAt: paidAtDate }
+        { paidAt: paidAtDate },
       );
-      
+
       updatedCount++;
-      console.log(`✓ Updated invoice ${invoice.number} (${invoice.id}) with paidAt: ${paidAtDate.toISOString()}`);
+      console.log(
+        `✓ Updated invoice ${invoice.number} (${invoice.id}) with paidAt: ${paidAtDate.toISOString()}`,
+      );
     }
 
-    console.log(`\n✅ Successfully updated ${updatedCount} invoice(s) with paidAt dates`);
-    console.log('\nYou can now refresh your dashboard to see updated monthly revenue.');
-    
+    console.log(
+      `\n✅ Successfully updated ${updatedCount} invoice(s) with paidAt dates`,
+    );
+    console.log(
+      '\nYou can now refresh your dashboard to see updated monthly revenue.',
+    );
+
     await AppDataSource.destroy();
     process.exit(0);
   } catch (error) {
@@ -60,4 +70,3 @@ async function backfillPaidAtDates() {
 }
 
 backfillPaidAtDates();
-

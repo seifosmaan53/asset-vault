@@ -1,11 +1,12 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { SelectQueryBuilder, IsNull, ObjectLiteral } from 'typeorm';
+import type { SelectQueryBuilder, ObjectLiteral } from 'typeorm';
+import { IsNull } from 'typeorm';
 
 /**
  * TypeORM Query Utility
  * Fixes Issue #1: Replace 'as any' type assertions with proper TypeORM query builder
- * 
+ *
  * Provides type-safe utilities for common TypeORM query patterns
  */
 
@@ -58,10 +59,12 @@ export function createOrgScopedWhereConditions(
   id: string,
   organizationId: string,
   userId: string,
-): Array<{ id: string; organizationId: string } | { id: string; userId: string; organizationId: null }> {
+): Array<
+  | { id: string; organizationId: string }
+  | { id: string; userId: string; organizationId: null }
+> {
   return [
     { id, organizationId },
     { id, userId, organizationId: null },
   ];
 }
-

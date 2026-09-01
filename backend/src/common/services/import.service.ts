@@ -10,7 +10,7 @@ export class ImportService {
    */
   parseCSV(content: string): any[] {
     try {
-      const lines = content.split('\n').filter(line => line.trim());
+      const lines = content.split('\n').filter((line) => line.trim());
       if (lines.length === 0) {
         return [];
       }
@@ -43,7 +43,7 @@ export class ImportService {
     try {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(buffer);
-      
+
       const worksheet = workbook.worksheets[0];
       if (!worksheet) {
         return [];
@@ -51,7 +51,7 @@ export class ImportService {
 
       const rows: any[] = [];
       const headers: string[] = [];
-      
+
       // Get headers from first row
       worksheet.getRow(1).eachCell((cell, colNumber) => {
         headers[colNumber - 1] = cell.value?.toString() || '';
@@ -60,7 +60,7 @@ export class ImportService {
       // Get data rows
       worksheet.eachRow((row, rowNumber) => {
         if (rowNumber === 1) return; // Skip header row
-        
+
         const rowData: any = {};
         row.eachCell((cell, colNumber) => {
           const header = headers[colNumber - 1];

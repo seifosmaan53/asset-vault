@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
  * Migration: Add Performance Indexes for Category 5 Issues (#171-185)
@@ -107,7 +107,7 @@ export class AddPerformanceIndexes1759000000000 implements MigrationInterface {
       CREATE INDEX IF NOT EXISTS "IDX_invoices_storeId" 
       ON "invoices" ("storeId")
     `);
-    
+
     // Invoice items foreign keys
     await queryRunner.query(`
       CREATE INDEX IF NOT EXISTS "IDX_invoice_items_invoiceId" 
@@ -117,7 +117,7 @@ export class AddPerformanceIndexes1759000000000 implements MigrationInterface {
       CREATE INDEX IF NOT EXISTS "IDX_invoice_items_inventoryItemId" 
       ON "invoice_items" ("inventoryItemId")
     `);
-    
+
     // Stock movements foreign keys
     await queryRunner.query(`
       CREATE INDEX IF NOT EXISTS "IDX_stock_movements_inventoryItemId" 
@@ -127,7 +127,7 @@ export class AddPerformanceIndexes1759000000000 implements MigrationInterface {
       CREATE INDEX IF NOT EXISTS "IDX_stock_movements_storeId" 
       ON "stock_movements" ("storeId")
     `);
-    
+
     // Store item settings foreign keys
     await queryRunner.query(`
       CREATE INDEX IF NOT EXISTS "IDX_store_item_settings_storeId" 
@@ -143,28 +143,51 @@ export class AddPerformanceIndexes1759000000000 implements MigrationInterface {
     // Drop all indexes created in up()
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_invoices_status"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_invoices_type"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_invoices_userId_status"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_invoices_userId_status"`,
+    );
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_invoices_issueDate"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_invoices_dueDate"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_invoices_number_trgm"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_clients_name"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_clients_name_trgm"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "UQ_inventory_items_sku_userId"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_inventory_items_userId"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_stock_movements_createdAt"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_stock_movements_inventoryItemId_createdAt"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_store_item_settings_storeId_inventoryItemId"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "UQ_inventory_items_sku_userId"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_inventory_items_userId"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_stock_movements_createdAt"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_stock_movements_inventoryItemId_createdAt"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_store_item_settings_storeId_inventoryItemId"`,
+    );
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_invoices_deletedAt"`);
     // Note: IDX_inventory_items_deletedAt was never created (inventory_items has no deletedAt)
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_clients_deletedAt"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_invoices_clientId"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_invoices_storeId"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_invoice_items_invoiceId"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_invoice_items_inventoryItemId"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_stock_movements_inventoryItemId"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_stock_movements_storeId"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_store_item_settings_storeId"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_store_item_settings_inventoryItemId"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_invoice_items_invoiceId"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_invoice_items_inventoryItemId"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_stock_movements_inventoryItemId"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_stock_movements_storeId"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_store_item_settings_storeId"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_store_item_settings_inventoryItemId"`,
+    );
   }
 }
-

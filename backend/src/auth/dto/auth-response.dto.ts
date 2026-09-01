@@ -1,19 +1,19 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class LoginResponseDto {
-  @ApiProperty({ 
-    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...', 
-    description: 'JWT access token' 
+  @ApiProperty({
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+    description: 'JWT access token',
   })
   accessToken: string;
 
-  @ApiProperty({ 
-    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...', 
-    description: 'JWT refresh token' 
+  @ApiProperty({
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+    description: 'JWT refresh token',
   })
   refreshToken: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'User information',
     example: {
       id: 'uuid-here',
@@ -23,7 +23,7 @@ export class LoginResponseDto {
       role: 'admin',
       createdAt: '2024-01-01T00:00:00.000Z',
       updatedAt: '2024-01-01T00:00:00.000Z',
-    }
+    },
   })
   user: {
     id: string;
@@ -35,14 +35,15 @@ export class LoginResponseDto {
     updatedAt: string;
   };
 
-  @ApiProperty({ 
-    description: 'Organization information (if created/joined during registration)',
+  @ApiProperty({
+    description:
+      'Organization information (if created/joined during registration)',
     required: false,
     example: {
       id: 'org-uuid-here',
       name: 'My Company',
       companyName: 'My Company Inc',
-    }
+    },
   })
   organization?: {
     id: string;
@@ -52,9 +53,9 @@ export class LoginResponseDto {
 }
 
 export class RefreshTokenResponseDto {
-  @ApiProperty({ 
-    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...', 
-    description: 'New JWT access token' 
+  @ApiProperty({
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+    description: 'New JWT access token',
   })
   accessToken: string;
 }
@@ -103,4 +104,3 @@ export class MessageResponseDto {
   @ApiProperty({ example: 'Operation completed successfully' })
   message: string;
 }
-

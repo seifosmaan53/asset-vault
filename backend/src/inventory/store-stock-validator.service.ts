@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, QueryRunner } from 'typeorm';
 import { StoreItemSettings } from './entities/store-item-settings.entity';
@@ -46,7 +51,8 @@ export class StoreStockValidatorService {
     userId: string,
   ): Promise<number> {
     // Organizations removed - filter by userId only
-    const store = await this.storeRepository.createQueryBuilder('store')
+    const store = await this.storeRepository
+      .createQueryBuilder('store')
       .where('store.userId = :userId', { userId })
       .andWhere('store.id = :storeId', { storeId })
       .getOne();
@@ -56,13 +62,16 @@ export class StoreStockValidatorService {
     }
 
     // Organizations removed - filter by userId only
-    const inventoryItem = await this.inventoryItemRepository.createQueryBuilder('item')
+    const inventoryItem = await this.inventoryItemRepository
+      .createQueryBuilder('item')
       .where('item.userId = :userId', { userId })
       .andWhere('item.id = :inventoryItemId', { inventoryItemId })
       .getOne();
 
     if (!inventoryItem) {
-      throw new NotFoundException(`Inventory item with ID "${inventoryItemId}" not found`);
+      throw new NotFoundException(
+        `Inventory item with ID "${inventoryItemId}" not found`,
+      );
     }
 
     // Get store item settings
@@ -99,23 +108,24 @@ export class StoreStockValidatorService {
   ): Promise<StockValidationResult> {
     const errors: string[] = [];
     const warnings: string[] = [];
-    const manager = queryRunner?.manager || this.storeItemSettingsRepository.manager;
+    const manager =
+      queryRunner?.manager || this.storeItemSettingsRepository.manager;
 
     try {
       // CRITICAL FIX #60, #93: Verify store belongs to user
       // Only use pessimistic lock if we're inside a transaction (queryRunner provided)
-      const storeQueryBuilder = queryRunner?.manager 
+      const storeQueryBuilder = queryRunner?.manager
         ? queryRunner.manager.createQueryBuilder(Store, 'store')
         : this.storeRepository.createQueryBuilder('store');
       let storeQuery = storeQueryBuilder
         .where('store.userId = :userId', { userId })
         .andWhere('store.id = :storeId', { storeId });
-      
+
       // Only use lock if we have a transaction (queryRunner)
       if (queryRunner) {
         storeQuery = storeQuery.setLock('pessimistic_write');
       }
-      
+
       const store = await storeQuery.getOne();
 
       if (!store) {
@@ -130,18 +140,20 @@ export class StoreStockValidatorService {
       let itemQuery = itemQueryBuilder
         .where('item.userId = :userId', { userId })
         .andWhere('item.id = :inventoryItemId', { inventoryItemId });
-      
+
       // Only use lock if we have a transaction (queryRunner)
       if (queryRunner) {
         itemQuery = itemQuery.setLock('pessimistic_write');
       }
-      
+
       const inventoryItem = await itemQuery.getOne();
 
       if (!inventoryItem) {
-        throw new NotFoundException(`Inventory item with ID "${inventoryItemId}" not found`);
+        throw new NotFoundException(
+          `Inventory item with ID "${inventoryItemId}" not found`,
+        );
       }
-      
+
       // No status restrictions - any item can be sold as long as it has stock
 
       // CRITICAL FIX #60, #93: Get store item settings
@@ -152,20 +164,20 @@ export class StoreStockValidatorService {
           inventoryItemId,
         },
       };
-      
+
       // Only use lock if we have a transaction (queryRunner)
       if (queryRunner) {
         findOptions.lock = { mode: 'pessimistic_write' };
       }
-      
+
       const settings = await manager.findOne(StoreItemSettings, findOptions);
 
       // CRITICAL FIX: If item is not tracked in this store, treat as 0 stock
       // Note: adjustStoreStock now handles this gracefully by skipping store adjustment
       // if item isn't tracked, so we allow the sale if global stock is sufficient
-      const availableStock = settings ? (settings.currentStock || 0) : 0;
+      const availableStock = settings ? settings.currentStock || 0 : 0;
       const itemName = inventoryItem?.name || inventoryItemId;
-      
+
       // CRITICAL FIX #84: Also check global stock
       const globalStock = inventoryItem.currentStock || 0;
       const globalStockSufficient = globalStock >= quantity;
@@ -182,7 +194,7 @@ export class StoreStockValidatorService {
         } else {
           // Item isn't tracked but global stock is sufficient - allow with warning
           warnings.push(
-            `Item "${itemName}" is not tracked in this store. Sale will proceed using global stock. Consider allocating stock to this store.`
+            `Item "${itemName}" is not tracked in this store. Sale will proceed using global stock. Consider allocating stock to this store.`,
           );
         }
       } else if (!storeStockSufficient) {
@@ -192,23 +204,25 @@ export class StoreStockValidatorService {
           `Store stock validation failed: ${errorMessage} (storeId: ${storeId}, itemId: ${inventoryItemId})`,
         );
       }
-      
+
       // CRITICAL FIX #84: Warn if store stock exceeds global stock (data inconsistency)
       if (availableStock > globalStock) {
         warnings.push(
-          `Store stock (${availableStock}) exceeds global stock (${globalStock}) for item "${itemName}". This indicates data inconsistency.`
+          `Store stock (${availableStock}) exceeds global stock (${globalStock}) for item "${itemName}". This indicates data inconsistency.`,
         );
       }
-      
+
       // CRITICAL FIX #84: Check global stock availability
       if (!globalStockSufficient) {
         errors.push(
-          `Insufficient global stock. Available: ${globalStock}, Required: ${quantity} for item "${itemName}"`
+          `Insufficient global stock. Available: ${globalStock}, Required: ${quantity} for item "${itemName}"`,
         );
       }
-      
+
       if (storeStockSufficient && availableStock === quantity) {
-        warnings.push(`Stock is exactly at required quantity for item "${itemName}"`);
+        warnings.push(
+          `Stock is exactly at required quantity for item "${itemName}"`,
+        );
       }
 
       return {
@@ -218,7 +232,10 @@ export class StoreStockValidatorService {
         availableStock,
       };
     } catch (error) {
-      this.logger.error(`Error validating store stock: ${error.message}`, error);
+      this.logger.error(
+        `Error validating store stock: ${error.message}`,
+        error,
+      );
       throw error;
     }
   }
@@ -228,11 +245,19 @@ export class StoreStockValidatorService {
    */
   async validateInvoiceItemsStoreStock(
     storeId: string,
-    items: Array<{ inventoryItemId?: string; quantity: number; description?: string }>,
+    items: Array<{
+      inventoryItemId?: string;
+      quantity: number;
+      description?: string;
+    }>,
     userId: string,
     operation: 'reserve' | 'sale' = 'sale',
     queryRunner?: QueryRunner,
-  ): Promise<{ isValid: boolean; itemValidations: ItemStockValidation[]; errors: string[] }> {
+  ): Promise<{
+    isValid: boolean;
+    itemValidations: ItemStockValidation[];
+    errors: string[];
+  }> {
     const itemValidations: ItemStockValidation[] = [];
     const allErrors: string[] = [];
 
@@ -255,9 +280,12 @@ export class StoreStockValidatorService {
         );
 
         // Get item name - Organizations removed - filter by userId only
-        const inventoryItem = await this.inventoryItemRepository.createQueryBuilder('item')
+        const inventoryItem = await this.inventoryItemRepository
+          .createQueryBuilder('item')
           .where('item.userId = :userId', { userId })
-          .andWhere('item.id = :inventoryItemId', { inventoryItemId: item.inventoryItemId })
+          .andWhere('item.id = :inventoryItemId', {
+            inventoryItemId: item.inventoryItemId,
+          })
           .getOne();
 
         const itemValidation: ItemStockValidation = {
@@ -305,7 +333,11 @@ export class StoreStockValidatorService {
    */
   async validateAndThrow(
     storeId: string,
-    items: Array<{ inventoryItemId?: string; quantity: number; description?: string }>,
+    items: Array<{
+      inventoryItemId?: string;
+      quantity: number;
+      description?: string;
+    }>,
     userId: string,
     operation: 'reserve' | 'sale' = 'sale',
     queryRunner?: QueryRunner,
@@ -320,9 +352,10 @@ export class StoreStockValidatorService {
 
     if (!validation.isValid) {
       const errorMessage = `Store stock validation failed:\n${validation.errors.join('\n')}`;
-      this.logger.warn(`Store stock validation failed for store ${storeId}: ${errorMessage}`);
+      this.logger.warn(
+        `Store stock validation failed for store ${storeId}: ${errorMessage}`,
+      );
       throw new BadRequestException(errorMessage);
     }
   }
 }
-

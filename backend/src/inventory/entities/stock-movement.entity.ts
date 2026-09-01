@@ -69,4 +69,3 @@ export class StockMovement {
   @CreateDateColumn()
   createdAt: Date;
 }
-

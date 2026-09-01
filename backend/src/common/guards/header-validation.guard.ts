@@ -55,4 +55,3 @@ export class HeaderValidationGuard implements CanActivate {
     return true;
   }
 }
-

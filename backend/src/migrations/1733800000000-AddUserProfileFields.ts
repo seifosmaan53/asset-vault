@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddUserProfileFields1733800000000 implements MigrationInterface {
   name = 'AddUserProfileFields1733800000000';
@@ -41,4 +41,3 @@ export class AddUserProfileFields1733800000000 implements MigrationInterface {
     `);
   }
 }
-

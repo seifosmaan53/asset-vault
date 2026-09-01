@@ -14,7 +14,8 @@ export class AnalyticsRouter {
     return trpc.router({
       stats: trpc.protectedProcedure.query(async ({ ctx }) => {
         // Get invoice stats (similar to dashboard stats)
-        const invoicesByStatus = await this.analyticsService.getInvoicesByStatus(ctx.user.id);
+        const invoicesByStatus =
+          await this.analyticsService.getInvoicesByStatus(ctx.user.id);
         return { invoicesByStatus };
       }),
 
@@ -25,7 +26,11 @@ export class AnalyticsRouter {
           }),
         )
         .query(async ({ input, ctx }) => {
-          return await this.analyticsService.getTopItems(ctx.user.id, input.limit, 0);
+          return await this.analyticsService.getTopItems(
+            ctx.user.id,
+            input.limit,
+            0,
+          );
         }),
 
       topClients: trpc.protectedProcedure
@@ -35,13 +40,20 @@ export class AnalyticsRouter {
           }),
         )
         .query(async ({ input, ctx }) => {
-          return await this.analyticsService.getTopClients(ctx.user.id, input.limit, 0);
+          return await this.analyticsService.getTopClients(
+            ctx.user.id,
+            input.limit,
+            0,
+          );
         }),
     });
   }
 }
 
-export function analyticsRouter(trpc: TrpcService, analyticsService: AnalyticsService) {
+export function analyticsRouter(
+  trpc: TrpcService,
+  analyticsService: AnalyticsService,
+) {
   const router = new AnalyticsRouter(analyticsService);
   return router.createRouter(trpc);
 }

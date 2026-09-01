@@ -1,8 +1,11 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { MigrationInterface, QueryRunner, Table, TableForeignKey, TableIndex } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
+import { Table, TableForeignKey, TableIndex } from 'typeorm';
 
-export class CreateSubscriptionSystem1760000000000 implements MigrationInterface {
+export class CreateSubscriptionSystem1760000000000
+  implements MigrationInterface
+{
   name = 'CreateSubscriptionSystem1760000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -316,10 +319,19 @@ export class CreateSubscriptionSystem1760000000000 implements MigrationInterface
     // Drop indexes
     await queryRunner.dropIndex('usage_tracking', 'IDX_usage_tracking_metric');
     await queryRunner.dropIndex('usage_tracking', 'IDX_usage_tracking_userId');
-    await queryRunner.dropIndex('usage_tracking', 'IDX_usage_tracking_userId_metric_periodStart');
+    await queryRunner.dropIndex(
+      'usage_tracking',
+      'IDX_usage_tracking_userId_metric_periodStart',
+    );
     await queryRunner.dropIndex('subscriptions', 'IDX_subscriptions_status');
-    await queryRunner.dropIndex('subscriptions', 'IDX_subscriptions_stripeSubscriptionId');
-    await queryRunner.dropIndex('subscriptions', 'IDX_subscriptions_stripeCustomerId');
+    await queryRunner.dropIndex(
+      'subscriptions',
+      'IDX_subscriptions_stripeSubscriptionId',
+    );
+    await queryRunner.dropIndex(
+      'subscriptions',
+      'IDX_subscriptions_stripeCustomerId',
+    );
     await queryRunner.dropIndex('subscriptions', 'IDX_subscriptions_userId');
 
     // Drop foreign keys
@@ -352,4 +364,3 @@ export class CreateSubscriptionSystem1760000000000 implements MigrationInterface
     await queryRunner.dropTable('plans');
   }
 }
-

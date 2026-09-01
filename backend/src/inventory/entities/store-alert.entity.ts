@@ -62,4 +62,3 @@ export class StoreAlert {
   @UpdateDateColumn()
   updatedAt: Date;
 }
-

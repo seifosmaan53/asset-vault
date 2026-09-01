@@ -1,14 +1,25 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import { Subscription, SubscriptionStatus } from './entities/subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from './entities/subscription.entity';
 import { Plan } from './entities/plan.entity';
 import { StripeService } from './stripe.service';
 import { User } from '../users/entities/user.entity';
-import { SubscriptionRequiredException, TrialExpiredException } from '../common/exceptions/subscription.exception';
+import {
+  SubscriptionRequiredException,
+  TrialExpiredException,
+} from '../common/exceptions/subscription.exception';
 
 @Injectable()
 export class SubscriptionsService {
@@ -25,7 +36,10 @@ export class SubscriptionsService {
     private configService: ConfigService,
   ) {}
 
-  async createSubscription(userId: string, planId: string): Promise<Subscription> {
+  async createSubscription(
+    userId: string,
+    planId: string,
+  ): Promise<Subscription> {
     // Check if user already has a subscription
     const existing = await this.getSubscription(userId);
     if (existing && existing.status === SubscriptionStatus.ACTIVE) {
@@ -45,14 +59,20 @@ export class SubscriptionsService {
     // Create Stripe customer if not exists
     let stripeCustomerId = existing?.stripeCustomerId;
     if (!stripeCustomerId) {
-      const customer = await this.stripeService.createCustomer(userId, user.email, user.name);
+      const customer = await this.stripeService.createCustomer(
+        userId,
+        user.email,
+        user.name,
+      );
       stripeCustomerId = customer.id;
     }
 
     // Get Stripe price ID from ConfigService (validated at startup)
     const stripePriceId = this.configService.get<string>('STRIPE_PRICE_ID');
     if (!stripePriceId) {
-      throw new BadRequestException('Stripe price ID is not configured. Please set STRIPE_PRICE_ID environment variable.');
+      throw new BadRequestException(
+        'Stripe price ID is not configured. Please set STRIPE_PRICE_ID environment variable.',
+      );
     }
 
     // Create subscription in Stripe
@@ -69,8 +89,12 @@ export class SubscriptionsService {
       subscription.stripeCustomerId = stripeCustomerId;
       subscription.stripeSubscriptionId = stripeSubscription.id;
       subscription.stripePriceId = stripePriceId;
-      subscription.currentPeriodStart = new Date(stripeSubscription.current_period_start * 1000);
-      subscription.currentPeriodEnd = new Date(stripeSubscription.current_period_end * 1000);
+      subscription.currentPeriodStart = new Date(
+        stripeSubscription.current_period_start * 1000,
+      );
+      subscription.currentPeriodEnd = new Date(
+        stripeSubscription.current_period_end * 1000,
+      );
       subscription.cancelAtPeriodEnd = false;
       subscription.canceledAt = null;
     } else {
@@ -81,8 +105,12 @@ export class SubscriptionsService {
         stripeCustomerId,
         stripeSubscriptionId: stripeSubscription.id,
         stripePriceId: stripePriceId,
-        currentPeriodStart: new Date(stripeSubscription.current_period_start * 1000),
-        currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
+        currentPeriodStart: new Date(
+          stripeSubscription.current_period_start * 1000,
+        ),
+        currentPeriodEnd: new Date(
+          stripeSubscription.current_period_end * 1000,
+        ),
         cancelAtPeriodEnd: false,
       });
     }
@@ -97,7 +125,10 @@ export class SubscriptionsService {
     });
   }
 
-  async updateSubscription(userId: string, planId: string): Promise<Subscription> {
+  async updateSubscription(
+    userId: string,
+    planId: string,
+  ): Promise<Subscription> {
     const subscription = await this.getSubscription(userId);
     if (!subscription) {
       throw new NotFoundException('Subscription not found');
@@ -115,20 +146,27 @@ export class SubscriptionsService {
     // Get Stripe price ID from ConfigService (validated at startup)
     const stripePriceId = this.configService.get<string>('STRIPE_PRICE_ID');
     if (!stripePriceId) {
-      throw new BadRequestException('Stripe price ID is not configured. Please set STRIPE_PRICE_ID environment variable.');
+      throw new BadRequestException(
+        'Stripe price ID is not configured. Please set STRIPE_PRICE_ID environment variable.',
+      );
     }
 
     // Update subscription in Stripe
-    const updatedStripeSubscription = await this.stripeService.updateSubscription(
-      subscription.stripeSubscriptionId,
-      stripePriceId,
-    );
+    const updatedStripeSubscription =
+      await this.stripeService.updateSubscription(
+        subscription.stripeSubscriptionId,
+        stripePriceId,
+      );
 
     // Update local subscription
     subscription.planId = planId;
     subscription.stripePriceId = stripePriceId;
-    subscription.currentPeriodStart = new Date(updatedStripeSubscription.current_period_start * 1000);
-    subscription.currentPeriodEnd = new Date(updatedStripeSubscription.current_period_end * 1000);
+    subscription.currentPeriodStart = new Date(
+      updatedStripeSubscription.current_period_start * 1000,
+    );
+    subscription.currentPeriodEnd = new Date(
+      updatedStripeSubscription.current_period_end * 1000,
+    );
 
     return this.subscriptionRepository.save(subscription);
   }
@@ -152,7 +190,9 @@ export class SubscriptionsService {
     }
 
     // Cancel in Stripe (at period end)
-    await this.stripeService.cancelSubscription(subscription.stripeSubscriptionId);
+    await this.stripeService.cancelSubscription(
+      subscription.stripeSubscriptionId,
+    );
 
     subscription.cancelAtPeriodEnd = true;
     subscription.canceledAt = new Date();
@@ -171,19 +211,29 @@ export class SubscriptionsService {
     }
 
     // Reactivate in Stripe
-    const stripeSubscription = await this.stripeService.getSubscription(subscription.stripeSubscriptionId);
-    
+    const stripeSubscription = await this.stripeService.getSubscription(
+      subscription.stripeSubscriptionId,
+    );
+
     // Update subscription status based on Stripe status
-    subscription.status = this.mapStripeStatusToSubscriptionStatus(stripeSubscription.status);
+    subscription.status = this.mapStripeStatusToSubscriptionStatus(
+      stripeSubscription.status,
+    );
     subscription.cancelAtPeriodEnd = false;
     subscription.canceledAt = null;
-    subscription.currentPeriodStart = new Date(stripeSubscription.current_period_start * 1000);
-    subscription.currentPeriodEnd = new Date(stripeSubscription.current_period_end * 1000);
+    subscription.currentPeriodStart = new Date(
+      stripeSubscription.current_period_start * 1000,
+    );
+    subscription.currentPeriodEnd = new Date(
+      stripeSubscription.current_period_end * 1000,
+    );
 
     return this.subscriptionRepository.save(subscription);
   }
 
-  async getSubscriptionStatus(userId: string): Promise<SubscriptionStatus | null> {
+  async getSubscriptionStatus(
+    userId: string,
+  ): Promise<SubscriptionStatus | null> {
     const subscription = await this.getSubscription(userId);
     return subscription?.status || null;
   }
@@ -205,7 +255,10 @@ export class SubscriptionsService {
     }
 
     // Allow access during grace period (7 days after cancellation)
-    if (subscription.status === SubscriptionStatus.CANCELED && subscription.canceledAt) {
+    if (
+      subscription.status === SubscriptionStatus.CANCELED &&
+      subscription.canceledAt
+    ) {
       const gracePeriodEnd = new Date(subscription.canceledAt);
       gracePeriodEnd.setDate(gracePeriodEnd.getDate() + 7);
       return new Date() < gracePeriodEnd;
@@ -225,10 +278,15 @@ export class SubscriptionsService {
       return [];
     }
 
-    return this.stripeService.getCustomerInvoices(subscription.stripeCustomerId);
+    return this.stripeService.getCustomerInvoices(
+      subscription.stripeCustomerId,
+    );
   }
 
-  async createPendingSubscription(userId: string, planId: string): Promise<Subscription> {
+  async createPendingSubscription(
+    userId: string,
+    planId: string,
+  ): Promise<Subscription> {
     // Check if subscription already exists
     const existing = await this.getSubscription(userId);
     if (existing) {
@@ -244,7 +302,10 @@ export class SubscriptionsService {
     return this.subscriptionRepository.save(subscription);
   }
 
-  async updateSubscriptionCustomerId(userId: string, stripeCustomerId: string): Promise<Subscription> {
+  async updateSubscriptionCustomerId(
+    userId: string,
+    stripeCustomerId: string,
+  ): Promise<Subscription> {
     const subscription = await this.getSubscription(userId);
     if (!subscription) {
       throw new NotFoundException('Subscription not found');
@@ -267,9 +328,15 @@ export class SubscriptionsService {
       throw new NotFoundException('Subscription not found');
     }
 
-    subscription.status = this.mapStripeStatusToSubscriptionStatus(stripeData.status);
-    subscription.currentPeriodStart = new Date(stripeData.current_period_start * 1000);
-    subscription.currentPeriodEnd = new Date(stripeData.current_period_end * 1000);
+    subscription.status = this.mapStripeStatusToSubscriptionStatus(
+      stripeData.status,
+    );
+    subscription.currentPeriodStart = new Date(
+      stripeData.current_period_start * 1000,
+    );
+    subscription.currentPeriodEnd = new Date(
+      stripeData.current_period_end * 1000,
+    );
     subscription.cancelAtPeriodEnd = stripeData.cancel_at_period_end || false;
 
     if (stripeData.canceled_at) {
@@ -304,18 +371,23 @@ export class SubscriptionsService {
 
     // If subscription doesn't exist, create it
     if (!subscription) {
-      this.logger.log(`Creating new subscription for user ${userId} from Stripe subscription ${stripeSubscriptionId}`);
-      
+      this.logger.log(
+        `Creating new subscription for user ${userId} from Stripe subscription ${stripeSubscriptionId}`,
+      );
+
       // Get default plan
       const defaultPlan = await this.getDefaultPlan();
       if (!defaultPlan) {
-        throw new BadRequestException('No default plan found. Cannot create subscription.');
+        throw new BadRequestException(
+          'No default plan found. Cannot create subscription.',
+        );
       }
 
       // Get customer ID from Stripe subscription
-      const customerId = typeof stripeData.customer === 'string' 
-        ? stripeData.customer 
-        : stripeData.customer?.id;
+      const customerId =
+        typeof stripeData.customer === 'string'
+          ? stripeData.customer
+          : stripeData.customer?.id;
 
       subscription = this.subscriptionRepository.create({
         userId,
@@ -326,15 +398,25 @@ export class SubscriptionsService {
         currentPeriodStart: new Date(stripeData.current_period_start * 1000),
         currentPeriodEnd: new Date(stripeData.current_period_end * 1000),
         cancelAtPeriodEnd: stripeData.cancel_at_period_end || false,
-        canceledAt: stripeData.canceled_at ? new Date(stripeData.canceled_at * 1000) : null,
-        trialEndsAt: stripeData.trial_end ? new Date(stripeData.trial_end * 1000) : null,
+        canceledAt: stripeData.canceled_at
+          ? new Date(stripeData.canceled_at * 1000)
+          : null,
+        trialEndsAt: stripeData.trial_end
+          ? new Date(stripeData.trial_end * 1000)
+          : null,
       });
     } else {
       // Update existing subscription
       subscription.stripeSubscriptionId = stripeSubscriptionId;
-      subscription.status = this.mapStripeStatusToSubscriptionStatus(stripeData.status);
-      subscription.currentPeriodStart = new Date(stripeData.current_period_start * 1000);
-      subscription.currentPeriodEnd = new Date(stripeData.current_period_end * 1000);
+      subscription.status = this.mapStripeStatusToSubscriptionStatus(
+        stripeData.status,
+      );
+      subscription.currentPeriodStart = new Date(
+        stripeData.current_period_start * 1000,
+      );
+      subscription.currentPeriodEnd = new Date(
+        stripeData.current_period_end * 1000,
+      );
       subscription.cancelAtPeriodEnd = stripeData.cancel_at_period_end || false;
 
       if (stripeData.canceled_at) {
@@ -351,17 +433,22 @@ export class SubscriptionsService {
 
       // Update customer ID if not set
       if (!subscription.stripeCustomerId && stripeData.customer) {
-        subscription.stripeCustomerId = typeof stripeData.customer === 'string' 
-          ? stripeData.customer 
-          : stripeData.customer?.id;
+        subscription.stripeCustomerId =
+          typeof stripeData.customer === 'string'
+            ? stripeData.customer
+            : stripeData.customer?.id;
       }
     }
 
-    this.logger.log(`Updated subscription for user ${userId} to status: ${subscription.status}`);
+    this.logger.log(
+      `Updated subscription for user ${userId} to status: ${subscription.status}`,
+    );
     return this.subscriptionRepository.save(subscription);
   }
 
-  private mapStripeStatusToSubscriptionStatus(stripeStatus: string): SubscriptionStatus {
+  private mapStripeStatusToSubscriptionStatus(
+    stripeStatus: string,
+  ): SubscriptionStatus {
     const statusMap: Record<string, SubscriptionStatus> = {
       trialing: SubscriptionStatus.TRIALING,
       active: SubscriptionStatus.ACTIVE,
@@ -381,4 +468,3 @@ export class SubscriptionsService {
     });
   }
 }
-

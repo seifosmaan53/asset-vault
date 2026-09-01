@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Logger,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, LessThan } from 'typeorm';
 import { ApiKey } from './entities/api-key.entity';
@@ -44,7 +49,10 @@ export class ApiKeysService {
     return input instanceof Date ? input : new Date(input);
   }
 
-  async create(userId: string, data: CreateApiKeyDto): Promise<ApiKey & { key: string }> {
+  async create(
+    userId: string,
+    data: CreateApiKeyDto,
+  ): Promise<ApiKey & { key: string }> {
     const key = ApiKey.generateKey();
     const keyHash = ApiKey.hashKey(key);
 
@@ -59,11 +67,15 @@ export class ApiKeysService {
       expiresAt,
     });
 
-    const saved = await this.apiKeysRepository.save(apiKey) as ApiKey;
+    const saved = await this.apiKeysRepository.save(apiKey);
     return { ...saved, key } as ApiKey & { key: string };
   }
 
-  async update(id: string, userId: string, data: UpdateApiKeyDto): Promise<Omit<ApiKey, 'keyHash'>> {
+  async update(
+    id: string,
+    userId: string,
+    data: UpdateApiKeyDto,
+  ): Promise<Omit<ApiKey, 'keyHash'>> {
     // Organizations removed - filter by userId only (user-scoped data)
     const existing = await this.apiKeysRepository
       .createQueryBuilder('key')
@@ -73,24 +85,25 @@ export class ApiKeysService {
     if (!existing) {
       throw new NotFoundException('API key not found');
     }
-    
+
     const expiresAt = this.parseDate(data.expiresAt);
     const updateData: Partial<ApiKey> = {};
-    
+
     if (data.name !== undefined) updateData.name = data.name;
-    if (data.permissions !== undefined) updateData.permissions = data.permissions;
+    if (data.permissions !== undefined)
+      updateData.permissions = data.permissions;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
     if (expiresAt !== undefined) updateData.expiresAt = expiresAt;
-    
+
     const updateQuery = this.apiKeysRepository
       .createQueryBuilder()
       .update(ApiKey)
       .set(updateData)
       .where('id = :id', { id });
-    
+
     // Organizations removed - filter by userId only
     updateQuery.andWhere('userId = :userId', { userId });
-    
+
     await updateQuery.execute();
     return this.findOne(id, userId);
   }
@@ -192,14 +205,10 @@ export class ApiKeysService {
 
     if (this.isKeyExpired(key)) {
       // Auto-deactivate expired key
-      await this.apiKeysRepository.update(
-        { keyHash },
-        { isActive: false },
-      );
+      await this.apiKeysRepository.update({ keyHash }, { isActive: false });
       throw new BadRequestException('API key has expired');
     }
 
     return key;
   }
 }
-

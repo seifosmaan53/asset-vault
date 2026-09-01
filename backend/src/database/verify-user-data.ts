@@ -16,7 +16,7 @@ config();
 
 async function verifyUserData() {
   const userEmail = process.argv[2] || 'seifosman52@gmail.com';
-  
+
   const dataSource = new DataSource({
     type: 'postgres',
     host: process.env.DB_HOST || 'localhost',
@@ -24,7 +24,16 @@ async function verifyUserData() {
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.DB_DATABASE || 'invoiceme',
-    entities: [User, Client, Invoice, InvoiceItem, InventoryItem, StockMovement, Store, StoreItemSettings],
+    entities: [
+      User,
+      Client,
+      Invoice,
+      InvoiceItem,
+      InventoryItem,
+      StockMovement,
+      Store,
+      StoreItemSettings,
+    ],
     synchronize: false,
     logging: false,
   });
@@ -40,15 +49,15 @@ async function verifyUserData() {
     const storeRepository = dataSource.getRepository(Store);
 
     // Find user
-    const user = await userRepository.findOne({ 
-      where: { email: userEmail.toLowerCase().trim() } 
+    const user = await userRepository.findOne({
+      where: { email: userEmail.toLowerCase().trim() },
     });
 
     if (!user) {
       console.error(`❌ User not found: ${userEmail}`);
       console.log('\nAvailable users:');
       const allUsers = await userRepository.find();
-      allUsers.forEach(u => console.log(`  - ${u.email} (${u.id})`));
+      allUsers.forEach((u) => console.log(`  - ${u.email} (${u.id})`));
       process.exit(1);
     }
 
@@ -57,19 +66,19 @@ async function verifyUserData() {
     console.log(`   Role: ${user.role}\n`);
 
     // Count data
-    const clients = await clientRepository.count({ 
+    const clients = await clientRepository.count({
       where: { userId: user.id },
     });
-    
-    const stores = await storeRepository.count({ 
+
+    const stores = await storeRepository.count({
       where: { userId: user.id },
     });
-    
-    const inventory = await inventoryRepository.count({ 
+
+    const inventory = await inventoryRepository.count({
       where: { userId: user.id },
     });
-    
-    const invoices = await invoiceRepository.count({ 
+
+    const invoices = await invoiceRepository.count({
       where: { userId: user.id },
     });
 
@@ -85,27 +94,33 @@ async function verifyUserData() {
       console.log(`   npm run add-data-for-user ${userEmail}\n`);
     } else {
       console.log('✅ Data exists for this user!');
-      
+
       // Show sample records
       if (clients > 0) {
-        const sampleClient = await clientRepository.findOne({ 
+        const sampleClient = await clientRepository.findOne({
           where: { userId: user.id },
         });
-        console.log(`\n   Sample Client: ${sampleClient?.name} (${sampleClient?.id})`);
+        console.log(
+          `\n   Sample Client: ${sampleClient?.name} (${sampleClient?.id})`,
+        );
       }
-      
+
       if (inventory > 0) {
-        const sampleItem = await inventoryRepository.findOne({ 
+        const sampleItem = await inventoryRepository.findOne({
           where: { userId: user.id },
         });
-        console.log(`   Sample Inventory: ${sampleItem?.sku} - ${sampleItem?.name}`);
+        console.log(
+          `   Sample Inventory: ${sampleItem?.sku} - ${sampleItem?.name}`,
+        );
       }
-      
+
       if (invoices > 0) {
-        const sampleInvoice = await invoiceRepository.findOne({ 
+        const sampleInvoice = await invoiceRepository.findOne({
           where: { userId: user.id },
         });
-        console.log(`   Sample Invoice: ${sampleInvoice?.number} (${sampleInvoice?.status})`);
+        console.log(
+          `   Sample Invoice: ${sampleInvoice?.number} (${sampleInvoice?.status})`,
+        );
       }
     }
 
@@ -121,4 +136,3 @@ async function verifyUserData() {
 }
 
 verifyUserData();
-

@@ -1,6 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import type { Repository } from 'typeorm';
 import { StoreStockValidatorService } from '../src/inventory/store-stock-validator.service';
 import { InvoicesService } from '../src/invoices/invoices.service';
 import { StoreItemSettings } from '../src/inventory/entities/store-item-settings.entity';
@@ -98,11 +99,15 @@ describe('Store Stock Validation Integration', () => {
           useValue: createMockRepository(),
         },
         {
-          provide: getRepositoryToken(require('../src/inventory/entities/stock-movement.entity').StockMovement),
+          provide: getRepositoryToken(
+            require('../src/inventory/entities/stock-movement.entity')
+              .StockMovement,
+          ),
           useValue: createMockRepository(),
         },
         {
-          provide: require('../src/user-settings/user-settings.service').UserSettingsService,
+          provide: require('../src/user-settings/user-settings.service')
+            .UserSettingsService,
           useValue: {
             getSettings: jest.fn().mockResolvedValue({}),
           },
@@ -114,7 +119,8 @@ describe('Store Stock Validation Integration', () => {
           },
         },
         {
-          provide: require('../src/invoices/invoice-pdf.service').InvoicePdfService,
+          provide: require('../src/invoices/invoice-pdf.service')
+            .InvoicePdfService,
           useValue: {
             generateInvoicePdf: jest.fn(),
           },
@@ -122,18 +128,26 @@ describe('Store Stock Validation Integration', () => {
       ],
     }).compile();
 
-    storeStockValidator = module.get<StoreStockValidatorService>(StoreStockValidatorService);
+    storeStockValidator = module.get<StoreStockValidatorService>(
+      StoreStockValidatorService,
+    );
     invoicesService = module.get<InvoicesService>(InvoicesService);
-    storeItemSettingsService = module.get<StoreItemSettingsService>(StoreItemSettingsService);
+    storeItemSettingsService = module.get<StoreItemSettingsService>(
+      StoreItemSettingsService,
+    );
     storeService = module.get<StoreService>(StoreService);
     inventoryService = module.get<InventoryService>(InventoryService);
 
     storeRepository = module.get<Repository<Store>>(getRepositoryToken(Store));
-    inventoryRepository = module.get<Repository<InventoryItem>>(getRepositoryToken(InventoryItem));
+    inventoryRepository = module.get<Repository<InventoryItem>>(
+      getRepositoryToken(InventoryItem),
+    );
     storeItemSettingsRepository = module.get<Repository<StoreItemSettings>>(
       getRepositoryToken(StoreItemSettings),
     );
-    invoiceRepository = module.get<Repository<Invoice>>(getRepositoryToken(Invoice));
+    invoiceRepository = module.get<Repository<Invoice>>(
+      getRepositoryToken(Invoice),
+    );
   });
 
   afterEach(() => {
@@ -142,7 +156,12 @@ describe('Store Stock Validation Integration', () => {
 
   describe('Invoice Creation with Store Stock Validation', () => {
     it('should prevent invoice creation when store stock is insufficient', async () => {
-      const mockStore = { id: storeId, userId, name: 'Test Store', active: true };
+      const mockStore = {
+        id: storeId,
+        userId,
+        name: 'Test Store',
+        active: true,
+      };
       const mockInventoryItem = {
         id: inventoryItemId,
         userId,
@@ -157,8 +176,12 @@ describe('Store Stock Validation Integration', () => {
       };
 
       (storeRepository.findOne as jest.Mock).mockResolvedValue(mockStore);
-      (inventoryRepository.findOne as jest.Mock).mockResolvedValue(mockInventoryItem);
-      (storeItemSettingsRepository.findOne as jest.Mock).mockResolvedValue(mockSettings);
+      (inventoryRepository.findOne as jest.Mock).mockResolvedValue(
+        mockInventoryItem,
+      );
+      (storeItemSettingsRepository.findOne as jest.Mock).mockResolvedValue(
+        mockSettings,
+      );
 
       const invoiceData = {
         clientId,
@@ -189,7 +212,12 @@ describe('Store Stock Validation Integration', () => {
     });
 
     it('should allow invoice creation when store stock is sufficient', async () => {
-      const mockStore = { id: storeId, userId, name: 'Test Store', active: true };
+      const mockStore = {
+        id: storeId,
+        userId,
+        name: 'Test Store',
+        active: true,
+      };
       const mockInventoryItem = {
         id: inventoryItemId,
         userId,
@@ -204,8 +232,12 @@ describe('Store Stock Validation Integration', () => {
       };
 
       (storeRepository.findOne as jest.Mock).mockResolvedValue(mockStore);
-      (inventoryRepository.findOne as jest.Mock).mockResolvedValue(mockInventoryItem);
-      (storeItemSettingsRepository.findOne as jest.Mock).mockResolvedValue(mockSettings);
+      (inventoryRepository.findOne as jest.Mock).mockResolvedValue(
+        mockInventoryItem,
+      );
+      (storeItemSettingsRepository.findOne as jest.Mock).mockResolvedValue(
+        mockSettings,
+      );
 
       const invoiceData = {
         clientId,
@@ -228,7 +260,9 @@ describe('Store Stock Validation Integration', () => {
 
       (storeService.findOne as jest.Mock).mockResolvedValue(mockStore);
       (invoiceRepository.count as jest.Mock).mockResolvedValue(0);
-      (invoiceRepository.manager.connection.createQueryRunner as jest.Mock).mockReturnValue({
+      (
+        invoiceRepository.manager.connection.createQueryRunner as jest.Mock
+      ).mockReturnValue({
         connect: jest.fn().mockResolvedValue(undefined),
         startTransaction: jest.fn().mockResolvedValue(undefined),
         commitTransaction: jest.fn().mockResolvedValue(undefined),
@@ -243,14 +277,20 @@ describe('Store Stock Validation Integration', () => {
       });
 
       // Should not throw
-      await expect(invoicesService.create(userId, invoiceData)).resolves.toBeDefined();
+      await expect(
+        invoicesService.create(userId, invoiceData),
+      ).resolves.toBeDefined();
     });
   });
 
   describe('Store Stock Validation Edge Cases', () => {
     it('should handle zero stock correctly', async () => {
       const mockStore = { id: storeId, userId, name: 'Test Store' };
-      const mockInventoryItem = { id: inventoryItemId, userId, name: 'Test Item' };
+      const mockInventoryItem = {
+        id: inventoryItemId,
+        userId,
+        name: 'Test Item',
+      };
       const mockSettings = {
         storeId,
         inventoryItemId,
@@ -258,8 +298,12 @@ describe('Store Stock Validation Integration', () => {
       };
 
       (storeRepository.findOne as jest.Mock).mockResolvedValue(mockStore);
-      (inventoryItemRepository.findOne as jest.Mock).mockResolvedValue(mockInventoryItem);
-      (storeItemSettingsRepository.findOne as jest.Mock).mockResolvedValue(mockSettings);
+      (inventoryItemRepository.findOne as jest.Mock).mockResolvedValue(
+        mockInventoryItem,
+      );
+      (storeItemSettingsRepository.findOne as jest.Mock).mockResolvedValue(
+        mockSettings,
+      );
 
       const result = await storeStockValidator.validateStoreStockAvailability(
         storeId,
@@ -275,11 +319,19 @@ describe('Store Stock Validation Integration', () => {
 
     it('should handle missing store item settings (defaults to 0)', async () => {
       const mockStore = { id: storeId, userId, name: 'Test Store' };
-      const mockInventoryItem = { id: inventoryItemId, userId, name: 'Test Item' };
+      const mockInventoryItem = {
+        id: inventoryItemId,
+        userId,
+        name: 'Test Item',
+      };
 
       (storeRepository.findOne as jest.Mock).mockResolvedValue(mockStore);
-      (inventoryItemRepository.findOne as jest.Mock).mockResolvedValue(mockInventoryItem);
-      (storeItemSettingsRepository.findOne as jest.Mock).mockResolvedValue(null);
+      (inventoryItemRepository.findOne as jest.Mock).mockResolvedValue(
+        mockInventoryItem,
+      );
+      (storeItemSettingsRepository.findOne as jest.Mock).mockResolvedValue(
+        null,
+      );
 
       const availableStock = await storeStockValidator.getAvailableStoreStock(
         storeId,
@@ -291,4 +343,3 @@ describe('Store Stock Validation Integration', () => {
     });
   });
 });
-

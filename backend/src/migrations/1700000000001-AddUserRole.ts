@@ -1,4 +1,5 @@
-import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
+import { TableColumn } from 'typeorm';
 
 export class AddUserRole1700000000001 implements MigrationInterface {
   name = 'AddUserRole1700000000001';
@@ -39,4 +40,3 @@ export class AddUserRole1700000000001 implements MigrationInterface {
     await queryRunner.query(`DROP TYPE IF EXISTS "user_role_enum"`);
   }
 }
-

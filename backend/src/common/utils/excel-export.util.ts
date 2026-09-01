@@ -15,16 +15,18 @@ export interface ExcelSheet {
 /**
  * Create an Excel workbook with multiple sheets
  */
-export async function createExcelWorkbook(options: ExcelExportOptions): Promise<Buffer> {
+export async function createExcelWorkbook(
+  options: ExcelExportOptions,
+): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
-  
+
   if (!options.sheets || options.sheets.length === 0) {
     throw new Error('At least one sheet is required');
   }
 
   for (const sheetConfig of options.sheets) {
     const worksheet = workbook.addWorksheet(sheetConfig.name);
-    
+
     // Add headers if provided
     if (sheetConfig.headers && sheetConfig.headers.length > 0) {
       const headerRow = worksheet.addRow(sheetConfig.headers);
@@ -92,4 +94,3 @@ export function formatDateForExcel(date: Date | string): Date {
   }
   return date;
 }
-

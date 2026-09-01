@@ -69,7 +69,11 @@ export class OrganizationsController {
   @Post()
   async create(@Request() req, @Body() dto: CreateOrganizationDto) {
     try {
-      const result = await this.organizationsService.create(dto.name, req.user.userId, dto.companyName);
+      const result = await this.organizationsService.create(
+        dto.name,
+        req.user.userId,
+        dto.companyName,
+      );
       return result;
     } catch (error: any) {
       throw error;
@@ -88,9 +92,17 @@ export class OrganizationsController {
 
   @Patch(':id')
   @Roles(UserRole.ADMIN, UserRole.OWNER) // FIX Issue #44: Only ADMIN/OWNER can update organizations
-  async update(@Param('id') id: string, @Request() req, @Body() dto: UpdateOrganizationDto) {
+  async update(
+    @Param('id') id: string,
+    @Request() req,
+    @Body() dto: UpdateOrganizationDto,
+  ) {
     try {
-      const result = await this.organizationsService.update(id, req.user.userId, dto);
+      const result = await this.organizationsService.update(
+        id,
+        req.user.userId,
+        dto,
+      );
       return result;
     } catch (error: any) {
       throw error;
@@ -112,9 +124,18 @@ export class OrganizationsController {
 
   @Post(':id/users')
   @Roles(UserRole.ADMIN, UserRole.OWNER) // FIX Issue #44: Only ADMIN/OWNER can add users to organizations
-  async addUser(@Param('id') id: string, @Request() req, @Body() dto: AddUserToOrganizationDto) {
+  async addUser(
+    @Param('id') id: string,
+    @Request() req,
+    @Body() dto: AddUserToOrganizationDto,
+  ) {
     try {
-      const result = await this.organizationsService.addUserToOrganization(id, dto.userId, dto.role, req.user.userId);
+      const result = await this.organizationsService.addUserToOrganization(
+        id,
+        dto.userId,
+        dto.role,
+        req.user.userId,
+      );
       return result;
     } catch (error: any) {
       throw error;
@@ -130,7 +151,12 @@ export class OrganizationsController {
     @Body() dto: UpdateUserRoleDto,
   ) {
     try {
-      const result = await this.organizationsService.updateUserRole(id, userId, dto.role, req.user.userId);
+      const result = await this.organizationsService.updateUserRole(
+        id,
+        userId,
+        dto.role,
+        req.user.userId,
+      );
       return result;
     } catch (error: any) {
       throw error;
@@ -139,8 +165,16 @@ export class OrganizationsController {
 
   @Delete(':id/users/:userId')
   @Roles(UserRole.ADMIN, UserRole.OWNER) // FIX Issue #44: Only ADMIN/OWNER can remove users from organizations
-  async removeUser(@Param('id') id: string, @Param('userId') userId: string, @Request() req) {
-    await this.organizationsService.removeUserFromOrganization(id, userId, req.user.userId);
+  async removeUser(
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+    @Request() req,
+  ) {
+    await this.organizationsService.removeUserFromOrganization(
+      id,
+      userId,
+      req.user.userId,
+    );
     return { message: 'User removed from organization successfully' };
   }
 
@@ -149,9 +183,8 @@ export class OrganizationsController {
     // Ensure user has an organization (creates one if missing)
     // This handles edge cases where guard didn't create it or webhook failed
     await this.organizationsService.ensureUserHasOrganization(req.user.userId);
-    
+
     // Return user's organizations
     return this.organizationsService.getUserOrganizations(req.user.userId);
   }
 }
-

@@ -1,6 +1,8 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddInventoryEnhancements1734000000000 implements MigrationInterface {
+export class AddInventoryEnhancements1734000000000
+  implements MigrationInterface
+{
   name = 'AddInventoryEnhancements1734000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -169,4 +171,3 @@ export class AddInventoryEnhancements1734000000000 implements MigrationInterface
     `);
   }
 }
-

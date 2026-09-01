@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class ExpandUserSettings1733600000000 implements MigrationInterface {
   name = 'ExpandUserSettings1733600000000';
@@ -233,4 +233,3 @@ export class ExpandUserSettings1733600000000 implements MigrationInterface {
     }
   }
 }
-

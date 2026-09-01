@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddPrintSpecsAndShape1741000000000 implements MigrationInterface {
   name = 'AddPrintSpecsAndShape1741000000000';
@@ -55,4 +55,3 @@ export class AddPrintSpecsAndShape1741000000000 implements MigrationInterface {
     `);
   }
 }
-

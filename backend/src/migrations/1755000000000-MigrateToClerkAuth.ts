@@ -1,6 +1,7 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { MigrationInterface, QueryRunner, TableColumn, TableIndex } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
+import { TableColumn, TableIndex } from 'typeorm';
 
 export class MigrateToClerkAuth1755000000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -122,4 +123,3 @@ export class MigrateToClerkAuth1755000000000 implements MigrationInterface {
     await queryRunner.dropColumn('users', 'clerkUserId');
   }
 }
-

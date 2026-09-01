@@ -61,4 +61,3 @@ export class DeleteInvoiceResponseDto {
   })
   message: string;
 }
-

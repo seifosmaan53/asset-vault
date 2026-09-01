@@ -38,7 +38,10 @@ export class ClientsRouter {
   }
 }
 
-export function clientsRouter(trpc: TrpcService, clientsService: ClientsService) {
+export function clientsRouter(
+  trpc: TrpcService,
+  clientsService: ClientsService,
+) {
   const router = new ClientsRouter(clientsService);
   return router.createRouter(trpc);
 }

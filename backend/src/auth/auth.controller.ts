@@ -11,7 +11,13 @@ import {
 import type { RawBodyRequest } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiOkResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiOkResponse,
+} from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { UpdateProfileDto, ChangePasswordDto } from './dto';
 import {
@@ -37,9 +43,10 @@ export class AuthController {
   @Public()
   @Throttle({ default: { limit: 100, ttl: 60000 } }) // Higher limit for webhooks
   @Post('webhooks/clerk')
-  @ApiOperation({ 
-    summary: 'Clerk webhook endpoint', 
-    description: 'Receives webhooks from Clerk for user events (created, updated, deleted).' 
+  @ApiOperation({
+    summary: 'Clerk webhook endpoint',
+    description:
+      'Receives webhooks from Clerk for user events (created, updated, deleted).',
   })
   async handleClerkWebhook(
     @Req() req: RawBodyRequest<Request>,
@@ -66,11 +73,14 @@ export class AuthController {
   @Post('logout')
   @UseGuards(ClerkAuthGuard)
   @ApiBearerAuth('Bearer')
-  @ApiOperation({ 
-    summary: 'Logout', 
-    description: 'Logout the current user. Clerk handles session management.' 
+  @ApiOperation({
+    summary: 'Logout',
+    description: 'Logout the current user. Clerk handles session management.',
   })
-  @ApiOkResponse({ type: MessageResponseDto, description: 'Logged out successfully' })
+  @ApiOkResponse({
+    type: MessageResponseDto,
+    description: 'Logged out successfully',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async logout(@Req() req: AuthenticatedRequest) {
     return { message: 'Logged out successfully' };
@@ -79,8 +89,14 @@ export class AuthController {
   @Get('profile')
   @UseGuards(ClerkAuthGuard)
   @ApiBearerAuth('Bearer')
-  @ApiOperation({ summary: 'Get user profile', description: 'Retrieve the authenticated user\'s profile information.' })
-  @ApiOkResponse({ type: UserProfileResponseDto, description: 'Profile retrieved successfully' })
+  @ApiOperation({
+    summary: 'Get user profile',
+    description: "Retrieve the authenticated user's profile information.",
+  })
+  @ApiOkResponse({
+    type: UserProfileResponseDto,
+    description: 'Profile retrieved successfully',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getProfile(@Req() req: AuthenticatedRequest) {
     return this.authService.getProfile(req.user.userId);
@@ -89,11 +105,24 @@ export class AuthController {
   @Patch('profile')
   @UseGuards(ClerkAuthGuard)
   @ApiBearerAuth('Bearer')
-  @ApiOperation({ summary: 'Update user profile', description: 'Update the authenticated user\'s profile information. Only whitelisted fields (name, companyName, phone, address, timezone, bio) can be updated.' })
-  @ApiOkResponse({ type: UserProfileResponseDto, description: 'Profile updated successfully' })
-  @ApiResponse({ status: 400, description: 'Bad request - validation error or non-whitelisted field' })
+  @ApiOperation({
+    summary: 'Update user profile',
+    description:
+      "Update the authenticated user's profile information. Only whitelisted fields (name, companyName, phone, address, timezone, bio) can be updated.",
+  })
+  @ApiOkResponse({
+    type: UserProfileResponseDto,
+    description: 'Profile updated successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad request - validation error or non-whitelisted field',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async updateProfile(@Req() req: AuthenticatedRequest, @Body() dto: UpdateProfileDto) {
+  async updateProfile(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: UpdateProfileDto,
+  ) {
     try {
       const result = await this.authService.updateProfile(req.user.userId, dto);
       return result;
@@ -105,20 +134,29 @@ export class AuthController {
   @Post('change-password')
   @UseGuards(ClerkAuthGuard)
   @ApiBearerAuth('Bearer')
-  @ApiOperation({ 
-    summary: 'Change password', 
-    description: 'Change the user\'s password. Note: With Clerk authentication, password changes are handled through Clerk\'s frontend SDK. This endpoint validates the request and returns success.' 
+  @ApiOperation({
+    summary: 'Change password',
+    description:
+      "Change the user's password. Note: With Clerk authentication, password changes are handled through Clerk's frontend SDK. This endpoint validates the request and returns success.",
   })
-  @ApiOkResponse({ type: MessageResponseDto, description: 'Password change request processed successfully' })
+  @ApiOkResponse({
+    type: MessageResponseDto,
+    description: 'Password change request processed successfully',
+  })
   @ApiResponse({ status: 400, description: 'Bad request - validation error' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async changePassword(@Req() req: AuthenticatedRequest, @Body() dto: ChangePasswordDto) {
+  async changePassword(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: ChangePasswordDto,
+  ) {
     try {
-      const result = await this.authService.changePassword(req.user.userId, dto);
+      const result = await this.authService.changePassword(
+        req.user.userId,
+        dto,
+      );
       return result;
     } catch (error: any) {
       throw error;
     }
   }
 }
-

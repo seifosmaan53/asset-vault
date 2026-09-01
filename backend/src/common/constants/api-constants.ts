@@ -3,7 +3,7 @@
 /**
  * API Constants
  * Fixes Issue #77: Missing Constants Extraction
- * 
+ *
  * Centralized constants for API configuration
  */
 
@@ -48,7 +48,12 @@ export const API_CONSTANTS = {
 
   // File Upload
   MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB in bytes
-  ALLOWED_FILE_TYPES: ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'],
+  ALLOWED_FILE_TYPES: [
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'application/pdf',
+  ],
 
   // Debouncing
   SEARCH_DEBOUNCE_DELAY: 300, // milliseconds
@@ -61,4 +66,3 @@ export const API_CONSTANTS = {
   NETWORK_MAX_RETRIES: 3,
   NETWORK_BASE_DELAY: 1000, // milliseconds
 } as const;
-

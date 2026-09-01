@@ -49,4 +49,3 @@ export class InvoiceStatusHistory {
   @Column({ type: 'text', nullable: true })
   note: string; // Optional note explaining the status change
 }
-

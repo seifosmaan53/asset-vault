@@ -10,10 +10,15 @@ export class UsersService {
     private usersRepository: Repository<User>,
   ) {}
 
-  async createFromClerk(data: { clerkUserId: string; email: string; name: string; companyName?: string }): Promise<User> {
+  async createFromClerk(data: {
+    clerkUserId: string;
+    email: string;
+    name: string;
+    companyName?: string;
+  }): Promise<User> {
     // Normalize email to lowercase
     const normalizedEmail = data.email.toLowerCase().trim();
-    
+
     // Check if user with this email already exists
     const existingUser = await this.findByEmail(normalizedEmail);
     if (existingUser) {
@@ -23,9 +28,11 @@ export class UsersService {
         return this.usersRepository.save(existingUser);
       }
       // If user exists with different clerkUserId, throw error
-      throw new Error(`User with email ${normalizedEmail} already exists with different Clerk ID`);
+      throw new Error(
+        `User with email ${normalizedEmail} already exists with different Clerk ID`,
+      );
     }
-    
+
     const user = this.usersRepository.create({
       clerkUserId: data.clerkUserId,
       email: normalizedEmail,
@@ -34,7 +41,7 @@ export class UsersService {
       emailVerified: true, // Clerk handles email verification
       role: UserRole.OWNER, // All new users get owner privileges
     });
-    
+
     try {
       return await this.usersRepository.save(user);
     } catch (error: any) {
@@ -84,7 +91,6 @@ export class UsersService {
     return user;
   }
 
-
   async findAll(): Promise<User[]> {
     return this.usersRepository.find();
   }
@@ -93,4 +99,3 @@ export class UsersService {
     await this.usersRepository.delete(id);
   }
 }
-

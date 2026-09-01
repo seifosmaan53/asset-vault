@@ -20,30 +20,41 @@ async function checkDemoData() {
 
   try {
     await dataSource.initialize();
-    
+
     const userRepository = dataSource.getRepository(User);
     const clientRepository = dataSource.getRepository(Client);
-    
+
     // Check if demo user exists
-    const demoUser = await userRepository.findOne({ where: { email: 'demo@example.com' } });
-    
+    const demoUser = await userRepository.findOne({
+      where: { email: 'demo@example.com' },
+    });
+
     if (!demoUser) {
       console.log('NO_DEMO_DATA');
       await dataSource.destroy();
       process.exit(0);
     }
-    
+
     // Check if demo user has demo clients (indicating demo data exists)
-    const demoClients = await clientRepository.find({ where: { userId: demoUser.id } });
-    const demoClientNames = ['Acme Corporation', 'Tech Solutions Ltd', 'Global Enterprises', 'Small Business Co'];
-    const hasDemoClients = demoClients.some(client => demoClientNames.includes(client.name));
-    
+    const demoClients = await clientRepository.find({
+      where: { userId: demoUser.id },
+    });
+    const demoClientNames = [
+      'Acme Corporation',
+      'Tech Solutions Ltd',
+      'Global Enterprises',
+      'Small Business Co',
+    ];
+    const hasDemoClients = demoClients.some((client) =>
+      demoClientNames.includes(client.name),
+    );
+
     if (hasDemoClients) {
       console.log('DEMO_DATA_EXISTS');
     } else {
       console.log('DEMO_USER_ONLY');
     }
-    
+
     await dataSource.destroy();
     process.exit(0);
   } catch (error) {
@@ -59,4 +70,3 @@ async function checkDemoData() {
 }
 
 checkDemoData();
-

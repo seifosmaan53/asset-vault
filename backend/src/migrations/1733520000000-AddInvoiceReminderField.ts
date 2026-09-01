@@ -1,6 +1,9 @@
-import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
+import { TableColumn } from 'typeorm';
 
-export class AddInvoiceReminderField1733520000000 implements MigrationInterface {
+export class AddInvoiceReminderField1733520000000
+  implements MigrationInterface
+{
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.addColumn(
       'invoices',
@@ -16,4 +19,3 @@ export class AddInvoiceReminderField1733520000000 implements MigrationInterface 
     await queryRunner.dropColumn('invoices', 'lastReminderSentAt');
   }
 }
-

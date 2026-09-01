@@ -18,7 +18,11 @@ export class UsageService {
     private usageRepository: Repository<Usage>,
   ) {}
 
-  async trackUsage(userId: string, metric: UsageMetric, amount: number = 1): Promise<Usage> {
+  async trackUsage(
+    userId: string,
+    metric: UsageMetric,
+    amount: number = 1,
+  ): Promise<Usage> {
     const now = new Date();
     const periodStart = startOfMonth(now);
     const periodEnd = endOfMonth(now);
@@ -46,7 +50,11 @@ export class UsageService {
     return this.usageRepository.save(usage);
   }
 
-  async getUsage(userId: string, metric: UsageMetric, period?: Date): Promise<number> {
+  async getUsage(
+    userId: string,
+    metric: UsageMetric,
+    period?: Date,
+  ): Promise<number> {
     const targetDate = period || new Date();
     const periodStart = startOfMonth(targetDate);
 
@@ -61,7 +69,11 @@ export class UsageService {
     return usage?.count || 0;
   }
 
-  async checkQuota(userId: string, metric: UsageMetric, limit: number | null): Promise<boolean> {
+  async checkQuota(
+    userId: string,
+    metric: UsageMetric,
+    limit: number | null,
+  ): Promise<boolean> {
     // If limit is null, it means unlimited
     if (limit === null) {
       return true;
@@ -79,10 +91,15 @@ export class UsageService {
       periodStart,
     });
 
-    this.logger.log(`Reset usage for user ${userId} for period ${periodStart.toISOString()}`);
+    this.logger.log(
+      `Reset usage for user ${userId} for period ${periodStart.toISOString()}`,
+    );
   }
 
-  async getAllUsage(userId: string, period?: Date): Promise<Record<UsageMetric, number>> {
+  async getAllUsage(
+    userId: string,
+    period?: Date,
+  ): Promise<Record<UsageMetric, number>> {
     const targetDate = period || new Date();
     const periodStart = startOfMonth(targetDate);
 
@@ -108,4 +125,3 @@ export class UsageService {
     return usageMap;
   }
 }
-

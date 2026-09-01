@@ -33,4 +33,3 @@ import { OrganizationsModule } from '../organizations/organizations.module';
   exports: [SampleDataService],
 })
 export class SampleDataModule {}
-

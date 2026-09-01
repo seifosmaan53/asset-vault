@@ -7,10 +7,10 @@ async function revertMigration() {
   try {
     await AppDataSource.initialize();
     console.log('Database connection established');
-    
+
     await AppDataSource.undoLastMigration();
     console.log('Last migration reverted');
-    
+
     await AppDataSource.destroy();
     console.log('Migration revert completed');
     process.exit(0);
@@ -21,4 +21,3 @@ async function revertMigration() {
 }
 
 revertMigration();
-

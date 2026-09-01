@@ -85,9 +85,23 @@ export class Invoice {
   paymentMethodNote: string;
 
   @Column({ type: 'varchar', nullable: true })
-  paymentMethod: 'cash' | 'card' | 'bank_transfer' | 'check' | 'paypal' | 'stripe' | 'other' | null;
+  paymentMethod:
+    | 'cash'
+    | 'card'
+    | 'bank_transfer'
+    | 'check'
+    | 'paypal'
+    | 'stripe'
+    | 'other'
+    | null;
 
-  @Column({ type: 'decimal', precision: 12, scale: 4, nullable: true, default: 0 })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 4,
+    nullable: true,
+    default: 0,
+  })
   amountPaid: number; // For partial payments
 
   @Column({ type: 'timestamp', nullable: true })
@@ -105,4 +119,3 @@ export class Invoice {
   @DeleteDateColumn()
   deletedAt: Date;
 }
-

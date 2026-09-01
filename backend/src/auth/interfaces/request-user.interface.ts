@@ -1,4 +1,4 @@
-import { UserRole } from '../../users/entities/user.entity';
+import type { UserRole } from '../../users/entities/user.entity';
 
 /**
  * Standardized shape for req.user across all auth endpoints
@@ -9,4 +9,3 @@ export interface RequestUser {
   email: string;
   role: UserRole;
 }
-

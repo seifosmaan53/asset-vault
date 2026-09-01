@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddUserSettings1700000000002 implements MigrationInterface {
   name = 'AddUserSettings1700000000002';
@@ -34,4 +34,3 @@ export class AddUserSettings1700000000002 implements MigrationInterface {
     await queryRunner.query(`DROP TABLE IF EXISTS "user_settings"`);
   }
 }
-

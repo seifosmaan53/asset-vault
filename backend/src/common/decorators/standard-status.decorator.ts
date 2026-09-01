@@ -7,10 +7,11 @@ export const STANDARD_STATUS_KEY = 'standardStatus';
 /**
  * Standard Status Code Decorator
  * Fixes Issue #66: Missing API Response Status Code Standardization
- * 
+ *
  * Ensures consistent HTTP status codes across endpoints
  */
-export const StandardStatus = (status: number) => SetMetadata(STANDARD_STATUS_KEY, status);
+export const StandardStatus = (status: number) =>
+  SetMetadata(STANDARD_STATUS_KEY, status);
 
 /**
  * Standard status codes for common operations
@@ -27,4 +28,3 @@ export const StandardStatusCodes = {
   TOO_MANY_REQUESTS: 429,
   INTERNAL_SERVER_ERROR: 500,
 } as const;
-

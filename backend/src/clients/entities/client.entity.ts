@@ -62,4 +62,3 @@ export class Client {
   @DeleteDateColumn()
   deletedAt: Date;
 }
-

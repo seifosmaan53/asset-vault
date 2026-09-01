@@ -197,4 +197,3 @@ export class UserSettings {
   @UpdateDateColumn()
   updatedAt: Date;
 }
-

@@ -12,22 +12,37 @@ export class InvoiceStatsResponseDto {
   @ApiProperty({ description: 'Total number of invoices', example: 150 })
   totalCount: number;
 
-  @ApiProperty({ description: 'Number of unpaid invoices (sent status)', example: 25 })
+  @ApiProperty({
+    description: 'Number of unpaid invoices (sent status)',
+    example: 25,
+  })
   unpaidCount: number;
 
-  @ApiProperty({ description: 'Total amount of unpaid invoices', example: 15000.00 })
+  @ApiProperty({
+    description: 'Total amount of unpaid invoices',
+    example: 15000.0,
+  })
   unpaidAmount: number;
 
   @ApiProperty({ description: 'Number of overdue invoices', example: 10 })
   overdueCount: number;
 
-  @ApiProperty({ description: 'Total amount of overdue invoices', example: 5000.00 })
+  @ApiProperty({
+    description: 'Total amount of overdue invoices',
+    example: 5000.0,
+  })
   overdueAmount: number;
 
-  @ApiProperty({ description: 'Total revenue from paid invoices in current month', example: 12000.00 })
+  @ApiProperty({
+    description: 'Total revenue from paid invoices in current month',
+    example: 12000.0,
+  })
   monthlyTotal: number;
 
-  @ApiProperty({ description: 'Total revenue from all invoices', example: 70000.00 })
+  @ApiProperty({
+    description: 'Total revenue from all invoices',
+    example: 70000.0,
+  })
   totalAmount: number;
 
   @ApiProperty({
@@ -37,4 +52,3 @@ export class InvoiceStatsResponseDto {
   })
   message?: string;
 }
-

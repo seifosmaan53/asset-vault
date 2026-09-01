@@ -1,9 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { InvoicesController } from './invoices.controller';
 import { InvoicesService } from './invoices.service';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { QuotaGuard } from '../subscriptions/quota.guard';
-import { ExecutionContext } from '@nestjs/common';
+import type { ExecutionContext } from '@nestjs/common';
 
 /* The override targeted AuthGuard('jwt') — the Passport guard this controller used
    before authentication moved to Clerk. Nest therefore tried to construct the REAL
@@ -143,7 +144,11 @@ describe('InvoicesController', () => {
       } as any);
 
       expect(result.data).toEqual(mockInvoice);
-      expect(service.update).toHaveBeenCalledWith('invoice-1', 'user-123', updateDto);
+      expect(service.update).toHaveBeenCalledWith(
+        'invoice-1',
+        'user-123',
+        updateDto,
+      );
     });
   });
 
@@ -182,14 +187,19 @@ describe('InvoicesController', () => {
   describe('convert', () => {
     it('should convert estimate to invoice', async () => {
       const mockInvoice = { id: 'invoice-1', type: 'invoice' };
-      mockInvoicesService.convertEstimateToInvoice.mockResolvedValue(mockInvoice);
+      mockInvoicesService.convertEstimateToInvoice.mockResolvedValue(
+        mockInvoice,
+      );
 
       const result = await controller.convert('estimate-1', {
         user: { userId: 'user-123' },
       } as any);
 
       expect(result).toEqual(mockInvoice);
-      expect(service.convertEstimateToInvoice).toHaveBeenCalledWith('estimate-1', 'user-123');
+      expect(service.convertEstimateToInvoice).toHaveBeenCalledWith(
+        'estimate-1',
+        'user-123',
+      );
     });
   });
 
@@ -205,8 +215,11 @@ describe('InvoicesController', () => {
       } as any);
 
       expect(result).toEqual(mockResponse);
-      expect(service.sendEmail).toHaveBeenCalledWith('invoice-1', 'user-123', emailOptions);
+      expect(service.sendEmail).toHaveBeenCalledWith(
+        'invoice-1',
+        'user-123',
+        emailOptions,
+      );
     });
   });
 });
-

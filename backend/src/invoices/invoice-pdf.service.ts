@@ -52,17 +52,24 @@ export class InvoicePdfService {
 
     try {
       const pdfBuffer = await this.puppeteerService.generatePdfFromHtml(html);
-      this.logger.log(`PDF generated successfully for invoice ${invoice.number}`);
+      this.logger.log(
+        `PDF generated successfully for invoice ${invoice.number}`,
+      );
       return pdfBuffer;
     } catch (error) {
-      this.logger.error(`Failed to generate PDF for invoice ${invoice.number}:`, error);
+      this.logger.error(
+        `Failed to generate PDF for invoice ${invoice.number}:`,
+        error,
+      );
       throw error;
     }
   }
 
   private buildInvoiceHtml(invoice: Invoice, settings?: any): string {
-    const itemsHtml = invoice.items?.map(item => {
-      return `
+    const itemsHtml =
+      invoice.items
+        ?.map((item) => {
+          return `
       <tr>
         <td style="padding: 12px; border-bottom: 1px solid #e0e0e0;">
           ${this.escapeHtml(item.description || 'N/A')}
@@ -74,10 +81,16 @@ export class InvoicePdfService {
         <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; text-align: right; font-weight: bold;">${this.formatCurrency(item.lineTotal, invoice.currency)}</td>
       </tr>
     `;
-    }).join('') || '<tr><td colspan="6" style="padding: 12px; text-align: center; border-bottom: 1px solid #e0e0e0;">No items</td></tr>';
+        })
+        .join('') ||
+      '<tr><td colspan="6" style="padding: 12px; text-align: center; border-bottom: 1px solid #e0e0e0;">No items</td></tr>';
 
     // Use company info from settings, fallback to user entity
-    const companyName = settings?.companyName || invoice.user?.companyName || invoice.user?.name || 'Asset Vault';
+    const companyName =
+      settings?.companyName ||
+      invoice.user?.companyName ||
+      invoice.user?.name ||
+      'Asset Vault';
     const companyAddress = settings?.companyAddress || '';
     const companyPhone = settings?.companyPhone || '';
     const companyEmail = settings?.companyEmail || '';
@@ -85,13 +98,17 @@ export class InvoicePdfService {
     const companyTaxId = settings?.companyTaxId || '';
     const companyRegistrationNumber = settings?.companyRegistrationNumber || '';
     const companyVatNumber = settings?.companyVatNumber || '';
-    
+
     // Use date format from settings
     const dateFormat = this.getDateFormat(settings?.dateFormat);
     const issueDate = this.formatDate(invoice.issueDate, dateFormat);
-    const dueDate = invoice.dueDate ? this.formatDate(invoice.dueDate, dateFormat) : null;
-    const paidDate = invoice.paidAt ? this.formatDate(invoice.paidAt, dateFormat) : null;
-    
+    const dueDate = invoice.dueDate
+      ? this.formatDate(invoice.dueDate, dateFormat)
+      : null;
+    const paidDate = invoice.paidAt
+      ? this.formatDate(invoice.paidAt, dateFormat)
+      : null;
+
     // Invoice customization
     const invoiceHeaderText = settings?.invoiceHeaderText || '';
     const invoiceFooterText = settings?.invoiceFooterText || '';
@@ -320,18 +337,26 @@ export class InvoicePdfService {
           </div>
         </div>
 
-        ${invoice.notes ? `
+        ${
+          invoice.notes
+            ? `
           <div class="notes">
             <h3>Notes</h3>
             <p>${this.escapeHtml(invoice.notes)}</p>
           </div>
-        ` : ''}
-        ${invoice.metadataJson?.terms ? `
+        `
+            : ''
+        }
+        ${
+          invoice.metadataJson?.terms
+            ? `
           <div class="notes">
             <h3>Terms & Conditions</h3>
             <p>${this.escapeHtml(invoice.metadataJson.terms)}</p>
           </div>
-        ` : ''}
+        `
+            : ''
+        }
         ${invoiceFooterText ? `<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; text-align: center; color: #666; font-size: 12px;">${this.escapeHtml(invoiceFooterText)}</div>` : ''}
       </body>
       </html>
@@ -368,7 +393,10 @@ export class InvoicePdfService {
     return formatMap[userFormat || 'MM/DD/YYYY'] || 'MMM dd, yyyy';
   }
 
-  private formatDate(date: Date | string, formatStr: string = 'MMM dd, yyyy'): string {
+  private formatDate(
+    date: Date | string,
+    formatStr: string = 'MMM dd, yyyy',
+  ): string {
     try {
       const d = typeof date === 'string' ? parseISO(date) : date;
       if (!isValid(d)) return '';
@@ -378,4 +406,3 @@ export class InvoicePdfService {
     }
   }
 }
-

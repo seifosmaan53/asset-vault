@@ -1,6 +1,6 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { DataSource } from 'typeorm';
+import type { DataSource } from 'typeorm';
 
 /**
  * Transaction utility with configurable isolation levels
@@ -47,4 +47,3 @@ export const IsolationLevels = {
   REPEATABLE_READ: IsolationLevel.REPEATABLE_READ,
   SERIALIZABLE: IsolationLevel.SERIALIZABLE,
 };
-

@@ -1,4 +1,5 @@
-import { DataSource, Repository, In } from 'typeorm';
+import type { DataSource, Repository } from 'typeorm';
+import { In } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Client } from '../clients/entities/client.entity';
@@ -15,7 +16,7 @@ import { OrganizationRole } from '../organizations/entities/organization-role.en
 
 /**
  * Seed database with demo data for demo@example.com account ONLY.
- * 
+ *
  * IMPORTANT SAFETY GUARANTEES:
  * 1. Only works with demo@example.com - NEVER touches other users' data
  * 2. Only manages seed data (identified by specific names/SKUs)
@@ -25,19 +26,30 @@ import { OrganizationRole } from '../organizations/entities/organization-role.en
 export async function seedDatabase(dataSource: DataSource) {
   const userRepository: Repository<User> = dataSource.getRepository(User);
   const clientRepository: Repository<Client> = dataSource.getRepository(Client);
-  const inventoryRepository: Repository<InventoryItem> = dataSource.getRepository(InventoryItem);
-  const invoiceRepository: Repository<Invoice> = dataSource.getRepository(Invoice);
-  const invoiceItemRepository: Repository<InvoiceItem> = dataSource.getRepository(InvoiceItem);
-  const stockMovementRepository: Repository<StockMovement> = dataSource.getRepository(StockMovement);
+  const inventoryRepository: Repository<InventoryItem> =
+    dataSource.getRepository(InventoryItem);
+  const invoiceRepository: Repository<Invoice> =
+    dataSource.getRepository(Invoice);
+  const invoiceItemRepository: Repository<InvoiceItem> =
+    dataSource.getRepository(InvoiceItem);
+  const stockMovementRepository: Repository<StockMovement> =
+    dataSource.getRepository(StockMovement);
   // const recurringInvoiceRepository: Repository<RecurringInvoice> = dataSource.getRepository(RecurringInvoice); // Removed
   const storeRepository: Repository<Store> = dataSource.getRepository(Store);
-  const storeItemSettingsRepository: Repository<StoreItemSettings> = dataSource.getRepository(StoreItemSettings);
-  const organizationRepository: Repository<Organization> = dataSource.getRepository(Organization);
-  const userOrganizationRepository: Repository<UserOrganization> = dataSource.getRepository(UserOrganization);
+  const storeItemSettingsRepository: Repository<StoreItemSettings> =
+    dataSource.getRepository(StoreItemSettings);
+  const organizationRepository: Repository<Organization> =
+    dataSource.getRepository(Organization);
+  const userOrganizationRepository: Repository<UserOrganization> =
+    dataSource.getRepository(UserOrganization);
 
   console.log('Starting database seed...');
-  console.log('⚠️  SAFETY: This script ONLY works with demo@example.com account');
-  console.log('⚠️  SAFETY: All other users\' data is completely safe and untouched\n');
+  console.log(
+    '⚠️  SAFETY: This script ONLY works with demo@example.com account',
+  );
+  console.log(
+    "⚠️  SAFETY: All other users' data is completely safe and untouched\n",
+  );
 
   // Check if demo user already exists (normalize email for lookup)
   // IMPORTANT: This is the ONLY email we ever work with
@@ -45,18 +57,24 @@ export async function seedDatabase(dataSource: DataSource) {
   // Note: With Clerk authentication, users must be created through Clerk sign-up flow
   // The webhook will automatically create users in the database
   // For demo purposes, check if demo user exists (created via Clerk)
-  let demoUser = await userRepository.findOne({ where: { email: normalizedEmail } });
-  
+  const demoUser = await userRepository.findOne({
+    where: { email: normalizedEmail },
+  });
+
   if (!demoUser) {
     console.log(`⚠️  Demo user (${normalizedEmail}) not found in database.`);
     console.log('   Please create the user through Clerk sign-up flow first.');
-    console.log('   The webhook will automatically create the user in the database.');
+    console.log(
+      '   The webhook will automatically create the user in the database.',
+    );
     return; // Skip demo user setup if user doesn't exist
   } else {
     console.log(`✅ Demo user found: ${demoUser.email}`);
-    
+
     // Ensure demo user is owner if no owner exists
-    const ownerExists = await userRepository.findOne({ where: { role: UserRole.OWNER } });
+    const ownerExists = await userRepository.findOne({
+      where: { role: UserRole.OWNER },
+    });
     if (!ownerExists) {
       demoUser.role = UserRole.OWNER;
       await userRepository.save(demoUser);
@@ -81,7 +99,9 @@ export async function seedDatabase(dataSource: DataSource) {
 
     if (existingUserOrg && existingUserOrg.organization) {
       demoOrganization = existingUserOrg.organization;
-      console.log(`Demo user already has organization: ${demoOrganization.name}`);
+      console.log(
+        `Demo user already has organization: ${demoOrganization.name}`,
+      );
     } else {
       // Create organization for demo user
       demoOrganization = organizationRepository.create({
@@ -89,7 +109,9 @@ export async function seedDatabase(dataSource: DataSource) {
         companyName: demoUser.companyName || 'Demo Company Inc.',
       });
       demoOrganization = await organizationRepository.save(demoOrganization);
-      console.log(`Created organization for demo user: ${demoOrganization.name}`);
+      console.log(
+        `Created organization for demo user: ${demoOrganization.name}`,
+      );
 
       // Link user to organization as OWNER
       const userOrg = userOrganizationRepository.create({
@@ -105,7 +127,11 @@ export async function seedDatabase(dataSource: DataSource) {
   } else {
     // Organization exists, check if user is linked to it
     const existingUserOrg = await userOrganizationRepository.findOne({
-      where: { userId: demoUser.id, organizationId: demoOrganization.id, isActive: true },
+      where: {
+        userId: demoUser.id,
+        organizationId: demoOrganization.id,
+        isActive: true,
+      },
     });
 
     if (!existingUserOrg) {
@@ -136,10 +162,23 @@ export async function seedDatabase(dataSource: DataSource) {
   ];
 
   const SEED_INVENTORY_SKUS = [
-    'PROD-001', 'PROD-002', 'PROD-003', 'PROD-004', 'PROD-005',
-    'PROD-006', 'PROD-007', 'PROD-008', 'PROD-009', 'PROD-010',
-    'PROD-011', 'PROD-012', 'PROD-013', 'PROD-014', 'PROD-015',
-    'PROD-016', 'SERV-001',
+    'PROD-001',
+    'PROD-002',
+    'PROD-003',
+    'PROD-004',
+    'PROD-005',
+    'PROD-006',
+    'PROD-007',
+    'PROD-008',
+    'PROD-009',
+    'PROD-010',
+    'PROD-011',
+    'PROD-012',
+    'PROD-013',
+    'PROD-014',
+    'PROD-015',
+    'PROD-016',
+    'SERV-001',
   ];
 
   // Helper function to check if an invoice number matches seed invoice patterns
@@ -148,130 +187,182 @@ export async function seedDatabase(dataSource: DataSource) {
   // - EST-{year}-0001 to EST-{year}-0004 (estimates)
   // - INV-{year}-0100 to INV-{year}-0134 (current month paid)
   // - INV-{year}-1000 to INV-{year}-6107 (previous months: 1000, 2000, 3000, 4000, 5000, 6000 + offset)
-  const isSeedInvoiceNumber = (invoiceNumber: string | null | undefined): boolean => {
+  const isSeedInvoiceNumber = (
+    invoiceNumber: string | null | undefined,
+  ): boolean => {
     if (!invoiceNumber) return false;
-    
+
     const currentYear = new Date().getFullYear();
     const yearPattern = currentYear.toString();
-    
+
     // Pattern 1: INV-{year}-0001 to INV-{year}-0020
-    const pattern1 = new RegExp(`^INV-${yearPattern}-(000[1-9]|00[12][0-9]|0020)$`);
+    const pattern1 = new RegExp(
+      `^INV-${yearPattern}-(000[1-9]|00[12][0-9]|0020)$`,
+    );
     if (pattern1.test(invoiceNumber)) return true;
-    
+
     // Pattern 2: EST-{year}-0001 to EST-{year}-0004
     const pattern2 = new RegExp(`^EST-${yearPattern}-000[1-4]$`);
     if (pattern2.test(invoiceNumber)) return true;
-    
+
     // Pattern 3: INV-{year}-0100 to INV-{year}-0134 (current month paid)
     const pattern3 = new RegExp(`^INV-${yearPattern}-01[0-3][0-4]$`);
     if (pattern3.test(invoiceNumber)) return true;
-    
+
     // Pattern 4: INV-{year}-1000 to INV-{year}-6107 (previous months)
     // Format: monthOffset * 1000 + i (where monthOffset 1-6, i 0-17)
     // So: 1000-1017, 2000-2017, 3000-3017, 4000-4017, 5000-5017, 6000-6017
-    const pattern4 = new RegExp(`^INV-${yearPattern}-([1-6]00[0-9]|[1-6]01[0-7])$`);
+    const pattern4 = new RegExp(
+      `^INV-${yearPattern}-([1-6]00[0-9]|[1-6]01[0-7])$`,
+    );
     if (pattern4.test(invoiceNumber)) return true;
-    
+
     return false;
   };
 
   // Check what data exists and separate seed data from user-created data
   const userId = demoUser.id;
   const existingClients = await clientRepository.find({ where: { userId } });
-  const existingSeedClients = existingClients.filter(c => SEED_CLIENT_NAMES.includes(c.name));
-  const userCreatedClients = existingClients.filter(c => !SEED_CLIENT_NAMES.includes(c.name));
+  const existingSeedClients = existingClients.filter((c) =>
+    SEED_CLIENT_NAMES.includes(c.name),
+  );
+  const userCreatedClients = existingClients.filter(
+    (c) => !SEED_CLIENT_NAMES.includes(c.name),
+  );
 
-  const existingInventory = await inventoryRepository.find({ where: { userId } });
-  const existingSeedInventory = existingInventory.filter(i => SEED_INVENTORY_SKUS.includes(i.sku));
-  const userCreatedInventory = existingInventory.filter(i => !SEED_INVENTORY_SKUS.includes(i.sku));
+  const existingInventory = await inventoryRepository.find({
+    where: { userId },
+  });
+  const existingSeedInventory = existingInventory.filter((i) =>
+    SEED_INVENTORY_SKUS.includes(i.sku),
+  );
+  const userCreatedInventory = existingInventory.filter(
+    (i) => !SEED_INVENTORY_SKUS.includes(i.sku),
+  );
 
   // Get all invoices and identify which are seed data by invoice NUMBER (not client!)
   // This is critical: user-created invoices linked to seed clients should be preserved
-  const allInvoices = await invoiceRepository.find({ 
+  const allInvoices = await invoiceRepository.find({
     where: { userId },
     relations: ['client'],
   });
-  const seedInvoices = allInvoices.filter(inv => isSeedInvoiceNumber(inv.number));
-  const userCreatedInvoices = allInvoices.filter(inv => !isSeedInvoiceNumber(inv.number));
+  const seedInvoices = allInvoices.filter((inv) =>
+    isSeedInvoiceNumber(inv.number),
+  );
+  const userCreatedInvoices = allInvoices.filter(
+    (inv) => !isSeedInvoiceNumber(inv.number),
+  );
 
   // Report what we found
   console.log('\n📊 Current data status for demo@example.com:');
-  console.log(`  Seed clients: ${existingSeedClients.length}/${SEED_CLIENT_NAMES.length}`);
-  console.log(`  User-created clients: ${userCreatedClients.length} ✅ (PRESERVED)`);
-  console.log(`  Seed inventory items: ${existingSeedInventory.length}/${SEED_INVENTORY_SKUS.length}`);
-  console.log(`  User-created inventory items: ${userCreatedInventory.length} ✅ (PRESERVED)`);
+  console.log(
+    `  Seed clients: ${existingSeedClients.length}/${SEED_CLIENT_NAMES.length}`,
+  );
+  console.log(
+    `  User-created clients: ${userCreatedClients.length} ✅ (PRESERVED)`,
+  );
+  console.log(
+    `  Seed inventory items: ${existingSeedInventory.length}/${SEED_INVENTORY_SKUS.length}`,
+  );
+  console.log(
+    `  User-created inventory items: ${userCreatedInventory.length} ✅ (PRESERVED)`,
+  );
   console.log(`  Seed invoices: ${seedInvoices.length}`);
-  console.log(`  User-created invoices: ${userCreatedInvoices.length} ✅ (PRESERVED)`);
+  console.log(
+    `  User-created invoices: ${userCreatedInvoices.length} ✅ (PRESERVED)`,
+  );
 
-  if (userCreatedClients.length > 0 || userCreatedInvoices.length > 0 || userCreatedInventory.length > 0) {
-    console.log('\n✅ User-created data detected! All user data will be preserved.');
+  if (
+    userCreatedClients.length > 0 ||
+    userCreatedInvoices.length > 0 ||
+    userCreatedInventory.length > 0
+  ) {
+    console.log(
+      '\n✅ User-created data detected! All user data will be preserved.',
+    );
     console.log('   Only seed data will be regenerated.');
   }
 
   // Only delete SEED data, never user-created data
-  if (existingSeedClients.length > 0 || existingSeedInventory.length > 0 || seedInvoices.length > 0) {
-    console.log('\n🔄 Regenerating seed data (preserving user-created data)...');
-    
+  if (
+    existingSeedClients.length > 0 ||
+    existingSeedInventory.length > 0 ||
+    seedInvoices.length > 0
+  ) {
+    console.log(
+      '\n🔄 Regenerating seed data (preserving user-created data)...',
+    );
+
     // Delete seed invoices and their items (only seed invoices)
     if (seedInvoices.length > 0) {
-      const seedInvoiceIds = seedInvoices.map(inv => inv.id);
+      const seedInvoiceIds = seedInvoices.map((inv) => inv.id);
       await invoiceItemRepository
         .createQueryBuilder()
         .delete()
         .where('invoiceId IN (:...ids)', { ids: seedInvoiceIds })
         .execute();
       await invoiceRepository.delete({ id: In(seedInvoiceIds) });
-      console.log(`  ✓ Deleted ${seedInvoices.length} seed invoice(s) (preserved ${userCreatedInvoices.length} user-created)`);
+      console.log(
+        `  ✓ Deleted ${seedInvoices.length} seed invoice(s) (preserved ${userCreatedInvoices.length} user-created)`,
+      );
     }
 
     // Recurring invoices removed - no longer needed
 
     // Delete seed clients (only seed clients that aren't referenced by user-created invoices)
     if (existingSeedClients.length > 0) {
-      const seedClientIdsToDelete = existingSeedClients.map(c => c.id);
-      
+      const seedClientIdsToDelete = existingSeedClients.map((c) => c.id);
+
       // Check if any user-created invoices reference these seed clients
       const userCreatedInvoicesWithSeedClients = userCreatedInvoices.filter(
-        inv => seedClientIdsToDelete.includes(inv.clientId)
+        (inv) => seedClientIdsToDelete.includes(inv.clientId),
       );
-      
+
       if (userCreatedInvoicesWithSeedClients.length > 0) {
         // Find which seed clients are referenced by user-created invoices
         const referencedSeedClientIds = new Set(
-          userCreatedInvoicesWithSeedClients.map(inv => inv.clientId)
+          userCreatedInvoicesWithSeedClients.map((inv) => inv.clientId),
         );
         const safeToDeleteClientIds = seedClientIdsToDelete.filter(
-          id => !referencedSeedClientIds.has(id)
+          (id) => !referencedSeedClientIds.has(id),
         );
-        
+
         if (safeToDeleteClientIds.length > 0) {
           await clientRepository.delete({ id: In(safeToDeleteClientIds) });
-          console.log(`  ✓ Deleted ${safeToDeleteClientIds.length} seed client(s) (preserved ${referencedSeedClientIds.size} that are referenced by user-created invoices)`);
+          console.log(
+            `  ✓ Deleted ${safeToDeleteClientIds.length} seed client(s) (preserved ${referencedSeedClientIds.size} that are referenced by user-created invoices)`,
+          );
         } else {
-          console.log(`  ⚠ Skipped deleting ${seedClientIdsToDelete.length} seed client(s) - all are referenced by user-created invoices`);
+          console.log(
+            `  ⚠ Skipped deleting ${seedClientIdsToDelete.length} seed client(s) - all are referenced by user-created invoices`,
+          );
         }
       } else {
         // No user-created invoices reference seed clients, safe to delete all
         await clientRepository.delete({ id: In(seedClientIdsToDelete) });
-        console.log(`  ✓ Deleted ${existingSeedClients.length} seed client(s) (preserved ${userCreatedClients.length} user-created)`);
+        console.log(
+          `  ✓ Deleted ${existingSeedClients.length} seed client(s) (preserved ${userCreatedClients.length} user-created)`,
+        );
       }
     }
 
     // Delete seed inventory items (only seed inventory)
     if (existingSeedInventory.length > 0) {
-      const seedInventoryIds = existingSeedInventory.map(i => i.id);
+      const seedInventoryIds = existingSeedInventory.map((i) => i.id);
       // Delete stock movements for seed inventory only
-      const allStockMovements = await stockMovementRepository.find({ 
+      const allStockMovements = await stockMovementRepository.find({
         where: { userId },
       });
-      const seedStockMovements = allStockMovements.filter(sm => 
-        seedInventoryIds.includes(sm.inventoryItemId)
+      const seedStockMovements = allStockMovements.filter((sm) =>
+        seedInventoryIds.includes(sm.inventoryItemId),
       );
       if (seedStockMovements.length > 0) {
-        await stockMovementRepository.delete({ 
-          id: In(seedStockMovements.map(sm => sm.id)) 
+        await stockMovementRepository.delete({
+          id: In(seedStockMovements.map((sm) => sm.id)),
         });
-        console.log(`  ✓ Deleted ${seedStockMovements.length} stock movement(s) for seed inventory`);
+        console.log(
+          `  ✓ Deleted ${seedStockMovements.length} stock movement(s) for seed inventory`,
+        );
       }
       // Delete store item settings for seed inventory only
       const seedStoreItemSettings = await storeItemSettingsRepository
@@ -279,42 +370,57 @@ export async function seedDatabase(dataSource: DataSource) {
         .where('sis.inventoryItemId IN (:...ids)', { ids: seedInventoryIds })
         .getMany();
       if (seedStoreItemSettings.length > 0) {
-        await storeItemSettingsRepository.delete({ 
-          id: In(seedStoreItemSettings.map(sis => sis.id)) 
+        await storeItemSettingsRepository.delete({
+          id: In(seedStoreItemSettings.map((sis) => sis.id)),
         });
-        console.log(`  ✓ Deleted ${seedStoreItemSettings.length} store item setting(s) for seed inventory`);
+        console.log(
+          `  ✓ Deleted ${seedStoreItemSettings.length} store item setting(s) for seed inventory`,
+        );
       }
       // Check if any user-created invoices have invoice items that reference these seed inventory items
       const allInvoiceItems = await invoiceItemRepository.find({
         where: {},
         relations: ['invoice'],
       });
-      
+
       // Find invoice items from user-created invoices that reference seed inventory
-      const userCreatedInvoiceItems = allInvoiceItems.filter(item => {
-        const isFromUserCreatedInvoice = userCreatedInvoices.some(inv => inv.id === item.invoiceId);
-        return isFromUserCreatedInvoice && seedInventoryIds.includes(item.inventoryItemId);
+      const userCreatedInvoiceItems = allInvoiceItems.filter((item) => {
+        const isFromUserCreatedInvoice = userCreatedInvoices.some(
+          (inv) => inv.id === item.invoiceId,
+        );
+        return (
+          isFromUserCreatedInvoice &&
+          seedInventoryIds.includes(item.inventoryItemId)
+        );
       });
-      
+
       if (userCreatedInvoiceItems.length > 0) {
         // Find which seed inventory items are referenced by user-created invoice items
         const referencedInventoryIds = new Set(
-          userCreatedInvoiceItems.map(item => item.inventoryItemId)
+          userCreatedInvoiceItems.map((item) => item.inventoryItemId),
         );
         const safeToDeleteInventoryIds = seedInventoryIds.filter(
-          id => !referencedInventoryIds.has(id)
+          (id) => !referencedInventoryIds.has(id),
         );
-        
+
         if (safeToDeleteInventoryIds.length > 0) {
-          await inventoryRepository.delete({ id: In(safeToDeleteInventoryIds) });
-          console.log(`  ✓ Deleted ${safeToDeleteInventoryIds.length} seed inventory item(s) (preserved ${referencedInventoryIds.size} that are referenced by user-created invoices)`);
+          await inventoryRepository.delete({
+            id: In(safeToDeleteInventoryIds),
+          });
+          console.log(
+            `  ✓ Deleted ${safeToDeleteInventoryIds.length} seed inventory item(s) (preserved ${referencedInventoryIds.size} that are referenced by user-created invoices)`,
+          );
         } else {
-          console.log(`  ⚠ Skipped deleting ${seedInventoryIds.length} seed inventory item(s) - all are referenced by user-created invoices`);
+          console.log(
+            `  ⚠ Skipped deleting ${seedInventoryIds.length} seed inventory item(s) - all are referenced by user-created invoices`,
+          );
         }
       } else {
         // No user-created invoices reference seed inventory, safe to delete all
         await inventoryRepository.delete({ id: In(seedInventoryIds) });
-        console.log(`  ✓ Deleted ${existingSeedInventory.length} seed inventory item(s) (preserved ${userCreatedInventory.length} user-created)`);
+        console.log(
+          `  ✓ Deleted ${existingSeedInventory.length} seed inventory item(s) (preserved ${userCreatedInventory.length} user-created)`,
+        );
       }
     }
 
@@ -322,7 +428,9 @@ export async function seedDatabase(dataSource: DataSource) {
     // Stores will be created if needed during seed, but existing stores are preserved
     console.log('  ✓ Stores preserved (may be reused by seed data)');
   } else {
-    console.log('\n✨ No existing seed data found. Creating fresh seed data...');
+    console.log(
+      '\n✨ No existing seed data found. Creating fresh seed data...',
+    );
   }
 
   // Create demo clients
@@ -411,9 +519,9 @@ export async function seedDatabase(dataSource: DataSource) {
 
   // Get existing seed clients to reuse them if they exist
   const existingSeedClientsMap = new Map(
-    existingSeedClients.map(c => [c.name, c])
+    existingSeedClients.map((c) => [c.name, c]),
   );
-  
+
   const clients: Client[] = [];
   for (const data of clientData) {
     // Check if this seed client already exists
@@ -423,7 +531,7 @@ export async function seedDatabase(dataSource: DataSource) {
       clients.push(existing);
       continue; // Skip creation, reuse existing
     }
-    
+
     const client = clientRepository.create({
       ...data,
       userId,
@@ -442,8 +550,8 @@ export async function seedDatabase(dataSource: DataSource) {
       category: 'Widgets',
       unit: 'piece',
       barcode: '1234567890123',
-      costPrice: 25.00,
-      defaultUnitPrice: 50.00,
+      costPrice: 25.0,
+      defaultUnitPrice: 50.0,
       defaultTaxRate: 10,
       currentStock: 150,
       reorderLevel: 20,
@@ -464,8 +572,8 @@ export async function seedDatabase(dataSource: DataSource) {
       description: 'Standard widget for everyday use',
       category: 'Widgets',
       unit: 'piece',
-      costPrice: 15.00,
-      defaultUnitPrice: 30.00,
+      costPrice: 15.0,
+      defaultUnitPrice: 30.0,
       defaultTaxRate: 10,
       currentStock: 100, // Increased to account for invoice consumption
       reorderLevel: 10,
@@ -484,8 +592,8 @@ export async function seedDatabase(dataSource: DataSource) {
       description: 'Premium deluxe widget with extra features',
       category: 'Widgets',
       unit: 'piece',
-      costPrice: 40.00,
-      defaultUnitPrice: 80.00,
+      costPrice: 40.0,
+      defaultUnitPrice: 80.0,
       defaultTaxRate: 15,
       currentStock: 50, // Increased to account for invoice consumption
       reorderLevel: 5,
@@ -506,7 +614,7 @@ export async function seedDatabase(dataSource: DataSource) {
       category: 'Services',
       unit: 'hour',
       costPrice: 0,
-      defaultUnitPrice: 150.00,
+      defaultUnitPrice: 150.0,
       defaultTaxRate: 0,
       currentStock: 999, // Unlimited
       reorderLevel: 0,
@@ -518,8 +626,8 @@ export async function seedDatabase(dataSource: DataSource) {
       description: 'Basic component for assembly',
       category: 'Components',
       unit: 'piece',
-      costPrice: 5.00,
-      defaultUnitPrice: 12.00,
+      costPrice: 5.0,
+      defaultUnitPrice: 12.0,
       defaultTaxRate: 8,
       currentStock: 200,
       reorderLevel: 50,
@@ -538,8 +646,8 @@ export async function seedDatabase(dataSource: DataSource) {
       description: 'Advanced component with enhanced features',
       category: 'Components',
       unit: 'piece',
-      costPrice: 20.00,
-      defaultUnitPrice: 45.00,
+      costPrice: 20.0,
+      defaultUnitPrice: 45.0,
       defaultTaxRate: 10,
       currentStock: 75,
       reorderLevel: 30,
@@ -551,8 +659,8 @@ export async function seedDatabase(dataSource: DataSource) {
       description: 'Complete accessory pack',
       category: 'Accessories',
       unit: 'pack',
-      costPrice: 10.00,
-      defaultUnitPrice: 25.00,
+      costPrice: 10.0,
+      defaultUnitPrice: 25.0,
       defaultTaxRate: 10,
       currentStock: 80, // Increased to account for invoice consumption
       reorderLevel: 10,
@@ -564,8 +672,8 @@ export async function seedDatabase(dataSource: DataSource) {
       description: 'Premium quality accessory',
       category: 'Accessories',
       unit: 'piece',
-      costPrice: 30.00,
-      defaultUnitPrice: 60.00,
+      costPrice: 30.0,
+      defaultUnitPrice: 60.0,
       defaultTaxRate: 12,
       currentStock: 50,
       reorderLevel: 15,
@@ -577,8 +685,8 @@ export async function seedDatabase(dataSource: DataSource) {
       description: 'Standard tool for general use',
       category: 'Tools',
       unit: 'piece',
-      costPrice: 18.00,
-      defaultUnitPrice: 35.00,
+      costPrice: 18.0,
+      defaultUnitPrice: 35.0,
       defaultTaxRate: 10,
       currentStock: 120,
       reorderLevel: 25,
@@ -590,8 +698,8 @@ export async function seedDatabase(dataSource: DataSource) {
       description: 'Professional grade tool',
       category: 'Tools',
       unit: 'piece',
-      costPrice: 50.00,
-      defaultUnitPrice: 100.00,
+      costPrice: 50.0,
+      defaultUnitPrice: 100.0,
       defaultTaxRate: 15,
       currentStock: 30,
       reorderLevel: 10,
@@ -603,8 +711,8 @@ export async function seedDatabase(dataSource: DataSource) {
       description: 'Budget-friendly widget',
       category: 'Widgets',
       unit: 'piece',
-      costPrice: 8.00,
-      defaultUnitPrice: 18.00,
+      costPrice: 8.0,
+      defaultUnitPrice: 18.0,
       defaultTaxRate: 8,
       currentStock: 60, // Increased to account for invoice consumption
       reorderLevel: 5,
@@ -616,8 +724,8 @@ export async function seedDatabase(dataSource: DataSource) {
       description: 'Specialty item for specific applications',
       category: 'Specialty',
       unit: 'piece',
-      costPrice: 35.00,
-      defaultUnitPrice: 70.00,
+      costPrice: 35.0,
+      defaultUnitPrice: 70.0,
       defaultTaxRate: 12,
       currentStock: 45,
       reorderLevel: 20,
@@ -629,8 +737,8 @@ export async function seedDatabase(dataSource: DataSource) {
       description: 'Bulk package for large orders',
       category: 'Packages',
       unit: 'package',
-      costPrice: 100.00,
-      defaultUnitPrice: 200.00,
+      costPrice: 100.0,
+      defaultUnitPrice: 200.0,
       defaultTaxRate: 10,
       currentStock: 70, // Increased to account for invoice consumption
       reorderLevel: 10,
@@ -650,8 +758,8 @@ export async function seedDatabase(dataSource: DataSource) {
       description: 'Enterprise-grade solution with all features',
       category: 'Packages',
       unit: 'package',
-      costPrice: 2500.00,
-      defaultUnitPrice: 5000.00,
+      costPrice: 2500.0,
+      defaultUnitPrice: 5000.0,
       defaultTaxRate: 8.5,
       currentStock: 50,
       reorderLevel: 5,
@@ -663,8 +771,8 @@ export async function seedDatabase(dataSource: DataSource) {
       description: 'High-volume bulk order item',
       category: 'Packages',
       unit: 'package',
-      costPrice: 1250.00,
-      defaultUnitPrice: 2500.00,
+      costPrice: 1250.0,
+      defaultUnitPrice: 2500.0,
       defaultTaxRate: 7.5,
       currentStock: 80,
       reorderLevel: 10,
@@ -676,8 +784,8 @@ export async function seedDatabase(dataSource: DataSource) {
       description: 'Complete professional service package',
       category: 'Services',
       unit: 'bundle',
-      costPrice: 1500.00,
-      defaultUnitPrice: 3500.00,
+      costPrice: 1500.0,
+      defaultUnitPrice: 3500.0,
       defaultTaxRate: 0,
       currentStock: 100,
       reorderLevel: 15,
@@ -689,8 +797,8 @@ export async function seedDatabase(dataSource: DataSource) {
       description: 'This product is no longer active',
       category: 'Discontinued',
       unit: 'piece',
-      costPrice: 20.00,
-      defaultUnitPrice: 40.00,
+      costPrice: 20.0,
+      defaultUnitPrice: 40.0,
       defaultTaxRate: 10,
       currentStock: 0,
       reorderLevel: 0,
@@ -700,9 +808,9 @@ export async function seedDatabase(dataSource: DataSource) {
 
   // Get existing seed inventory items to reuse them if they exist
   const existingSeedInventoryMap = new Map(
-    existingSeedInventory.map(i => [i.sku, i])
+    existingSeedInventory.map((i) => [i.sku, i]),
   );
-  
+
   const inventoryItems: InventoryItem[] = [];
   for (const data of inventoryData) {
     // Check if this seed inventory item already exists
@@ -712,7 +820,7 @@ export async function seedDatabase(dataSource: DataSource) {
       inventoryItems.push(existing);
       continue; // Skip creation, reuse existing
     }
-    
+
     const item = inventoryRepository.create({
       ...data,
       userId,
@@ -794,16 +902,14 @@ export async function seedDatabase(dataSource: DataSource) {
 
   // Get existing stores to reuse them if they exist
   const existingStores = await storeRepository.find({ where: { userId } });
-  const existingStoresMap = new Map(
-    existingStores.map(s => [s.code, s])
-  );
-  
+  const existingStoresMap = new Map(existingStores.map((s) => [s.code, s]));
+
   const stores: Store[] = [];
   // Assign stores to clients - distribute stores across available clients
   // First client gets more stores (main operations), others get fewer
   for (let i = 0; i < storeData.length; i++) {
     const data = storeData[i];
-    
+
     // Check if this store already exists
     const existing = existingStoresMap.get(data.code);
     if (existing) {
@@ -811,11 +917,11 @@ export async function seedDatabase(dataSource: DataSource) {
       stores.push(existing);
       continue; // Skip creation, reuse existing
     }
-    
+
     // Distribute stores across clients: first 4 stores to first client, next 4 to second, etc.
     const clientIndex = Math.floor(i / 4) % clients.length;
     const assignedClient = clients[clientIndex];
-    
+
     const store = storeRepository.create({
       ...data,
       userId,
@@ -824,41 +930,51 @@ export async function seedDatabase(dataSource: DataSource) {
     });
     stores.push(await storeRepository.save(store));
   }
-  console.log(`Created/Reused ${stores.length} demo stores (assigned to clients)`);
+  console.log(
+    `Created/Reused ${stores.length} demo stores (assigned to clients)`,
+  );
 
   // Create comprehensive store item settings for each store
   // Each store gets a different set of items with realistic stock levels
   for (let storeIndex = 0; storeIndex < stores.length; storeIndex++) {
     const store = stores[storeIndex];
-    
+
     // Different stores get different items - create variety
     // Main stores get more items, smaller stores get fewer
     const itemsPerStore = storeIndex < 3 ? 10 : storeIndex < 6 ? 8 : 6;
     const startIndex = (storeIndex * 2) % inventoryItems.length;
     const itemsToAdd: InventoryItem[] = [];
-    
+
     // Select items for this store (with some overlap between stores)
     for (let i = 0; i < itemsPerStore; i++) {
       const itemIndex = (startIndex + i) % inventoryItems.length;
       itemsToAdd.push(inventoryItems[itemIndex]);
     }
-    
+
     for (const item of itemsToAdd) {
       // Create realistic stock levels based on item type and store
       const baseStock = item.currentStock || 50;
       // Vary stock by store (some stores have more, some less)
       const stockMultiplier = 0.5 + (storeIndex % 3) * 0.3; // 0.5 to 1.1
-      const currentStock = Math.floor(baseStock * stockMultiplier * (0.8 + Math.random() * 0.4));
-      
+      const currentStock = Math.floor(
+        baseStock * stockMultiplier * (0.8 + Math.random() * 0.4),
+      );
+
       // Calculate minQty as 20-30% of current stock
-      const minQty = Math.max(5, Math.floor(currentStock * (0.2 + Math.random() * 0.1)));
-      
+      const minQty = Math.max(
+        5,
+        Math.floor(currentStock * (0.2 + Math.random() * 0.1)),
+      );
+
       // Calculate targetQty as 150-200% of current stock
       const targetQty = Math.floor(currentStock * (1.5 + Math.random() * 0.5));
-      
+
       // Calculate weekly usage based on current stock (higher stock = higher usage)
-      const weeklyUsage = Math.max(1, Math.floor(currentStock / 10) * (0.5 + Math.random() * 0.5));
-      
+      const weeklyUsage = Math.max(
+        1,
+        Math.floor(currentStock / 10) * (0.5 + Math.random() * 0.5),
+      );
+
       const settings = storeItemSettingsRepository.create({
         storeId: store.id,
         inventoryItemId: item.id,
@@ -869,7 +985,7 @@ export async function seedDatabase(dataSource: DataSource) {
       });
       await storeItemSettingsRepository.save(settings);
     }
-    
+
     console.log(`  Created ${itemsToAdd.length} items for ${store.name}`);
   }
   console.log('Created store item settings for all stores');
@@ -881,13 +997,15 @@ export async function seedDatabase(dataSource: DataSource) {
     const storeSettings = await storeItemSettingsRepository.find({
       where: { storeId: store.id },
     });
-    
+
     // Create purchase movements for items in this store
-    for (const setting of storeSettings.slice(0, 8)) { // First 8 items per store
-      const item = inventoryItems.find(i => i.id === setting.inventoryItemId);
+    for (const setting of storeSettings.slice(0, 8)) {
+      // First 8 items per store
+      const item = inventoryItems.find((i) => i.id === setting.inventoryItemId);
       if (item) {
         // Create initial purchase with storeId
-        const purchaseQuantity = setting.currentStock + Math.floor(Math.random() * 50);
+        const purchaseQuantity =
+          setting.currentStock + Math.floor(Math.random() * 50);
         const purchaseMovement = stockMovementRepository.create({
           inventoryItemId: item.id,
           userId,
@@ -898,9 +1016,10 @@ export async function seedDatabase(dataSource: DataSource) {
           storeId: store.id, // Associate with store
         });
         await stockMovementRepository.save(purchaseMovement);
-        
+
         // Create some additional movements (adjustments) for variety
-        if (Math.random() > 0.7) { // 30% chance
+        if (Math.random() > 0.7) {
+          // 30% chance
           const adjustmentMovement = stockMovementRepository.create({
             inventoryItemId: item.id,
             userId,
@@ -914,16 +1033,20 @@ export async function seedDatabase(dataSource: DataSource) {
         }
       }
     }
-    
+
     // Create some inter-store transfer movements (simulate transfers between stores)
-    if (storeIndex > 0 && Math.random() > 0.5) { // 50% chance for stores after first
+    if (storeIndex > 0 && Math.random() > 0.5) {
+      // 50% chance for stores after first
       const fromStore = stores[storeIndex - 1];
       const toStore = store;
-      const itemToTransfer = inventoryItems[Math.floor(Math.random() * Math.min(5, inventoryItems.length))];
-      
+      const itemToTransfer =
+        inventoryItems[
+          Math.floor(Math.random() * Math.min(5, inventoryItems.length))
+        ];
+
       if (itemToTransfer) {
         const transferQuantity = Math.floor(Math.random() * 20) + 5;
-        
+
         // Outgoing transfer from previous store
         const outgoingMovement = stockMovementRepository.create({
           inventoryItemId: itemToTransfer.id,
@@ -935,7 +1058,7 @@ export async function seedDatabase(dataSource: DataSource) {
           storeId: fromStore.id,
         });
         await stockMovementRepository.save(outgoingMovement);
-        
+
         // Incoming transfer to current store
         const incomingMovement = stockMovementRepository.create({
           inventoryItemId: itemToTransfer.id,
@@ -959,18 +1082,20 @@ export async function seedDatabase(dataSource: DataSource) {
 
   // Draft invoices - issue date can be today or in the past, due date can be in the future
   for (let i = 0; i < 3; i++) {
-    const issueDate = new Date(invoiceNow.getTime() - i * 2 * 24 * 60 * 60 * 1000);
+    const issueDate = new Date(
+      invoiceNow.getTime() - i * 2 * 24 * 60 * 60 * 1000,
+    );
     // Ensure issue date is not in the future
     if (issueDate > invoiceNow) {
       issueDate.setTime(invoiceNow.getTime());
     }
     const dueDate = new Date(issueDate.getTime() + 30 * 24 * 60 * 60 * 1000);
-    
+
     // Set createdAt to be in reverse chronological order (newest first)
     // Subtract seconds to ensure proper ordering
     const createdAt = new Date(invoiceNow.getTime() - invoiceCounter * 1000);
     invoiceCounter++;
-    
+
     const invoice = invoiceRepository.create({
       userId,
       clientId: clients[i % clients.length].id,
@@ -995,7 +1120,7 @@ export async function seedDatabase(dataSource: DataSource) {
   for (let i = 0; i < 5; i++) {
     const createdAt = new Date(invoiceNow.getTime() - invoiceCounter * 1000);
     invoiceCounter++;
-    
+
     const invoice = invoiceRepository.create({
       userId,
       clientId: clients[i % clients.length].id,
@@ -1004,7 +1129,9 @@ export async function seedDatabase(dataSource: DataSource) {
       number: `INV-${invoiceNow.getFullYear()}-${String(i + 4).padStart(4, '0')}`,
       status: 'sent',
       issueDate: new Date(invoiceNow.getTime() - (i + 5) * 24 * 60 * 60 * 1000),
-      dueDate: new Date(invoiceNow.getTime() - (i + 5 - 30) * 24 * 60 * 60 * 1000),
+      dueDate: new Date(
+        invoiceNow.getTime() - (i + 5 - 30) * 24 * 60 * 60 * 1000,
+      ),
       currency: 'USD',
       subtotal: 0,
       taxTotal: 0,
@@ -1021,7 +1148,7 @@ export async function seedDatabase(dataSource: DataSource) {
     const storeIndex = i % stores.length;
     const createdAt = new Date(invoiceNow.getTime() - invoiceCounter * 1000);
     invoiceCounter++;
-    
+
     const invoice = invoiceRepository.create({
       userId,
       clientId: clients[i % clients.length].id,
@@ -1029,8 +1156,12 @@ export async function seedDatabase(dataSource: DataSource) {
       type: 'invoice',
       number: `INV-${invoiceNow.getFullYear()}-${String(i + 9).padStart(4, '0')}`,
       status: 'paid',
-      issueDate: new Date(invoiceNow.getTime() - (i + 20) * 24 * 60 * 60 * 1000),
-      dueDate: new Date(invoiceNow.getTime() - (i + 20 - 30) * 24 * 60 * 60 * 1000),
+      issueDate: new Date(
+        invoiceNow.getTime() - (i + 20) * 24 * 60 * 60 * 1000,
+      ),
+      dueDate: new Date(
+        invoiceNow.getTime() - (i + 20 - 30) * 24 * 60 * 60 * 1000,
+      ),
       paidAt: new Date(invoiceNow.getTime() - (i + 15) * 24 * 60 * 60 * 1000),
       currency: 'USD',
       subtotal: 0,
@@ -1047,7 +1178,7 @@ export async function seedDatabase(dataSource: DataSource) {
   for (let i = 0; i < 3; i++) {
     const createdAt = new Date(invoiceNow.getTime() - invoiceCounter * 1000);
     invoiceCounter++;
-    
+
     const invoice = invoiceRepository.create({
       userId,
       clientId: clients[i % clients.length].id,
@@ -1055,7 +1186,9 @@ export async function seedDatabase(dataSource: DataSource) {
       type: 'invoice',
       number: `INV-${invoiceNow.getFullYear()}-${String(i + 17).padStart(4, '0')}`,
       status: 'overdue',
-      issueDate: new Date(invoiceNow.getTime() - (i + 45) * 24 * 60 * 60 * 1000),
+      issueDate: new Date(
+        invoiceNow.getTime() - (i + 45) * 24 * 60 * 60 * 1000,
+      ),
       dueDate: new Date(invoiceNow.getTime() - (i + 15) * 24 * 60 * 60 * 1000),
       currency: 'USD',
       subtotal: 0,
@@ -1070,15 +1203,17 @@ export async function seedDatabase(dataSource: DataSource) {
 
   // Estimates - issue date can be today or in the past
   for (let i = 0; i < 4; i++) {
-    const issueDate = new Date(invoiceNow.getTime() - i * 3 * 24 * 60 * 60 * 1000);
+    const issueDate = new Date(
+      invoiceNow.getTime() - i * 3 * 24 * 60 * 60 * 1000,
+    );
     // Ensure issue date is not in the future
     if (issueDate > invoiceNow) {
       issueDate.setTime(invoiceNow.getTime());
     }
-    
+
     const createdAt = new Date(invoiceNow.getTime() - invoiceCounter * 1000);
     invoiceCounter++;
-    
+
     const invoice = invoiceRepository.create({
       userId,
       clientId: clients[i % clients.length].id,
@@ -1103,21 +1238,24 @@ export async function seedDatabase(dataSource: DataSource) {
   const currentYear = invoiceNow.getFullYear();
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const currentDay = invoiceNow.getDate();
-  
+
   // Create 30-40 paid invoices spread throughout the current month across all stores
   const thisMonthPaidCount = 35;
   for (let i = 0; i < thisMonthPaidCount; i++) {
     // Spread invoices throughout the month (from day 1 to current day - 1, ensuring past dates)
     // Use currentDay - 1 to ensure we never create invoices with today's date (they should be paid)
     const maxDay = Math.max(1, currentDay - 1);
-    const dayOfMonth = Math.min(maxDay, Math.floor((maxDay / thisMonthPaidCount) * (i + 1)) || 1);
+    const dayOfMonth = Math.min(
+      maxDay,
+      Math.floor((maxDay / thisMonthPaidCount) * (i + 1)) || 1,
+    );
     const issueDate = new Date(currentYear, currentMonth, dayOfMonth);
-    
+
     // Ensure issue date is not in the future
     if (issueDate > invoiceNow) {
       issueDate.setTime(invoiceNow.getTime() - 24 * 60 * 60 * 1000); // Set to yesterday
     }
-    
+
     // Paid 1-3 days after issue, but ensure it's in the past
     const paidDate = new Date(issueDate);
     paidDate.setDate(paidDate.getDate() + Math.floor(Math.random() * 3) + 1);
@@ -1125,22 +1263,22 @@ export async function seedDatabase(dataSource: DataSource) {
     if (paidDate > invoiceNow) {
       paidDate.setTime(invoiceNow.getTime() - 24 * 60 * 60 * 1000); // Set to yesterday
     }
-    
+
     // Due date should be 30 days after issue, but cap at today for paid invoices
     const dueDate = new Date(issueDate.getTime() + 30 * 24 * 60 * 60 * 1000);
     if (dueDate > invoiceNow) {
       dueDate.setTime(invoiceNow.getTime());
     }
-    
+
     // Distribute invoices across stores (some stores get more)
     const storeIndex = i % stores.length;
     // Make first 3 stores get more invoices (better analytics)
-    const preferredStoreIndex = i < 20 ? (i % 3) : storeIndex;
-    
+    const preferredStoreIndex = i < 20 ? i % 3 : storeIndex;
+
     // Set createdAt to be in reverse chronological order (newest first)
     const createdAt = new Date(invoiceNow.getTime() - invoiceCounter * 1000);
     invoiceCounter++;
-    
+
     const invoice = invoiceRepository.create({
       userId,
       clientId: clients[i % clients.length].id,
@@ -1165,22 +1303,30 @@ export async function seedDatabase(dataSource: DataSource) {
   // Create more paid invoices from previous months for better historical data
   for (let monthOffset = 1; monthOffset <= 6; monthOffset++) {
     const monthDate = new Date(currentYear, currentMonth - monthOffset, 1);
-    const daysInThatMonth = new Date(currentYear, currentMonth - monthOffset + 1, 0).getDate();
-    
+    const daysInThatMonth = new Date(
+      currentYear,
+      currentMonth - monthOffset + 1,
+      0,
+    ).getDate();
+
     // 15-20 invoices per month
     const invoicesPerMonth = 18;
     for (let i = 0; i < invoicesPerMonth; i++) {
       const dayOfMonth = Math.floor(Math.random() * daysInThatMonth) + 1;
-      const issueDate = new Date(currentYear, currentMonth - monthOffset, dayOfMonth);
+      const issueDate = new Date(
+        currentYear,
+        currentMonth - monthOffset,
+        dayOfMonth,
+      );
       const paidDate = new Date(issueDate);
       paidDate.setDate(paidDate.getDate() + Math.floor(Math.random() * 5) + 1);
-      
+
       const storeIndex = (monthOffset * invoicesPerMonth + i) % stores.length;
-      
+
       // Set createdAt to be in reverse chronological order (newest first)
       const createdAt = new Date(invoiceNow.getTime() - invoiceCounter * 1000);
       invoiceCounter++;
-      
+
       const invoice = invoiceRepository.create({
         userId,
         clientId: clients[i % clients.length].id,
@@ -1208,7 +1354,7 @@ export async function seedDatabase(dataSource: DataSource) {
     const invoice = invoices[invoiceIndex];
     // Vary item count: some invoices have 1-3 items, some have 5-15 items for bigger totals
     const isBigInvoice = Math.random() < 0.3; // 30% chance of big invoice
-    const itemCount = isBigInvoice 
+    const itemCount = isBigInvoice
       ? Math.floor(Math.random() * 11) + 5 // 5-15 items for big invoices
       : Math.floor(Math.random() * 3) + 1; // 1-3 items for regular invoices
     const invoiceItems: InvoiceItem[] = [];
@@ -1217,16 +1363,19 @@ export async function seedDatabase(dataSource: DataSource) {
     let discountTotal = 0;
 
     for (let j = 0; j < itemCount; j++) {
-      const inventoryItem = inventoryItems[Math.floor(Math.random() * inventoryItems.length)];
+      const inventoryItem =
+        inventoryItems[Math.floor(Math.random() * inventoryItems.length)];
       // Big invoices have larger quantities (10-100), regular have 1-10
       const quantity = isBigInvoice
         ? Math.floor(Math.random() * 91) + 10 // 10-100 for big invoices
         : Math.floor(Math.random() * 10) + 1; // 1-10 for regular invoices
       // For big invoices, sometimes apply a multiplier to unit price
-      const priceMultiplier = isBigInvoice && Math.random() < 0.2 ? (Math.random() * 3 + 1) : 1; // 20% chance of 1x-4x price
+      const priceMultiplier =
+        isBigInvoice && Math.random() < 0.2 ? Math.random() * 3 + 1 : 1; // 20% chance of 1x-4x price
       const unitPrice = inventoryItem.defaultUnitPrice * priceMultiplier;
       const taxRate = inventoryItem.defaultTaxRate || 0;
-      const discountRate = Math.random() < 0.3 ? Math.floor(Math.random() * 10) : 0; // 30% chance of discount
+      const discountRate =
+        Math.random() < 0.3 ? Math.floor(Math.random() * 10) : 0; // 30% chance of discount
 
       const lineSubtotal = quantity * unitPrice;
       const lineDiscount = (lineSubtotal * discountRate) / 100;
@@ -1263,9 +1412,12 @@ export async function seedDatabase(dataSource: DataSource) {
           note: `Invoice ${invoice.number}`,
         });
         await stockMovementRepository.save(movement);
-        
+
         // Update stock manually since we're bypassing the service
-        inventoryItem.currentStock = Math.max(0, inventoryItem.currentStock - quantity);
+        inventoryItem.currentStock = Math.max(
+          0,
+          inventoryItem.currentStock - quantity,
+        );
         await inventoryRepository.save(inventoryItem);
       }
     }
@@ -1274,7 +1426,8 @@ export async function seedDatabase(dataSource: DataSource) {
     invoice.subtotal = Math.round(subtotal * 100) / 100;
     invoice.taxTotal = Math.round(taxTotal * 100) / 100;
     invoice.discountTotal = Math.round(discountTotal * 100) / 100;
-    invoice.total = Math.round((subtotal - discountTotal + taxTotal) * 100) / 100;
+    invoice.total =
+      Math.round((subtotal - discountTotal + taxTotal) * 100) / 100;
     await invoiceRepository.save(invoice);
   }
 
@@ -1285,20 +1438,22 @@ export async function seedDatabase(dataSource: DataSource) {
   // Backfill organizationId for all seed data (in case any existing items don't have it)
   if (demoOrganization) {
     console.log('\n🔄 Backfilling organizationId for seed data...');
-    
+
     // Organizations removed - seed data is already user-scoped
     // No need to update organizationId as it no longer exists on entities
-    
+
     // Fix invoices with future dates and update createdAt timestamps for proper sorting
-    console.log('\n🔄 Fixing invoices with future dates and updating timestamps...');
+    console.log(
+      '\n🔄 Fixing invoices with future dates and updating timestamps...',
+    );
     const now = new Date();
-    const allUserInvoices = await invoiceRepository.find({ 
+    const allUserInvoices = await invoiceRepository.find({
       where: { userId },
-      order: { createdAt: 'DESC' } // Get invoices ordered by current createdAt
+      order: { createdAt: 'DESC' }, // Get invoices ordered by current createdAt
     });
     let fixedCount = 0;
     let timestampUpdatedCount = 0;
-    
+
     // Sort invoices by their current createdAt timestamp (most recent first)
     // If timestamps are the same (within 1 second), use invoice number as tiebreaker
     // This preserves the actual creation order from the database
@@ -1306,7 +1461,7 @@ export async function seedDatabase(dataSource: DataSource) {
       const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
       const timeDiff = dateB - dateA;
-      
+
       // If timestamps are very close (within 1 second), use invoice number as tiebreaker
       if (Math.abs(timeDiff) < 1000) {
         // Extract the number part from invoice number (e.g., "6017" from "INV-2025-6017")
@@ -1314,29 +1469,29 @@ export async function seedDatabase(dataSource: DataSource) {
         const numB = b.number.match(/-(\d+)$/)?.[1] || '0';
         return parseInt(numB, 10) - parseInt(numA, 10); // Higher numbers = newer
       }
-      
+
       return timeDiff; // Most recent first
     });
-    
+
     // Update timestamps to ensure proper sorting with 1 second intervals
     for (let i = 0; i < sortedInvoices.length; i++) {
       const invoice = sortedInvoices[i];
       let needsUpdate = false;
       const updates: any = {};
-      
+
       // Update createdAt timestamp to ensure proper sorting (newest first)
       // Use raw SQL to bypass TypeORM's @CreateDateColumn auto-management
       const newCreatedAt = new Date(now.getTime() - i * 1000); // 1 second apart, newest first
       const newUpdatedAt = new Date(now.getTime() - i * 1000);
-      
+
       // Use raw SQL to update createdAt (bypassing TypeORM's @CreateDateColumn auto-management)
       await invoiceRepository.query(
         `UPDATE invoices SET "createdAt" = $1, "updatedAt" = $2 WHERE id = $3`,
-        [newCreatedAt, newUpdatedAt, invoice.id]
+        [newCreatedAt, newUpdatedAt, invoice.id],
       );
-      
+
       timestampUpdatedCount++;
-      
+
       // Fix issue date if it's in the future
       if (invoice.issueDate && new Date(invoice.issueDate) > now) {
         // For paid invoices, set issue date to at least 1 day ago
@@ -1349,13 +1504,15 @@ export async function seedDatabase(dataSource: DataSource) {
         }
         needsUpdate = true;
       }
-      
+
       // Fix due date if it's too far in the future (more than 60 days from issue date)
       if (invoice.dueDate) {
         const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : now;
         const dueDate = new Date(invoice.dueDate);
-        const maxDueDate = new Date(issueDate.getTime() + 60 * 24 * 60 * 60 * 1000); // 60 days max
-        
+        const maxDueDate = new Date(
+          issueDate.getTime() + 60 * 24 * 60 * 60 * 1000,
+        ); // 60 days max
+
         // For paid invoices, due date should be in the past
         if (invoice.status === 'paid' && dueDate > now) {
           updates.dueDate = now;
@@ -1366,27 +1523,33 @@ export async function seedDatabase(dataSource: DataSource) {
           needsUpdate = true;
         }
       }
-      
+
       // Fix paidAt if it's in the future (for paid invoices)
       if (invoice.status === 'paid' && invoice.paidAt) {
         const paidAt = new Date(invoice.paidAt);
         if (paidAt > now) {
           // Set paidAt to issue date or 1 day after issue date, whichever is earlier
-          const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : now;
-          const suggestedPaidAt = new Date(issueDate.getTime() + 24 * 60 * 60 * 1000);
+          const issueDate = invoice.issueDate
+            ? new Date(invoice.issueDate)
+            : now;
+          const suggestedPaidAt = new Date(
+            issueDate.getTime() + 24 * 60 * 60 * 1000,
+          );
           updates.paidAt = suggestedPaidAt > now ? now : suggestedPaidAt;
           needsUpdate = true;
         }
       }
-      
+
       if (needsUpdate) {
         await invoiceRepository.update({ id: invoice.id }, updates);
         fixedCount++;
       }
     }
-    
+
     if (timestampUpdatedCount > 0) {
-      console.log(`  ✓ Updated ${timestampUpdatedCount} invoice(s) with proper createdAt timestamps for sorting`);
+      console.log(
+        `  ✓ Updated ${timestampUpdatedCount} invoice(s) with proper createdAt timestamps for sorting`,
+      );
     }
     if (fixedCount > 0) {
       console.log(`  ✓ Fixed ${fixedCount} invoice(s) with future dates`);
@@ -1399,26 +1562,43 @@ export async function seedDatabase(dataSource: DataSource) {
   const finalClients = await clientRepository.find({ where: { userId } });
   const finalInventory = await inventoryRepository.find({ where: { userId } });
   const finalInvoices = await invoiceRepository.find({ where: { userId } });
-  
-  const finalSeedClients = finalClients.filter(c => SEED_CLIENT_NAMES.includes(c.name));
-  const finalUserClients = finalClients.filter(c => !SEED_CLIENT_NAMES.includes(c.name));
-  const finalSeedInventory = finalInventory.filter(i => SEED_INVENTORY_SKUS.includes(i.sku));
-  const finalUserInventory = finalInventory.filter(i => !SEED_INVENTORY_SKUS.includes(i.sku));
+
+  const finalSeedClients = finalClients.filter((c) =>
+    SEED_CLIENT_NAMES.includes(c.name),
+  );
+  const finalUserClients = finalClients.filter(
+    (c) => !SEED_CLIENT_NAMES.includes(c.name),
+  );
+  const finalSeedInventory = finalInventory.filter((i) =>
+    SEED_INVENTORY_SKUS.includes(i.sku),
+  );
+  const finalUserInventory = finalInventory.filter(
+    (i) => !SEED_INVENTORY_SKUS.includes(i.sku),
+  );
   // Identify seed invoices by NUMBER pattern, not by client (user-created invoices linked to seed clients must be preserved)
-  const finalSeedInvoices = finalInvoices.filter(inv => isSeedInvoiceNumber(inv.number));
-  const finalUserInvoices = finalInvoices.filter(inv => !isSeedInvoiceNumber(inv.number));
+  const finalSeedInvoices = finalInvoices.filter((inv) =>
+    isSeedInvoiceNumber(inv.number),
+  );
+  const finalUserInvoices = finalInvoices.filter(
+    (inv) => !isSeedInvoiceNumber(inv.number),
+  );
 
   console.log('\n' + '='.repeat(60));
   console.log('✅ Database seed completed successfully!');
   console.log('='.repeat(60));
   console.log('\n📊 Final data summary:');
   console.log(`  Seed clients: ${finalSeedClients.length}`);
-  console.log(`  User-created clients: ${finalUserClients.length} ✅ PRESERVED`);
+  console.log(
+    `  User-created clients: ${finalUserClients.length} ✅ PRESERVED`,
+  );
   console.log(`  Seed inventory: ${finalSeedInventory.length}`);
-  console.log(`  User-created inventory: ${finalUserInventory.length} ✅ PRESERVED`);
-  console.log(`  User-created invoices: ${finalUserInvoices.length} ✅ PRESERVED`);
+  console.log(
+    `  User-created inventory: ${finalUserInventory.length} ✅ PRESERVED`,
+  );
+  console.log(
+    `  User-created invoices: ${finalUserInvoices.length} ✅ PRESERVED`,
+  );
   console.log('\n✅ All user-created data has been preserved!');
   console.log('✅ Only seed data was regenerated.');
   console.log('='.repeat(60));
 }
-

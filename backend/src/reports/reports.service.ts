@@ -6,7 +6,11 @@ import { InvoiceItem } from '../invoices/entities/invoice-item.entity';
 import { Client } from '../clients/entities/client.entity';
 import { InventoryItem } from '../inventory/entities/inventory-item.entity';
 import { Store } from '../inventory/entities/store.entity';
-import { ReportFiltersDto, ReportType, PeriodType } from './dto/report-filters.dto';
+import {
+  ReportFiltersDto,
+  ReportType,
+  PeriodType,
+} from './dto/report-filters.dto';
 
 @Injectable()
 export class ReportsService {
@@ -42,10 +46,14 @@ export class ReportsService {
     }
 
     if (dateFilter.start) {
-      query.andWhere('invoice.issueDate >= :startDate', { startDate: dateFilter.start });
+      query.andWhere('invoice.issueDate >= :startDate', {
+        startDate: dateFilter.start,
+      });
     }
     if (dateFilter.end) {
-      query.andWhere('invoice.issueDate <= :endDate', { endDate: dateFilter.end });
+      query.andWhere('invoice.issueDate <= :endDate', {
+        endDate: dateFilter.end,
+      });
     }
 
     const invoices = await query.getMany();
@@ -88,7 +96,12 @@ export class ReportsService {
    * Generate Sales Trends Report
    */
   async generateSalesTrendsReport(userId: string, filters: ReportFiltersDto) {
-    const { startDate, endDate, periodType = PeriodType.MONTHLY, includeCancelled = false } = filters;
+    const {
+      startDate,
+      endDate,
+      periodType = PeriodType.MONTHLY,
+      includeCancelled = false,
+    } = filters;
     const dateFilter = this.buildDateFilter(startDate, endDate);
 
     const query = this.invoiceRepository
@@ -101,10 +114,14 @@ export class ReportsService {
     }
 
     if (dateFilter.start) {
-      query.andWhere('invoice.issueDate >= :startDate', { startDate: dateFilter.start });
+      query.andWhere('invoice.issueDate >= :startDate', {
+        startDate: dateFilter.start,
+      });
     }
     if (dateFilter.end) {
-      query.andWhere('invoice.issueDate <= :endDate', { endDate: dateFilter.end });
+      query.andWhere('invoice.issueDate <= :endDate', {
+        endDate: dateFilter.end,
+      });
     }
 
     const invoices = await query.getMany();
@@ -115,9 +132,11 @@ export class ReportsService {
     return {
       trends,
       totalRevenue: invoices.reduce((sum, inv) => sum + Number(inv.total), 0),
-      averageRevenue: invoices.length > 0
-        ? invoices.reduce((sum, inv) => sum + Number(inv.total), 0) / invoices.length
-        : 0,
+      averageRevenue:
+        invoices.length > 0
+          ? invoices.reduce((sum, inv) => sum + Number(inv.total), 0) /
+            invoices.length
+          : 0,
       periodType,
     };
   }
@@ -144,36 +163,43 @@ export class ReportsService {
     }
 
     if (dateFilter.start) {
-      query.andWhere('invoice.issueDate >= :startDate', { startDate: dateFilter.start });
+      query.andWhere('invoice.issueDate >= :startDate', {
+        startDate: dateFilter.start,
+      });
     }
     if (dateFilter.end) {
-      query.andWhere('invoice.issueDate <= :endDate', { endDate: dateFilter.end });
+      query.andWhere('invoice.issueDate <= :endDate', {
+        endDate: dateFilter.end,
+      });
     }
 
     const invoices = await query.getMany();
 
     // Group by client
-    const clientSales = invoices.reduce((acc, invoice) => {
-      const clientId = invoice.clientId;
-      if (!acc[clientId]) {
-        acc[clientId] = {
-          clientId,
-          clientName: invoice.client?.name || 'Unknown',
-          invoiceCount: 0,
-          totalRevenue: 0,
-          paidRevenue: 0,
-          unpaidRevenue: 0,
-        };
-      }
-      acc[clientId].invoiceCount++;
-      acc[clientId].totalRevenue += Number(invoice.total);
-      if (invoice.status === 'paid') {
-        acc[clientId].paidRevenue += Number(invoice.total);
-      } else {
-        acc[clientId].unpaidRevenue += Number(invoice.total);
-      }
-      return acc;
-    }, {} as Record<string, any>);
+    const clientSales = invoices.reduce(
+      (acc, invoice) => {
+        const clientId = invoice.clientId;
+        if (!acc[clientId]) {
+          acc[clientId] = {
+            clientId,
+            clientName: invoice.client?.name || 'Unknown',
+            invoiceCount: 0,
+            totalRevenue: 0,
+            paidRevenue: 0,
+            unpaidRevenue: 0,
+          };
+        }
+        acc[clientId].invoiceCount++;
+        acc[clientId].totalRevenue += Number(invoice.total);
+        if (invoice.status === 'paid') {
+          acc[clientId].paidRevenue += Number(invoice.total);
+        } else {
+          acc[clientId].unpaidRevenue += Number(invoice.total);
+        }
+        return acc;
+      },
+      {} as Record<string, any>,
+    );
 
     const summary = Object.values(clientSales).sort(
       (a: any, b: any) => b.totalRevenue - a.totalRevenue,
@@ -182,14 +208,20 @@ export class ReportsService {
     return {
       summary,
       totalClients: summary.length,
-      totalRevenue: summary.reduce((sum: number, item: any) => sum + item.totalRevenue, 0),
+      totalRevenue: summary.reduce(
+        (sum: number, item: any) => sum + item.totalRevenue,
+        0,
+      ),
     };
   }
 
   /**
    * Generate Inventory Valuation Report
    */
-  async generateInventoryValuationReport(userId: string, filters: ReportFiltersDto) {
+  async generateInventoryValuationReport(
+    userId: string,
+    filters: ReportFiltersDto,
+  ) {
     const { storeId } = filters;
 
     const query = this.inventoryItemRepository
@@ -199,7 +231,7 @@ export class ReportsService {
     const items = await query.getMany();
 
     // Get store settings separately if needed
-    let storeSettings: any[] = [];
+    const storeSettings: any[] = [];
     if (storeId) {
       // Note: StoreItemSettings would need to be injected separately
       // For now, we'll use defaultUnitPrice and currentStock
@@ -219,14 +251,18 @@ export class ReportsService {
       };
     });
 
-    const totalValuation = valuation.reduce((sum, item) => sum + item.totalValue, 0);
+    const totalValuation = valuation.reduce(
+      (sum, item) => sum + item.totalValue,
+      0,
+    );
 
     return {
       items: valuation.sort((a, b) => b.totalValue - a.totalValue),
       summary: {
         totalItems: valuation.length,
         totalValuation,
-        averageValue: valuation.length > 0 ? totalValuation / valuation.length : 0,
+        averageValue:
+          valuation.length > 0 ? totalValuation / valuation.length : 0,
       },
     };
   }
@@ -255,9 +291,12 @@ export class ReportsService {
 
     const aging = invoices.map((invoice) => {
       const dueDate = invoice.dueDate ? new Date(invoice.dueDate) : null;
-      const daysOverdue = dueDate && dueDate < now
-        ? Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24))
-        : 0;
+      const daysOverdue =
+        dueDate && dueDate < now
+          ? Math.floor(
+              (now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24),
+            )
+          : 0;
 
       let agingBucket = 'current';
       if (daysOverdue > 90) {
@@ -307,7 +346,10 @@ export class ReportsService {
   /**
    * Generate Payment Collection Analysis
    */
-  async generatePaymentCollectionReport(userId: string, filters: ReportFiltersDto) {
+  async generatePaymentCollectionReport(
+    userId: string,
+    filters: ReportFiltersDto,
+  ) {
     const { startDate, endDate, includeCancelled = false } = filters;
     const dateFilter = this.buildDateFilter(startDate, endDate);
 
@@ -321,15 +363,21 @@ export class ReportsService {
     }
 
     if (dateFilter.start) {
-      query.andWhere('invoice.issueDate >= :startDate', { startDate: dateFilter.start });
+      query.andWhere('invoice.issueDate >= :startDate', {
+        startDate: dateFilter.start,
+      });
     }
     if (dateFilter.end) {
-      query.andWhere('invoice.issueDate <= :endDate', { endDate: dateFilter.end });
+      query.andWhere('invoice.issueDate <= :endDate', {
+        endDate: dateFilter.end,
+      });
     }
 
     const invoices = await query.getMany();
 
-    const paidInvoices = invoices.filter((inv) => inv.status === 'paid' && inv.paidAt);
+    const paidInvoices = invoices.filter(
+      (inv) => inv.status === 'paid' && inv.paidAt,
+    );
     const unpaidInvoices = invoices.filter((inv) => inv.status !== 'paid');
 
     // Calculate average days to payment
@@ -338,36 +386,49 @@ export class ReportsService {
         if (!inv.paidAt || !inv.issueDate) return null;
         const issueDate = new Date(inv.issueDate);
         const paidDate = new Date(inv.paidAt);
-        return Math.floor((paidDate.getTime() - issueDate.getTime()) / (1000 * 60 * 60 * 24));
+        return Math.floor(
+          (paidDate.getTime() - issueDate.getTime()) / (1000 * 60 * 60 * 24),
+        );
       })
       .filter((days): days is number => days !== null);
 
     const averageDaysToPayment =
       daysToPayment.length > 0
-        ? daysToPayment.reduce((sum, days) => sum + days, 0) / daysToPayment.length
+        ? daysToPayment.reduce((sum, days) => sum + days, 0) /
+          daysToPayment.length
         : 0;
 
     // Payment method breakdown
-    const paymentMethods = paidInvoices.reduce((acc, inv) => {
-      const method = inv.paymentMethodNote || 'unknown';
-      if (!acc[method]) {
-        acc[method] = { count: 0, total: 0 };
-      }
-      acc[method].count++;
-      acc[method].total += Number(inv.total);
-      return acc;
-    }, {} as Record<string, { count: number; total: number }>);
+    const paymentMethods = paidInvoices.reduce(
+      (acc, inv) => {
+        const method = inv.paymentMethodNote || 'unknown';
+        if (!acc[method]) {
+          acc[method] = { count: 0, total: 0 };
+        }
+        acc[method].count++;
+        acc[method].total += Number(inv.total);
+        return acc;
+      },
+      {} as Record<string, { count: number; total: number }>,
+    );
 
     return {
       summary: {
         totalInvoices: invoices.length,
         paidInvoices: paidInvoices.length,
         unpaidInvoices: unpaidInvoices.length,
-        paidAmount: paidInvoices.reduce((sum, inv) => sum + Number(inv.total), 0),
-        unpaidAmount: unpaidInvoices.reduce((sum, inv) => sum + Number(inv.total), 0),
-        collectionRate: invoices.length > 0
-          ? (paidInvoices.length / invoices.length) * 100
-          : 0,
+        paidAmount: paidInvoices.reduce(
+          (sum, inv) => sum + Number(inv.total),
+          0,
+        ),
+        unpaidAmount: unpaidInvoices.reduce(
+          (sum, inv) => sum + Number(inv.total),
+          0,
+        ),
+        collectionRate:
+          invoices.length > 0
+            ? (paidInvoices.length / invoices.length) * 100
+            : 0,
         averageDaysToPayment,
       },
       paymentMethods,
@@ -409,7 +470,9 @@ export class ReportsService {
       const cost = item.inventoryItem?.costPrice
         ? Number(item.inventoryItem.costPrice) * Number(item.quantity)
         : item.inventoryItem?.defaultUnitPrice
-          ? Number(item.inventoryItem.defaultUnitPrice) * Number(item.quantity) * 0.5
+          ? Number(item.inventoryItem.defaultUnitPrice) *
+            Number(item.quantity) *
+            0.5
           : Number(item.unitPrice) * Number(item.quantity) * 0.5;
       return sum + cost;
     }, 0);

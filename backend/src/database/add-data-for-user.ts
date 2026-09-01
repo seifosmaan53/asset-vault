@@ -14,7 +14,7 @@ config();
 async function addDataForUser() {
   // Get user identifier from command line arguments
   const userIdentifier = process.argv[2]; // Can be email or userId
-  
+
   if (!userIdentifier) {
     console.error('❌ Error: Please provide a user email or user ID');
     console.log('\nUsage:');
@@ -35,25 +35,29 @@ async function addDataForUser() {
     // Find user by email or ID
     let user: User | null = null;
     const isEmail = userIdentifier.includes('@');
-    
+
     // Try as email first (most common)
     if (isEmail) {
-      user = await userRepository.findOne({ 
-        where: { email: userIdentifier.toLowerCase().trim() } 
+      user = await userRepository.findOne({
+        where: { email: userIdentifier.toLowerCase().trim() },
       });
     } else {
       // If doesn't look like email, try as userId (UUID)
-      user = await userRepository.findOne({ 
-        where: { id: userIdentifier } 
+      user = await userRepository.findOne({
+        where: { id: userIdentifier },
       });
     }
 
     if (!user) {
-      console.error(`❌ Error: User not found with identifier: ${userIdentifier}`);
+      console.error(
+        `❌ Error: User not found with identifier: ${userIdentifier}`,
+      );
       console.log('\nPlease check:');
       console.log('  - Email is correct and user exists in database');
       console.log('  - User ID is correct');
-      console.log('\nTo list all users, you can check the database or use a query script.');
+      console.log(
+        '\nTo list all users, you can check the database or use a query script.',
+      );
       process.exit(1);
     }
 
@@ -90,4 +94,3 @@ async function addDataForUser() {
 }
 
 addDataForUser();
-

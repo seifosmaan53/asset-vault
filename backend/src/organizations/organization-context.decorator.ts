@@ -1,4 +1,5 @@
-import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+import type { ExecutionContext } from '@nestjs/common';
+import { createParamDecorator } from '@nestjs/common';
 
 /**
  * Decorator to extract organization context from request
@@ -21,4 +22,3 @@ export const OrganizationRole = createParamDecorator(
     return request.organizationRole || null;
   },
 );
-

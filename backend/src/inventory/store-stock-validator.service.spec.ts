@@ -1,6 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import type { Repository } from 'typeorm';
 import { StoreStockValidatorService } from './store-stock-validator.service';
 import { StoreItemSettings } from './entities/store-item-settings.entity';
 import { Store } from './entities/store.entity';
@@ -23,8 +24,11 @@ describe('StoreStockValidatorService', () => {
        The manager takes (Entity, options), so this adapts onto the repo-level stub. */
     manager: {
       findOne: jest.fn((_entity: unknown, options: unknown) =>
-        mockStoreItemSettingsRepository.findOne(options)),
-      find: jest.fn(async () => (await mockStoreItemSettingsRepository.find()) ?? []),
+        mockStoreItemSettingsRepository.findOne(options),
+      ),
+      find: jest.fn(
+        async () => (await mockStoreItemSettingsRepository.find()) ?? [],
+      ),
       save: jest.fn((_entity: unknown, data: unknown) => Promise.resolve(data)),
       create: jest.fn((_entity: unknown, data: unknown) => data),
     },
@@ -43,13 +47,22 @@ describe('StoreStockValidatorService', () => {
        does not guarantee one findOne per item, so a mockResolvedValueOnce sequence
        silently lines up against the wrong lookup. */
     const params: Record<string, unknown> = {};
-    for (const method of ['where', 'andWhere', 'setLock', 'leftJoinAndSelect', 'select', 'orderBy']) {
+    for (const method of [
+      'where',
+      'andWhere',
+      'setLock',
+      'leftJoinAndSelect',
+      'select',
+      'orderBy',
+    ]) {
       qb[method] = jest.fn((_sql?: unknown, p?: Record<string, unknown>) => {
         if (p) Object.assign(params, p);
         return qb;
       });
     }
-    qb.getOne = jest.fn(() => (delegate ? delegate({ where: { ...params } }) : undefined));
+    qb.getOne = jest.fn(() =>
+      delegate ? delegate({ where: { ...params } }) : undefined,
+    );
     qb.getMany = jest.fn(() => []);
     return qb;
   };
@@ -97,7 +110,9 @@ describe('StoreStockValidatorService', () => {
       ],
     }).compile();
 
-    service = module.get<StoreStockValidatorService>(StoreStockValidatorService);
+    service = module.get<StoreStockValidatorService>(
+      StoreStockValidatorService,
+    );
     storeItemSettingsRepository = module.get<Repository<StoreItemSettings>>(
       getRepositoryToken(StoreItemSettings),
     );
@@ -105,7 +120,9 @@ describe('StoreStockValidatorService', () => {
     inventoryItemRepository = module.get<Repository<InventoryItem>>(
       getRepositoryToken(InventoryItem),
     );
-    storeItemSettingsService = module.get<StoreItemSettingsService>(StoreItemSettingsService);
+    storeItemSettingsService = module.get<StoreItemSettingsService>(
+      StoreItemSettingsService,
+    );
   });
 
   afterEach(() => {
@@ -119,14 +136,23 @@ describe('StoreStockValidatorService', () => {
 
     it('should return stock from existing settings', async () => {
       const mockStore = { id: storeId, userId, name: 'Test Store' };
-      const mockInventoryItem = { id: inventoryItemId, userId, name: 'Test Item', currentStock: 1000 };
+      const mockInventoryItem = {
+        id: inventoryItemId,
+        userId,
+        name: 'Test Item',
+        currentStock: 1000,
+      };
       const mockSettings = { storeId, inventoryItemId, currentStock: 50 };
 
       mockStoreRepository.findOne.mockResolvedValue(mockStore);
       mockInventoryItemRepository.findOne.mockResolvedValue(mockInventoryItem);
       mockStoreItemSettingsRepository.findOne.mockResolvedValue(mockSettings);
 
-      const result = await service.getAvailableStoreStock(storeId, inventoryItemId, userId);
+      const result = await service.getAvailableStoreStock(
+        storeId,
+        inventoryItemId,
+        userId,
+      );
 
       expect(result).toBe(50);
       /* These used to assert findOne({ where: { id, userId } }). The lookup moved to a
@@ -148,13 +174,22 @@ describe('StoreStockValidatorService', () => {
 
     it('should return 0 when no settings exist', async () => {
       const mockStore = { id: storeId, userId, name: 'Test Store' };
-      const mockInventoryItem = { id: inventoryItemId, userId, name: 'Test Item', currentStock: 1000 };
+      const mockInventoryItem = {
+        id: inventoryItemId,
+        userId,
+        name: 'Test Item',
+        currentStock: 1000,
+      };
 
       mockStoreRepository.findOne.mockResolvedValue(mockStore);
       mockInventoryItemRepository.findOne.mockResolvedValue(mockInventoryItem);
       mockStoreItemSettingsRepository.findOne.mockResolvedValue(null);
 
-      const result = await service.getAvailableStoreStock(storeId, inventoryItemId, userId);
+      const result = await service.getAvailableStoreStock(
+        storeId,
+        inventoryItemId,
+        userId,
+      );
 
       expect(result).toBe(0);
     });
@@ -180,14 +215,23 @@ describe('StoreStockValidatorService', () => {
 
     it('should return 0 when currentStock is null', async () => {
       const mockStore = { id: storeId, userId, name: 'Test Store' };
-      const mockInventoryItem = { id: inventoryItemId, userId, name: 'Test Item', currentStock: 1000 };
+      const mockInventoryItem = {
+        id: inventoryItemId,
+        userId,
+        name: 'Test Item',
+        currentStock: 1000,
+      };
       const mockSettings = { storeId, inventoryItemId, currentStock: null };
 
       mockStoreRepository.findOne.mockResolvedValue(mockStore);
       mockInventoryItemRepository.findOne.mockResolvedValue(mockInventoryItem);
       mockStoreItemSettingsRepository.findOne.mockResolvedValue(mockSettings);
 
-      const result = await service.getAvailableStoreStock(storeId, inventoryItemId, userId);
+      const result = await service.getAvailableStoreStock(
+        storeId,
+        inventoryItemId,
+        userId,
+      );
 
       expect(result).toBe(0);
     });
@@ -200,7 +244,12 @@ describe('StoreStockValidatorService', () => {
 
     beforeEach(() => {
       const mockStore = { id: storeId, userId, name: 'Test Store' };
-      const mockInventoryItem = { id: inventoryItemId, userId, name: 'Test Item', currentStock: 1000 };
+      const mockInventoryItem = {
+        id: inventoryItemId,
+        userId,
+        name: 'Test Item',
+        currentStock: 1000,
+      };
 
       mockStoreRepository.findOne.mockResolvedValue(mockStore);
       mockInventoryItemRepository.findOne.mockResolvedValue(mockInventoryItem);
@@ -284,10 +333,28 @@ describe('StoreStockValidatorService', () => {
     });
 
     it('should validate all items successfully', async () => {
-      const item1 = { id: 'item-1', userId, name: 'Item 1', currentStock: 1000 };
-      const item2 = { id: 'item-2', userId, name: 'Item 2', currentStock: 1000 };
-      const settings1 = { storeId, inventoryItemId: 'item-1', currentStock: 100 };
-      const settings2 = { storeId, inventoryItemId: 'item-2', currentStock: 50 };
+      const item1 = {
+        id: 'item-1',
+        userId,
+        name: 'Item 1',
+        currentStock: 1000,
+      };
+      const item2 = {
+        id: 'item-2',
+        userId,
+        name: 'Item 2',
+        currentStock: 1000,
+      };
+      const settings1 = {
+        storeId,
+        inventoryItemId: 'item-1',
+        currentStock: 100,
+      };
+      const settings2 = {
+        storeId,
+        inventoryItemId: 'item-2',
+        currentStock: 50,
+      };
 
       mockInventoryItemRepository.findOne
         .mockResolvedValueOnce(item1)
@@ -303,7 +370,12 @@ describe('StoreStockValidatorService', () => {
         { inventoryItemId: 'item-2', quantity: 30, description: 'Item 2' },
       ];
 
-      const result = await service.validateInvoiceItemsStoreStock(storeId, items, userId, 'sale');
+      const result = await service.validateInvoiceItemsStoreStock(
+        storeId,
+        items,
+        userId,
+        'sale',
+      );
 
       expect(result.isValid).toBe(true);
       expect(result.itemValidations).toHaveLength(2);
@@ -312,10 +384,28 @@ describe('StoreStockValidatorService', () => {
     });
 
     it('should fail when any item has insufficient stock', async () => {
-      const item1 = { id: 'item-1', userId, name: 'Item 1', currentStock: 1000 };
-      const item2 = { id: 'item-2', userId, name: 'Item 2', currentStock: 1000 };
-      const settings1 = { storeId, inventoryItemId: 'item-1', currentStock: 100 };
-      const settings2 = { storeId, inventoryItemId: 'item-2', currentStock: 20 };
+      const item1 = {
+        id: 'item-1',
+        userId,
+        name: 'Item 1',
+        currentStock: 1000,
+      };
+      const item2 = {
+        id: 'item-2',
+        userId,
+        name: 'Item 2',
+        currentStock: 1000,
+      };
+      const settings1 = {
+        storeId,
+        inventoryItemId: 'item-1',
+        currentStock: 100,
+      };
+      const settings2 = {
+        storeId,
+        inventoryItemId: 'item-2',
+        currentStock: 20,
+      };
 
       mockInventoryItemRepository.findOne
         .mockResolvedValueOnce(item1)
@@ -331,7 +421,12 @@ describe('StoreStockValidatorService', () => {
         { inventoryItemId: 'item-2', quantity: 30, description: 'Item 2' },
       ];
 
-      const result = await service.validateInvoiceItemsStoreStock(storeId, items, userId, 'sale');
+      const result = await service.validateInvoiceItemsStoreStock(
+        storeId,
+        items,
+        userId,
+        'sale',
+      );
 
       expect(result.isValid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
@@ -344,21 +439,46 @@ describe('StoreStockValidatorService', () => {
         { quantity: 30, description: 'Item without inventory' },
       ];
 
-      const item1 = { id: 'item-1', userId, name: 'Item 1', currentStock: 1000 };
-      const settings1 = { storeId, inventoryItemId: 'item-1', currentStock: 100 };
+      const item1 = {
+        id: 'item-1',
+        userId,
+        name: 'Item 1',
+        currentStock: 1000,
+      };
+      const settings1 = {
+        storeId,
+        inventoryItemId: 'item-1',
+        currentStock: 100,
+      };
 
-      mockInventoryItemRepository.findOne.mockResolvedValueOnce(item1).mockResolvedValueOnce(item1);
+      mockInventoryItemRepository.findOne
+        .mockResolvedValueOnce(item1)
+        .mockResolvedValueOnce(item1);
       mockStoreItemSettingsRepository.findOne.mockResolvedValueOnce(settings1);
 
-      const result = await service.validateInvoiceItemsStoreStock(storeId, items, userId, 'sale');
+      const result = await service.validateInvoiceItemsStoreStock(
+        storeId,
+        items,
+        userId,
+        'sale',
+      );
 
       expect(result.itemValidations).toHaveLength(1);
       expect(result.itemValidations[0].inventoryItemId).toBe('item-1');
     });
 
     it('should handle errors gracefully for individual items', async () => {
-      const item1 = { id: 'item-1', userId, name: 'Item 1', currentStock: 1000 };
-      const settings1 = { storeId, inventoryItemId: 'item-1', currentStock: 100 };
+      const item1 = {
+        id: 'item-1',
+        userId,
+        name: 'Item 1',
+        currentStock: 1000,
+      };
+      const settings1 = {
+        storeId,
+        inventoryItemId: 'item-1',
+        currentStock: 100,
+      };
 
       // keyed on the requested id rather than call order — see makeQueryBuilder above
       mockInventoryItemRepository.findOne.mockImplementation(
@@ -374,7 +494,12 @@ describe('StoreStockValidatorService', () => {
         { inventoryItemId: 'item-2', quantity: 30, description: 'Item 2' },
       ];
 
-      const result = await service.validateInvoiceItemsStoreStock(storeId, items, userId, 'sale');
+      const result = await service.validateInvoiceItemsStoreStock(
+        storeId,
+        items,
+        userId,
+        'sale',
+      );
 
       expect(result.isValid).toBe(false);
       expect(result.itemValidations).toHaveLength(2);
@@ -394,12 +519,20 @@ describe('StoreStockValidatorService', () => {
 
     it('should not throw when validation passes', async () => {
       const item = { id: 'item-1', userId, name: 'Item 1', currentStock: 1000 };
-      const settings = { storeId, inventoryItemId: 'item-1', currentStock: 100 };
+      const settings = {
+        storeId,
+        inventoryItemId: 'item-1',
+        currentStock: 100,
+      };
 
-      mockInventoryItemRepository.findOne.mockResolvedValue(item).mockResolvedValue(item);
+      mockInventoryItemRepository.findOne
+        .mockResolvedValue(item)
+        .mockResolvedValue(item);
       mockStoreItemSettingsRepository.findOne.mockResolvedValue(settings);
 
-      const items = [{ inventoryItemId: 'item-1', quantity: 50, description: 'Item 1' }];
+      const items = [
+        { inventoryItemId: 'item-1', quantity: 50, description: 'Item 1' },
+      ];
 
       await expect(
         service.validateAndThrow(storeId, items, userId, 'sale'),
@@ -410,24 +543,32 @@ describe('StoreStockValidatorService', () => {
       const item = { id: 'item-1', userId, name: 'Item 1', currentStock: 1000 };
       const settings = { storeId, inventoryItemId: 'item-1', currentStock: 30 };
 
-      mockInventoryItemRepository.findOne.mockResolvedValue(item).mockResolvedValue(item);
+      mockInventoryItemRepository.findOne
+        .mockResolvedValue(item)
+        .mockResolvedValue(item);
       mockStoreItemSettingsRepository.findOne.mockResolvedValue(settings);
 
-      const items = [{ inventoryItemId: 'item-1', quantity: 50, description: 'Item 1' }];
+      const items = [
+        { inventoryItemId: 'item-1', quantity: 50, description: 'Item 1' },
+      ];
 
-      await expect(service.validateAndThrow(storeId, items, userId, 'sale')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.validateAndThrow(storeId, items, userId, 'sale'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should include error details in exception message', async () => {
       const item = { id: 'item-1', userId, name: 'Item 1', currentStock: 1000 };
       const settings = { storeId, inventoryItemId: 'item-1', currentStock: 30 };
 
-      mockInventoryItemRepository.findOne.mockResolvedValue(item).mockResolvedValue(item);
+      mockInventoryItemRepository.findOne
+        .mockResolvedValue(item)
+        .mockResolvedValue(item);
       mockStoreItemSettingsRepository.findOne.mockResolvedValue(settings);
 
-      const items = [{ inventoryItemId: 'item-1', quantity: 50, description: 'Item 1' }];
+      const items = [
+        { inventoryItemId: 'item-1', quantity: 50, description: 'Item 1' },
+      ];
 
       try {
         await service.validateAndThrow(storeId, items, userId, 'sale');
@@ -440,4 +581,3 @@ describe('StoreStockValidatorService', () => {
     });
   });
 });
-

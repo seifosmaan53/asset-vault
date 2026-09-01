@@ -15,7 +15,7 @@ config();
 
 /**
  * Verification script to ensure user data safety
- * 
+ *
  * This script verifies:
  * 1. Seed operations only affect demo@example.com
  * 2. All users' data is properly isolated
@@ -30,7 +30,18 @@ async function verifyUserDataSafety() {
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.DB_DATABASE || 'invoiceme',
-    entities: [User, Client, Invoice, InvoiceItem, InventoryItem, StockMovement, Store, StoreItemSettings, Organization, UserOrganization],
+    entities: [
+      User,
+      Client,
+      Invoice,
+      InvoiceItem,
+      InventoryItem,
+      StockMovement,
+      Store,
+      StoreItemSettings,
+      Organization,
+      UserOrganization,
+    ],
     synchronize: false,
     logging: false,
   });
@@ -71,10 +82,18 @@ async function verifyUserDataSafety() {
 
     for (const user of allUsers) {
       const isDemo = user.email.toLowerCase() === 'demo@example.com';
-      const clients = await clientRepository.count({ where: { userId: user.id } });
-      const invoices = await invoiceRepository.count({ where: { userId: user.id } });
-      const inventory = await inventoryRepository.count({ where: { userId: user.id } });
-      const stores = await storeRepository.count({ where: { userId: user.id } });
+      const clients = await clientRepository.count({
+        where: { userId: user.id },
+      });
+      const invoices = await invoiceRepository.count({
+        where: { userId: user.id },
+      });
+      const inventory = await inventoryRepository.count({
+        where: { userId: user.id },
+      });
+      const stores = await storeRepository.count({
+        where: { userId: user.id },
+      });
 
       userDataSummary.push({
         email: user.email,
@@ -86,22 +105,28 @@ async function verifyUserDataSafety() {
         isDemo,
       });
 
-      const marker = isDemo ? ' 👈 DEMO (seed operations only affect this)' : ' ✅ YOUR DATA (completely safe)';
+      const marker = isDemo
+        ? ' 👈 DEMO (seed operations only affect this)'
+        : ' ✅ YOUR DATA (completely safe)';
       console.log(`  ${user.email}${marker}`);
       console.log(`    ID: ${user.id}`);
       console.log(`    Role: ${user.role}`);
-      console.log(`    Data: ${clients} clients, ${invoices} invoices, ${inventory} items, ${stores} stores`);
+      console.log(
+        `    Data: ${clients} clients, ${invoices} invoices, ${inventory} items, ${stores} stores`,
+      );
       console.log('');
     }
 
     console.log('\n📊 VERIFICATION 2: Data Isolation Check');
     console.log('-'.repeat(70));
-    
+
     // Verify no cross-user data contamination
     let allDataIsolated = true;
     for (const user of allUsers) {
       // Check if any clients belong to wrong user
-      const clients = await clientRepository.find({ where: { userId: user.id } });
+      const clients = await clientRepository.find({
+        where: { userId: user.id },
+      });
       for (const client of clients) {
         if (client.userId !== user.id) {
           console.log(`  ❌ ERROR: Client ${client.id} has wrong userId!`);
@@ -110,7 +135,9 @@ async function verifyUserDataSafety() {
       }
 
       // Check if any invoices belong to wrong user
-      const invoices = await invoiceRepository.find({ where: { userId: user.id } });
+      const invoices = await invoiceRepository.find({
+        where: { userId: user.id },
+      });
       for (const invoice of invoices) {
         if (invoice.userId !== user.id) {
           console.log(`  ❌ ERROR: Invoice ${invoice.id} has wrong userId!`);
@@ -119,10 +146,14 @@ async function verifyUserDataSafety() {
       }
 
       // Check if any inventory belongs to wrong user
-      const inventory = await inventoryRepository.find({ where: { userId: user.id } });
+      const inventory = await inventoryRepository.find({
+        where: { userId: user.id },
+      });
       for (const item of inventory) {
         if (item.userId !== user.id) {
-          console.log(`  ❌ ERROR: Inventory item ${item.id} has wrong userId!`);
+          console.log(
+            `  ❌ ERROR: Inventory item ${item.id} has wrong userId!`,
+          );
           allDataIsolated = false;
         }
       }
@@ -135,7 +166,9 @@ async function verifyUserDataSafety() {
 
     console.log('\n📊 VERIFICATION 3: Seed Script Safety');
     console.log('-'.repeat(70));
-    const demoUser = allUsers.find(u => u.email.toLowerCase() === 'demo@example.com');
+    const demoUser = allUsers.find(
+      (u) => u.email.toLowerCase() === 'demo@example.com',
+    );
     if (demoUser) {
       console.log('  ✅ Demo user exists: demo@example.com');
       console.log('  ✅ Seed scripts ONLY work with demo@example.com');
@@ -146,10 +179,16 @@ async function verifyUserDataSafety() {
 
     console.log('\n📊 VERIFICATION 4: Backup/Export Safety');
     console.log('-'.repeat(70));
-    console.log('  ✅ Backup/Export functions are user-specific (filter by userId)');
+    console.log(
+      '  ✅ Backup/Export functions are user-specific (filter by userId)',
+    );
     console.log('  ✅ Each user can only export their own data');
-    console.log('  ✅ All export formats (JSON, CSV, Excel, PDF) are user-specific');
-    console.log('  ✅ SQL backups include all users but data is isolated by userId');
+    console.log(
+      '  ✅ All export formats (JSON, CSV, Excel, PDF) are user-specific',
+    );
+    console.log(
+      '  ✅ SQL backups include all users but data is isolated by userId',
+    );
 
     console.log('\n📊 VERIFICATION 5: API Endpoint Safety');
     console.log('-'.repeat(70));
@@ -161,13 +200,13 @@ async function verifyUserDataSafety() {
     console.log('\n' + '='.repeat(70));
     console.log('SUMMARY');
     console.log('='.repeat(70));
-    
-    const yourUsers = userDataSummary.filter(u => !u.isDemo);
-    const demoUsers = userDataSummary.filter(u => u.isDemo);
+
+    const yourUsers = userDataSummary.filter((u) => !u.isDemo);
+    const demoUsers = userDataSummary.filter((u) => u.isDemo);
 
     if (yourUsers.length > 0) {
       console.log('\n✅ YOUR USER ACCOUNTS (Completely Safe):');
-      yourUsers.forEach(user => {
+      yourUsers.forEach((user) => {
         console.log(`  ${user.email}:`);
         console.log(`    - ${user.clients} clients`);
         console.log(`    - ${user.invoices} invoices`);
@@ -181,7 +220,7 @@ async function verifyUserDataSafety() {
 
     if (demoUsers.length > 0) {
       console.log('\n📝 DEMO ACCOUNT (Seed operations only):');
-      demoUsers.forEach(user => {
+      demoUsers.forEach((user) => {
         console.log(`  ${user.email}:`);
         console.log(`    - ${user.clients} clients`);
         console.log(`    - ${user.invoices} invoices`);
@@ -216,4 +255,3 @@ async function verifyUserDataSafety() {
 }
 
 verifyUserDataSafety();
-

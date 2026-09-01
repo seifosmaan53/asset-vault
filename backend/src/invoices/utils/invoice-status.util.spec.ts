@@ -15,7 +15,9 @@ describe('invoice-status.util', () => {
     it('should allow valid transitions', () => {
       expect(() => validateStatusTransition('draft', 'sent')).not.toThrow();
       expect(() => validateStatusTransition('draft', 'paid')).not.toThrow(); // Allow direct draft to paid
-      expect(() => validateStatusTransition('draft', 'cancelled')).not.toThrow();
+      expect(() =>
+        validateStatusTransition('draft', 'cancelled'),
+      ).not.toThrow();
       expect(() => validateStatusTransition('sent', 'paid')).not.toThrow();
       expect(() => validateStatusTransition('sent', 'overdue')).not.toThrow();
       expect(() => validateStatusTransition('overdue', 'paid')).not.toThrow();
@@ -27,9 +29,15 @@ describe('invoice-status.util', () => {
     });
 
     it('should reject invalid transitions', () => {
-      expect(() => validateStatusTransition('paid', 'draft')).toThrow(BadRequestException);
-      expect(() => validateStatusTransition('cancelled', 'sent')).toThrow(BadRequestException);
-      expect(() => validateStatusTransition('paid', 'sent')).toThrow(BadRequestException);
+      expect(() => validateStatusTransition('paid', 'draft')).toThrow(
+        BadRequestException,
+      );
+      expect(() => validateStatusTransition('cancelled', 'sent')).toThrow(
+        BadRequestException,
+      );
+      expect(() => validateStatusTransition('paid', 'sent')).toThrow(
+        BadRequestException,
+      );
     });
 
     it('should provide helpful error messages', () => {
@@ -38,7 +46,9 @@ describe('invoice-status.util', () => {
         fail('Should have thrown');
       } catch (error) {
         expect(error).toBeInstanceOf(BadRequestException);
-        expect((error as BadRequestException).message).toContain('Invalid status transition');
+        expect((error as BadRequestException).message).toContain(
+          'Invalid status transition',
+        );
         expect((error as BadRequestException).message).toContain('paid');
         expect((error as BadRequestException).message).toContain('draft');
       }
@@ -51,21 +61,33 @@ describe('invoice-status.util', () => {
     });
 
     it('should reject marking as paid with zero total', () => {
-      expect(() => validateStatusBusinessRules('paid', 0, 1)).toThrow(BadRequestException);
-      expect(() => validateStatusBusinessRules('paid', -10, 1)).toThrow(BadRequestException);
+      expect(() => validateStatusBusinessRules('paid', 0, 1)).toThrow(
+        BadRequestException,
+      );
+      expect(() => validateStatusBusinessRules('paid', -10, 1)).toThrow(
+        BadRequestException,
+      );
     });
 
     it('should reject marking as paid with no items', () => {
-      expect(() => validateStatusBusinessRules('paid', 100, 0)).toThrow(BadRequestException);
+      expect(() => validateStatusBusinessRules('paid', 100, 0)).toThrow(
+        BadRequestException,
+      );
     });
 
     it('should reject marking as sent without client email', () => {
-      expect(() => validateStatusBusinessRules('sent', 100, 1, null)).toThrow(BadRequestException);
-      expect(() => validateStatusBusinessRules('sent', 100, 1, '')).toThrow(BadRequestException);
+      expect(() => validateStatusBusinessRules('sent', 100, 1, null)).toThrow(
+        BadRequestException,
+      );
+      expect(() => validateStatusBusinessRules('sent', 100, 1, '')).toThrow(
+        BadRequestException,
+      );
     });
 
     it('should allow marking as sent with client email', () => {
-      expect(() => validateStatusBusinessRules('sent', 100, 1, 'client@example.com')).not.toThrow();
+      expect(() =>
+        validateStatusBusinessRules('sent', 100, 1, 'client@example.com'),
+      ).not.toThrow();
     });
   });
 
@@ -123,4 +145,3 @@ describe('invoice-status.util', () => {
     });
   });
 });
-

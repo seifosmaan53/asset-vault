@@ -32,4 +32,3 @@ export class Feedback {
   @CreateDateColumn()
   createdAt: Date;
 }
-

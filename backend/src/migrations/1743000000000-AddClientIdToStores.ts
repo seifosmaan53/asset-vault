@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddClientIdToStores1743000000000 implements MigrationInterface {
   name = 'AddClientIdToStores1743000000000';
@@ -44,11 +44,11 @@ export class AddClientIdToStores1743000000000 implements MigrationInterface {
       if (orphanedStores > 0) {
         throw new Error(
           `Migration failed: ${orphanedStores} store(s) cannot be assigned to a client because their users have no clients. ` +
-          `Please create at least one client for each user with stores before running this migration.`
+            `Please create at least one client for each user with stores before running this migration.`,
         );
       }
     }
-    
+
     // Add foreign key constraint
     await queryRunner.query(`
       ALTER TABLE "stores" 
@@ -78,4 +78,3 @@ export class AddClientIdToStores1743000000000 implements MigrationInterface {
     `);
   }
 }
-

@@ -8,9 +8,8 @@ export const DEFAULT_API_VERSION = 'v1';
 /**
  * API Version Decorator
  * Fixes Issue #33: Enhanced API Versioning Strategy
- * 
+ *
  * Allows controllers/endpoints to specify their API version
  */
 export const ApiVersion = (version: string = DEFAULT_API_VERSION) =>
   SetMetadata(API_VERSION_KEY, version);
-

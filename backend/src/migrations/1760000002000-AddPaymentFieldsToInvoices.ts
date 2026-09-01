@@ -1,6 +1,8 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddPaymentFieldsToInvoices1760000002000 implements MigrationInterface {
+export class AddPaymentFieldsToInvoices1760000002000
+  implements MigrationInterface
+{
   name = 'AddPaymentFieldsToInvoices1760000002000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

@@ -1,6 +1,12 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Logger,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { SubscriptionsService } from './subscriptions.service';
 import { IS_PUBLIC_KEY } from '../auth/public.decorator';
@@ -35,20 +41,23 @@ export class SubscriptionGuard implements CanActivate {
     }
 
     // Allow access to subscription management endpoints even without active subscription
-    const isSubscriptionEndpoint = request.url?.includes('/subscriptions/') && 
-      (request.url?.includes('/create-checkout') || 
-       request.url?.includes('/create-portal') || 
-       request.url?.includes('/current') ||
-       request.url?.includes('/cancel') ||
-       request.url?.includes('/reactivate') ||
-       request.url?.includes('/usage') ||
-       request.url?.includes('/billing-history'));
+    const isSubscriptionEndpoint =
+      request.url?.includes('/subscriptions/') &&
+      (request.url?.includes('/create-checkout') ||
+        request.url?.includes('/create-portal') ||
+        request.url?.includes('/current') ||
+        request.url?.includes('/cancel') ||
+        request.url?.includes('/reactivate') ||
+        request.url?.includes('/usage') ||
+        request.url?.includes('/billing-history'));
 
     if (isSubscriptionEndpoint) {
       return true; // Allow access to subscription management
     }
 
-    const hasAccess = await this.subscriptionsService.checkSubscriptionAccess(user.userId);
+    const hasAccess = await this.subscriptionsService.checkSubscriptionAccess(
+      user.userId,
+    );
 
     if (!hasAccess) {
       this.logger.warn(`Subscription access denied for user ${user.userId}`);
@@ -60,4 +69,3 @@ export class SubscriptionGuard implements CanActivate {
     return true;
   }
 }
-

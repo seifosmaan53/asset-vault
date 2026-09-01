@@ -26,12 +26,28 @@ import { OrganizationsModule } from '../organizations/organizations.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([InventoryItem, StockMovement, Store, StoreItemSettings, StoreAlert, InvoiceItem, Invoice, UserSettings, User, Client]),
+    TypeOrmModule.forFeature([
+      InventoryItem,
+      StockMovement,
+      Store,
+      StoreItemSettings,
+      StoreAlert,
+      InvoiceItem,
+      Invoice,
+      UserSettings,
+      User,
+      Client,
+    ]),
     MailModule,
     UserSettingsModule,
     OrganizationsModule,
   ],
-  controllers: [InventoryController, StoreController, StoreItemSettingsController, StoreAlertsController],
+  controllers: [
+    InventoryController,
+    StoreController,
+    StoreItemSettingsController,
+    StoreAlertsController,
+  ],
   providers: [
     InventoryService,
     StoreService,
@@ -50,4 +66,3 @@ import { OrganizationsModule } from '../organizations/organizations.module';
   ],
 })
 export class InventoryModule {}
-

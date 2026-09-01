@@ -1,7 +1,7 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
 import { Logger } from '@nestjs/common';
-import { QueryRunner } from 'typeorm';
+import type { QueryRunner } from 'typeorm';
 
 /**
  * Deadlock Detection and Retry Utility
@@ -21,34 +21,34 @@ export class DeadlockDetector {
     maxRetries: number = this.MAX_RETRIES,
   ): Promise<T> {
     let lastError: Error | unknown;
-    
+
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         return await operation(queryRunner);
       } catch (error: any) {
         lastError = error;
-        
+
         // Check if it's a deadlock error
         const isDeadlock = this.isDeadlockError(error);
-        
+
         if (!isDeadlock || attempt === maxRetries - 1) {
           throw error;
         }
-        
+
         // Calculate exponential backoff with jitter
         const baseDelay = 100; // 100ms base delay
         const delay = baseDelay * Math.pow(2, attempt);
         const jitter = Math.random() * 0.3 * delay; // Up to 30% jitter
         const totalDelay = delay + jitter;
-        
+
         this.logger.warn(
           `Deadlock detected (attempt ${attempt + 1}/${maxRetries}). Retrying in ${Math.round(totalDelay)}ms...`,
         );
-        
-        await new Promise(resolve => setTimeout(resolve, totalDelay));
+
+        await new Promise((resolve) => setTimeout(resolve, totalDelay));
       }
     }
-    
+
     throw lastError;
   }
 
@@ -57,20 +57,24 @@ export class DeadlockDetector {
    */
   private static isDeadlockError(error: any): boolean {
     if (!error) return false;
-    
+
     const errorCode = error.code || error.errno || '';
     const errorMessage = error.message || '';
-    
+
     // Check PostgreSQL deadlock error codes
     if (this.DEADLOCK_ERROR_CODES.includes(String(errorCode))) {
       return true;
     }
-    
+
     // Check for deadlock in error message
-    const deadlockKeywords = ['deadlock', 'deadlock detected', 'could not obtain lock'];
+    const deadlockKeywords = [
+      'deadlock',
+      'deadlock detected',
+      'could not obtain lock',
+    ];
     const messageLower = errorMessage.toLowerCase();
-    
-    return deadlockKeywords.some(keyword => messageLower.includes(keyword));
+
+    return deadlockKeywords.some((keyword) => messageLower.includes(keyword));
   }
 
   /**
@@ -84,4 +88,3 @@ export class DeadlockDetector {
     };
   }
 }
-

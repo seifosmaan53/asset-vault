@@ -18,10 +18,13 @@ export class QueryMetricsLogger implements TypeORMLogger {
 
   logQueryError(error: string | Error, query: string, parameters?: any[]) {
     // Track failed queries
-    this.logger.error(`Query error: ${error instanceof Error ? error.message : error}`, {
-      query: query.substring(0, 200), // Truncate long queries
-      parameters,
-    });
+    this.logger.error(
+      `Query error: ${error instanceof Error ? error.message : error}`,
+      {
+        query: query.substring(0, 200), // Truncate long queries
+        parameters,
+      },
+    );
   }
 
   logQuerySlow(time: number, query: string, parameters?: any[]) {
@@ -45,4 +48,3 @@ export class QueryMetricsLogger implements TypeORMLogger {
     }
   }
 }
-

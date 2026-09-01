@@ -1,8 +1,10 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddInvoiceStatusHistory1758000000000 implements MigrationInterface {
+export class AddInvoiceStatusHistory1758000000000
+  implements MigrationInterface
+{
   name = 'AddInvoiceStatusHistory1758000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -26,7 +28,7 @@ export class AddInvoiceStatusHistory1758000000000 implements MigrationInterface 
     const constraintExists = await queryRunner.query(`
       SELECT 1 FROM pg_constraint WHERE conname = 'FK_invoice_status_history_invoiceId'
     `);
-    
+
     if (constraintExists.length === 0) {
       await queryRunner.query(`
         ALTER TABLE "invoice_status_history" 
@@ -56,9 +58,15 @@ export class AddInvoiceStatusHistory1758000000000 implements MigrationInterface 
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Drop indexes
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_invoice_status_history_created_at"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_invoice_status_history_user_id"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_invoice_status_history_invoice_id"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_invoice_status_history_created_at"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_invoice_status_history_user_id"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_invoice_status_history_invoice_id"`,
+    );
 
     // Drop foreign key constraint
     await queryRunner.query(`
@@ -70,4 +78,3 @@ export class AddInvoiceStatusHistory1758000000000 implements MigrationInterface 
     await queryRunner.query(`DROP TABLE IF EXISTS "invoice_status_history"`);
   }
 }
-

@@ -1,10 +1,12 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddOrganizationIdIndexes1748000000000 implements MigrationInterface {
+export class AddOrganizationIdIndexes1748000000000
+  implements MigrationInterface
+{
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Add performance indexes on organizationId for frequently queried tables
     // These indexes improve query performance when filtering by organizationId
-    
+
     await queryRunner.query(`
       CREATE INDEX IF NOT EXISTS "IDX_clients_organizationId"
       ON "clients" ("organizationId")
@@ -55,14 +57,29 @@ export class AddOrganizationIdIndexes1748000000000 implements MigrationInterface
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_clients_organizationId";`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_invoices_organizationId";`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_recurring_invoices_organizationId";`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_stock_movements_organizationId";`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_stock_movements_inventory_org";`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_store_item_settings_organizationId";`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_invoice_templates_organizationId";`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_api_keys_organizationId";`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_clients_organizationId";`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_invoices_organizationId";`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_recurring_invoices_organizationId";`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_stock_movements_organizationId";`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_stock_movements_inventory_org";`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_store_item_settings_organizationId";`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_invoice_templates_organizationId";`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_api_keys_organizationId";`,
+    );
   }
 }
-

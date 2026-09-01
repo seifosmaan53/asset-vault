@@ -2,7 +2,15 @@
 
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { Controller, Post, Body, Req, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Req,
+  UseGuards,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import type { Request } from 'express';
 import { TrpcRouter } from './trpc.router';
 import { TrpcService } from './trpc.service';
@@ -12,10 +20,10 @@ import { ApiTags } from '@nestjs/swagger';
 
 /**
  * tRPC Controller
- * 
+ *
  * Note: This is a simplified implementation. For production, consider using
  * @trpc/server/adapters/express or a dedicated NestJS tRPC adapter.
- * 
+ *
  * Current implementation provides basic tRPC endpoint that can be extended.
  */
 @ApiTags('trpc')
@@ -41,7 +49,10 @@ export class TrpcController {
         .split('.');
 
       if (path.length !== 2) {
-        throw new HttpException('Invalid tRPC path format', HttpStatus.BAD_REQUEST);
+        throw new HttpException(
+          'Invalid tRPC path format',
+          HttpStatus.BAD_REQUEST,
+        );
       }
 
       const [routerName, procedureName] = path;
@@ -49,7 +60,10 @@ export class TrpcController {
       // Get the router
       const router = (caller as any)[routerName];
       if (!router) {
-        throw new HttpException(`Router "${routerName}" not found`, HttpStatus.NOT_FOUND);
+        throw new HttpException(
+          `Router "${routerName}" not found`,
+          HttpStatus.NOT_FOUND,
+        );
       }
 
       // Get the procedure
@@ -73,7 +87,9 @@ export class TrpcController {
             message: error.message,
             data: error.data,
           },
-          error.code === 'UNAUTHORIZED' ? HttpStatus.UNAUTHORIZED : HttpStatus.BAD_REQUEST,
+          error.code === 'UNAUTHORIZED'
+            ? HttpStatus.UNAUTHORIZED
+            : HttpStatus.BAD_REQUEST,
         );
       }
 

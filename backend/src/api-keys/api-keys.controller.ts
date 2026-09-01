@@ -43,7 +43,11 @@ export class ApiKeysController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateDto: UpdateApiKeyDto, @Request() req) {
+  update(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateApiKeyDto,
+    @Request() req,
+  ) {
     try {
       const result = this.apiKeysService.update(id, req.user.userId, updateDto);
       return result;
@@ -62,4 +66,3 @@ export class ApiKeysController {
     return this.apiKeysService.findOne(id, req.user.userId);
   }
 }
-

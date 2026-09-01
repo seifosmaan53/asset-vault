@@ -1,8 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { ClientsController } from './clients.controller';
 import { ClientsService } from './clients.service';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
-import { ExecutionContext } from '@nestjs/common';
+import type { ExecutionContext } from '@nestjs/common';
 
 /* The override targeted AuthGuard('jwt') — the Passport guard this controller used
    before authentication moved to Clerk. Nest therefore tried to construct the REAL
@@ -110,7 +111,11 @@ describe('ClientsController', () => {
       } as any);
 
       expect(result).toEqual(mockClient);
-      expect(service.update).toHaveBeenCalledWith('client-1', 'user-123', updateDto);
+      expect(service.update).toHaveBeenCalledWith(
+        'client-1',
+        'user-123',
+        updateDto,
+      );
     });
   });
 
@@ -126,4 +131,3 @@ describe('ClientsController', () => {
     });
   });
 });
-

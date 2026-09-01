@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Store } from './entities/store.entity';
@@ -33,12 +38,19 @@ export class StoreTransferService {
   async transferStock(
     userId: string,
     transferData: CreateStoreTransferDto,
-  ): Promise<{ success: boolean; fromMovement: StockMovement; toMovement: StockMovement }> {
-    const { fromStoreId, toStoreId, inventoryItemId, quantity, note } = transferData;
+  ): Promise<{
+    success: boolean;
+    fromMovement: StockMovement;
+    toMovement: StockMovement;
+  }> {
+    const { fromStoreId, toStoreId, inventoryItemId, quantity, note } =
+      transferData;
 
     // Validate stores are different
     if (fromStoreId === toStoreId) {
-      throw new BadRequestException('Source and destination stores must be different');
+      throw new BadRequestException(
+        'Source and destination stores must be different',
+      );
     }
 
     // Organizations removed - validate stores belong to user and are not deleted
@@ -50,7 +62,9 @@ export class StoreTransferService {
       .getOne();
 
     if (!fromStore) {
-      throw new NotFoundException(`Source store with ID "${fromStoreId}" not found or has been deleted`);
+      throw new NotFoundException(
+        `Source store with ID "${fromStoreId}" not found or has been deleted`,
+      );
     }
 
     const toStore = await this.storeRepository
@@ -61,7 +75,9 @@ export class StoreTransferService {
       .getOne();
 
     if (!toStore) {
-      throw new NotFoundException(`Destination store with ID "${toStoreId}" not found or has been deleted`);
+      throw new NotFoundException(
+        `Destination store with ID "${toStoreId}" not found or has been deleted`,
+      );
     }
 
     // Organizations removed - validate inventory item belongs to user
@@ -72,16 +88,19 @@ export class StoreTransferService {
       .getOne();
 
     if (!inventoryItem) {
-      throw new NotFoundException(`Inventory item with ID "${inventoryItemId}" not found`);
+      throw new NotFoundException(
+        `Inventory item with ID "${inventoryItemId}" not found`,
+      );
     }
 
     // Check available stock at source store
-    const sourceSettings = await this.storeItemSettingsService.getOrCreateSettings(
-      fromStoreId,
-      inventoryItemId,
-      userId,
-      // Organizations removed - no organizationId needed
-    );
+    const sourceSettings =
+      await this.storeItemSettingsService.getOrCreateSettings(
+        fromStoreId,
+        inventoryItemId,
+        userId,
+        // Organizations removed - no organizationId needed
+      );
 
     if ((sourceSettings.currentStock || 0) < quantity) {
       throw new BadRequestException(
@@ -115,7 +134,10 @@ export class StoreTransferService {
         sourceId: `transfer-${Date.now()}`,
         note: note || `Transfer to ${toStore.name} (${toStore.code})`,
       });
-      const savedFromMovement = await queryRunner.manager.save(StockMovement, fromMovement);
+      const savedFromMovement = await queryRunner.manager.save(
+        StockMovement,
+        fromMovement,
+      );
 
       // Increase stock at destination store
       await this.storeItemSettingsService.adjustStoreStock(
@@ -137,7 +159,10 @@ export class StoreTransferService {
         sourceId: `transfer-${Date.now()}`,
         note: note || `Transfer from ${fromStore.name} (${fromStore.code})`,
       });
-      const savedToMovement = await queryRunner.manager.save(StockMovement, toMovement);
+      const savedToMovement = await queryRunner.manager.save(
+        StockMovement,
+        toMovement,
+      );
 
       // Commit transaction
       await queryRunner.commitTransaction();
@@ -162,4 +187,3 @@ export class StoreTransferService {
     }
   }
 }
-

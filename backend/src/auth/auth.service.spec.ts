@@ -1,4 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { UnauthorizedException, BadRequestException } from '@nestjs/common';
@@ -51,7 +52,10 @@ describe('AuthService', () => {
         { provide: UsersService, useValue: usersService },
         { provide: OrganizationsService, useValue: {} },
         { provide: SubscriptionsService, useValue: {} },
-        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue(undefined) } },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn().mockReturnValue(undefined) },
+        },
         { provide: getRepositoryToken(User), useValue: {} },
       ],
     }).compile();
@@ -86,7 +90,9 @@ describe('AuthService', () => {
     it('normalises absent optional fields to null rather than undefined', async () => {
       // undefined disappears from JSON entirely; null keeps the key present so the
       // client sees "no phone" instead of "no such field".
-      usersService.findById.mockResolvedValue(baseUser({ phone: undefined, bio: undefined }));
+      usersService.findById.mockResolvedValue(
+        baseUser({ phone: undefined, bio: undefined }),
+      );
 
       const profile = await service.getProfile('user-1');
 
@@ -97,7 +103,9 @@ describe('AuthService', () => {
     it('rejects an unknown user', async () => {
       usersService.findById.mockResolvedValue(null);
 
-      await expect(service.getProfile('nope')).rejects.toThrow(UnauthorizedException);
+      await expect(service.getProfile('nope')).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 
@@ -155,13 +163,19 @@ describe('AuthService', () => {
     it('rejects an unknown user', async () => {
       usersService.findById.mockResolvedValue(null);
 
-      await expect(service.changePassword('nope', dto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.changePassword('nope', dto)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('rejects a user with no linked Clerk account', async () => {
-      usersService.findById.mockResolvedValue(baseUser({ clerkUserId: undefined }));
+      usersService.findById.mockResolvedValue(
+        baseUser({ clerkUserId: undefined }),
+      );
 
-      await expect(service.changePassword('user-1', dto)).rejects.toThrow(BadRequestException);
+      await expect(service.changePassword('user-1', dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('rejects when Clerk is not configured', async () => {

@@ -27,23 +27,26 @@ export function escapeHtml(text: string | null | undefined): string {
  * @param maxLength - Optional maximum length (default: 10000)
  * @returns Sanitized text
  */
-export function sanitizeString(text: string | null | undefined, maxLength: number = 10000): string {
+export function sanitizeString(
+  text: string | null | undefined,
+  maxLength: number = 10000,
+): string {
   if (!text) return '';
-  
+
   // Remove null bytes and control characters
   let sanitized = text.replace(/[\x00-\x1F\x7F]/g, '');
-  
+
   // Remove HTML tags
   sanitized = sanitized.replace(/<[^>]*>/g, '');
-  
+
   // Escape HTML entities
   sanitized = escapeHtml(sanitized);
-  
+
   // Limit length
   if (sanitized.length > maxLength) {
     sanitized = sanitized.substring(0, maxLength);
   }
-  
+
   return sanitized.trim();
 }
 
@@ -58,9 +61,9 @@ export function sanitizeObject<T extends Record<string, any>>(
   fields?: string[],
 ): T {
   if (!obj || typeof obj !== 'object') return obj;
-  
+
   const sanitized: any = { ...obj };
-  
+
   // If fields specified, only sanitize those
   if (fields && Array.isArray(fields)) {
     fields.forEach((field) => {
@@ -83,13 +86,16 @@ export function sanitizeObject<T extends Record<string, any>>(
           }
           return item;
         });
-      } else if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
+      } else if (
+        typeof sanitized[key] === 'object' &&
+        sanitized[key] !== null
+      ) {
         // Recursively sanitize nested objects
         sanitized[key] = sanitizeObject(sanitized[key]);
       }
     });
   }
-  
+
   return sanitized as T;
 }
 
@@ -100,19 +106,19 @@ export function sanitizeObject<T extends Record<string, any>>(
  */
 export function sanitizeEmail(email: string | null | undefined): string | null {
   if (!email) return null;
-  
+
   const sanitized = email.trim().toLowerCase();
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  
+
   if (!emailRegex.test(sanitized)) {
     return null;
   }
-  
+
   // Additional length check
   if (sanitized.length > 255) {
     return null;
   }
-  
+
   return sanitized;
 }
 
@@ -123,24 +129,24 @@ export function sanitizeEmail(email: string | null | undefined): string | null {
  */
 export function sanitizeUrl(url: string | null | undefined): string | null {
   if (!url) return null;
-  
+
   const sanitized = url.trim();
-  
+
   // Only allow http, https, and relative URLs
   if (!sanitized.match(/^(https?:\/\/|\/)/i)) {
     return null;
   }
-  
+
   // Check for javascript: or data: protocols (XSS vectors)
   if (sanitized.match(/^(javascript|data|vbscript):/i)) {
     return null;
   }
-  
+
   // Limit length
   if (sanitized.length > 2048) {
     return null;
   }
-  
+
   return sanitizeString(sanitized, 2048);
 }
 
@@ -151,13 +157,13 @@ export function sanitizeUrl(url: string | null | undefined): string | null {
  */
 export function sanitizeNumber(value: any): number | null {
   if (value === null || value === undefined) return null;
-  
+
   const num = typeof value === 'string' ? parseFloat(value) : Number(value);
-  
+
   if (isNaN(num) || !isFinite(num)) {
     return null;
   }
-  
+
   return num;
 }
 
@@ -168,10 +174,9 @@ export function sanitizeNumber(value: any): number | null {
  */
 export function sanitizeStringArray(arr: any[] | null | undefined): string[] {
   if (!Array.isArray(arr)) return [];
-  
+
   return arr
     .filter((item) => typeof item === 'string')
     .map((item) => sanitizeString(item))
     .filter((item) => item.length > 0);
 }
-

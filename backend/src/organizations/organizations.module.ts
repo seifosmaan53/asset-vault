@@ -19,4 +19,3 @@ import { UsersModule } from '../users/users.module';
   exports: [OrganizationsService, OrganizationContextGuard],
 })
 export class OrganizationsModule {}
-

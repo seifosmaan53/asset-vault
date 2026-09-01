@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateInvoiceTemplates1758000000000 implements MigrationInterface {
   name = 'CreateInvoiceTemplates1758000000000';

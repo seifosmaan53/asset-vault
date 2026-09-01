@@ -21,12 +21,18 @@ export enum PeriodType {
 }
 
 export class ReportFiltersDto {
-  @ApiPropertyOptional({ enum: ReportType, description: 'Type of report to generate' })
+  @ApiPropertyOptional({
+    enum: ReportType,
+    description: 'Type of report to generate',
+  })
   @IsOptional()
   @IsEnum(ReportType)
   reportType?: ReportType;
 
-  @ApiPropertyOptional({ enum: PeriodType, description: 'Time period grouping' })
+  @ApiPropertyOptional({
+    enum: PeriodType,
+    description: 'Time period grouping',
+  })
   @IsOptional()
   @IsEnum(PeriodType)
   periodType?: PeriodType;
@@ -51,7 +57,10 @@ export class ReportFiltersDto {
   @IsString()
   storeId?: string;
 
-  @ApiPropertyOptional({ description: 'Include cancelled invoices', default: false })
+  @ApiPropertyOptional({
+    description: 'Include cancelled invoices',
+    default: false,
+  })
   @IsOptional()
   @Type(() => Boolean)
   includeCancelled?: boolean;

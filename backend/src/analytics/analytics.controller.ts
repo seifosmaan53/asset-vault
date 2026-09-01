@@ -1,11 +1,33 @@
-import { Controller, Get, Post, Body, UseGuards, Request, Query, Param, NotFoundException, UseInterceptors, Res, Logger } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  UseGuards,
+  Request,
+  Query,
+  Param,
+  NotFoundException,
+  UseInterceptors,
+  Res,
+  Logger,
+} from '@nestjs/common';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import type { Response } from 'express';
 import { AnalyticsService } from './analytics.service';
 import { StoreReportPdfService } from './store-report-pdf.service';
-import { createExcelWorkbook, formatCurrencyForExcel, type ExcelSheet } from '../common/utils/excel-export.util';
+import {
+  createExcelWorkbook,
+  formatCurrencyForExcel,
+  type ExcelSheet,
+} from '../common/utils/excel-export.util';
 
 @ApiTags('analytics')
 @ApiBearerAuth('JWT-auth')
@@ -20,16 +42,30 @@ export class AnalyticsController {
   ) {}
 
   @Get('invoices-by-status')
-  @ApiOperation({ summary: 'Get invoices by status', description: 'Retrieve count of invoices grouped by status (draft, sent, paid, overdue, cancelled).' })
-  @ApiResponse({ status: 200, description: 'Invoice status counts retrieved successfully' })
+  @ApiOperation({
+    summary: 'Get invoices by status',
+    description:
+      'Retrieve count of invoices grouped by status (draft, sent, paid, overdue, cancelled).',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Invoice status counts retrieved successfully',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getInvoicesByStatus(@Request() req) {
     return this.analyticsService.getInvoicesByStatus(req.user.userId);
   }
 
   @Get('top-clients')
-  @ApiOperation({ summary: 'Get top clients by revenue', description: 'Retrieve top clients ranked by total revenue from sent, paid, and overdue invoices (excludes draft and cancelled).' })
-  @ApiResponse({ status: 200, description: 'Top clients retrieved successfully' })
+  @ApiOperation({
+    summary: 'Get top clients by revenue',
+    description:
+      'Retrieve top clients ranked by total revenue from sent, paid, and overdue invoices (excludes draft and cancelled).',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Top clients retrieved successfully',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getTopClients(@Request() req) {
     // Return top 10 clients to match frontend display
@@ -37,14 +73,26 @@ export class AnalyticsController {
   }
 
   @Get('top-items')
-  @ApiOperation({ summary: 'Get top items by sales', description: 'Retrieve top inventory items ranked by revenue from sent, paid, and overdue invoices (excludes draft and cancelled).' })
+  @ApiOperation({
+    summary: 'Get top items by sales',
+    description:
+      'Retrieve top inventory items ranked by revenue from sent, paid, and overdue invoices (excludes draft and cancelled).',
+  })
   @ApiResponse({ status: 200, description: 'Top items retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getTopItems(@Request() req, @Query('page') page?: string, @Query('limit') limit?: string) {
+  async getTopItems(
+    @Request() req,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 10;
     const skip = (pageNum - 1) * limitNum;
-    const results = await this.analyticsService.getTopItems(req.user.userId, limitNum, skip);
+    const results = await this.analyticsService.getTopItems(
+      req.user.userId,
+      limitNum,
+      skip,
+    );
     return {
       data: results,
       page: pageNum,
@@ -55,17 +103,30 @@ export class AnalyticsController {
 
   @Get('stores')
   @CacheTTL(30000) // 30 seconds - shorter TTL for more real-time updates
-  @ApiOperation({ summary: 'Get stores analytics summary', description: 'Retrieve summary analytics for all stores.' })
-  @ApiResponse({ status: 200, description: 'Stores analytics retrieved successfully' })
+  @ApiOperation({
+    summary: 'Get stores analytics summary',
+    description: 'Retrieve summary analytics for all stores.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Stores analytics retrieved successfully',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getStoresAnalytics(@Request() req) {
     try {
       this.logger.log(`Fetching stores analytics for user ${req.user.userId}`);
-      const result = await this.analyticsService.getStoresSummary(req.user.userId);
-      this.logger.log(`Successfully retrieved ${result.length} stores analytics`);
+      const result = await this.analyticsService.getStoresSummary(
+        req.user.userId,
+      );
+      this.logger.log(
+        `Successfully retrieved ${result.length} stores analytics`,
+      );
       return result;
     } catch (error) {
-      this.logger.error(`Error fetching stores analytics for user ${req.user.userId}:`, error);
+      this.logger.error(
+        `Error fetching stores analytics for user ${req.user.userId}:`,
+        error,
+      );
       throw error;
     }
   }
@@ -73,28 +134,51 @@ export class AnalyticsController {
   @Get('stores/:storeId')
   @UseInterceptors(CacheInterceptor)
   @CacheTTL(60000) // 1 minute for detailed queries
-  @ApiOperation({ summary: 'Get detailed store analytics', description: 'Retrieve detailed analytics for a specific store.' })
-  @ApiResponse({ status: 200, description: 'Store analytics retrieved successfully' })
+  @ApiOperation({
+    summary: 'Get detailed store analytics',
+    description: 'Retrieve detailed analytics for a specific store.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Store analytics retrieved successfully',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Store not found' })
-  async getStoreAnalytics(
-    @Request() req,
-    @Param('storeId') storeId: string,
-  ) {
-    const summary = await this.analyticsService.getStoresSummary(req.user.userId);
+  async getStoreAnalytics(@Request() req, @Param('storeId') storeId: string) {
+    const summary = await this.analyticsService.getStoresSummary(
+      req.user.userId,
+    );
     const storeSummary = summary.find((s) => s.storeId === storeId);
 
     if (!storeSummary) {
       throw new NotFoundException(`Store with ID "${storeId}" not found`);
     }
 
-    const [revenue, topClients, topItems, turnover, trends] = await Promise.all([
-      this.analyticsService.getStoreRevenueReport(req.user.userId, storeId, undefined, undefined),
-      this.analyticsService.getTopClientsByStore(req.user.userId, storeId, 10),
-      this.analyticsService.getTopItemsByStore(req.user.userId, storeId, 10),
-      this.analyticsService.getStoreInventoryTurnover(req.user.userId, storeId),
-      this.analyticsService.getStoreSalesTrends(req.user.userId, storeId, 'monthly'),
-    ]);
+    const [revenue, topClients, topItems, turnover, trends] = await Promise.all(
+      [
+        this.analyticsService.getStoreRevenueReport(
+          req.user.userId,
+          storeId,
+          undefined,
+          undefined,
+        ),
+        this.analyticsService.getTopClientsByStore(
+          req.user.userId,
+          storeId,
+          10,
+        ),
+        this.analyticsService.getTopItemsByStore(req.user.userId, storeId, 10),
+        this.analyticsService.getStoreInventoryTurnover(
+          req.user.userId,
+          storeId,
+        ),
+        this.analyticsService.getStoreSalesTrends(
+          req.user.userId,
+          storeId,
+          'monthly',
+        ),
+      ],
+    );
 
     return {
       ...storeSummary,
@@ -107,8 +191,15 @@ export class AnalyticsController {
   }
 
   @Get('stores/:storeId/revenue')
-  @ApiOperation({ summary: 'Get store revenue report', description: 'Retrieve revenue report for a specific store with optional date filtering.' })
-  @ApiResponse({ status: 200, description: 'Store revenue retrieved successfully' })
+  @ApiOperation({
+    summary: 'Get store revenue report',
+    description:
+      'Retrieve revenue report for a specific store with optional date filtering.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Store revenue retrieved successfully',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getStoreRevenue(
     @Request() req,
@@ -119,12 +210,23 @@ export class AnalyticsController {
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;
     // Organizations removed - organizationId is always null, data is user-scoped
-    return this.analyticsService.getStoreRevenueReport(req.user.userId, storeId, start, end);
+    return this.analyticsService.getStoreRevenueReport(
+      req.user.userId,
+      storeId,
+      start,
+      end,
+    );
   }
 
   @Get('stores/:storeId/items')
-  @ApiOperation({ summary: 'Get top items for store', description: 'Retrieve top items by revenue for a specific store.' })
-  @ApiResponse({ status: 200, description: 'Store items retrieved successfully' })
+  @ApiOperation({
+    summary: 'Get top items for store',
+    description: 'Retrieve top items by revenue for a specific store.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Store items retrieved successfully',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getStoreItems(
     @Request() req,
@@ -133,12 +235,22 @@ export class AnalyticsController {
   ) {
     const limitNum = limit ? parseInt(limit, 10) : 10;
     // Organizations removed - organizationId is always null, data is user-scoped
-    return this.analyticsService.getTopItemsByStore(req.user.userId, storeId, limitNum);
+    return this.analyticsService.getTopItemsByStore(
+      req.user.userId,
+      storeId,
+      limitNum,
+    );
   }
 
   @Get('stores/:storeId/clients')
-  @ApiOperation({ summary: 'Get top clients for store', description: 'Retrieve top clients by revenue for a specific store.' })
-  @ApiResponse({ status: 200, description: 'Store clients retrieved successfully' })
+  @ApiOperation({
+    summary: 'Get top clients for store',
+    description: 'Retrieve top clients by revenue for a specific store.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Store clients retrieved successfully',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getStoreClients(
     @Request() req,
@@ -147,12 +259,22 @@ export class AnalyticsController {
   ) {
     const limitNum = limit ? parseInt(limit, 10) : 10;
     // Organizations removed - organizationId is always null, data is user-scoped
-    return this.analyticsService.getTopClientsByStore(req.user.userId, storeId, limitNum);
+    return this.analyticsService.getTopClientsByStore(
+      req.user.userId,
+      storeId,
+      limitNum,
+    );
   }
 
   @Get('stores/:storeId/trends')
-  @ApiOperation({ summary: 'Get store sales trends', description: 'Retrieve sales trends over time for a specific store.' })
-  @ApiResponse({ status: 200, description: 'Store trends retrieved successfully' })
+  @ApiOperation({
+    summary: 'Get store sales trends',
+    description: 'Retrieve sales trends over time for a specific store.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Store trends retrieved successfully',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getStoreTrends(
     @Request() req,
@@ -167,11 +289,15 @@ export class AnalyticsController {
   }
 
   @Get('sales-by-category')
-  @ApiOperation({ 
-    summary: 'Get sales by category', 
-    description: 'Retrieve sales aggregated by inventory item category. Supports optional date range and store filtering.' 
+  @ApiOperation({
+    summary: 'Get sales by category',
+    description:
+      'Retrieve sales aggregated by inventory item category. Supports optional date range and store filtering.',
   })
-  @ApiResponse({ status: 200, description: 'Sales by category retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Sales by category retrieved successfully',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getSalesByCategory(
     @Request() req,
@@ -182,15 +308,24 @@ export class AnalyticsController {
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;
     // Organizations removed - organizationId is always null, data is user-scoped
-    return this.analyticsService.getSalesByCategory(req.user.userId, start, end, storeId);
+    return this.analyticsService.getSalesByCategory(
+      req.user.userId,
+      start,
+      end,
+      storeId,
+    );
   }
 
   @Get('revenue-by-payment-method')
-  @ApiOperation({ 
-    summary: 'Get revenue by payment method', 
-    description: 'Retrieve revenue aggregated by payment method (parsed from paymentMethodNote). Only includes paid invoices. Supports optional date range and store filtering.' 
+  @ApiOperation({
+    summary: 'Get revenue by payment method',
+    description:
+      'Retrieve revenue aggregated by payment method (parsed from paymentMethodNote). Only includes paid invoices. Supports optional date range and store filtering.',
   })
-  @ApiResponse({ status: 200, description: 'Revenue by payment method retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Revenue by payment method retrieved successfully',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getRevenueByPaymentMethod(
     @Request() req,
@@ -201,27 +336,45 @@ export class AnalyticsController {
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;
     // Organizations removed - organizationId is always null, data is user-scoped
-    return this.analyticsService.getRevenueByPaymentMethod(req.user.userId, start, end, storeId);
+    return this.analyticsService.getRevenueByPaymentMethod(
+      req.user.userId,
+      start,
+      end,
+      storeId,
+    );
   }
 
   @Get('invoices-by-status-store')
-  @ApiOperation({ summary: 'Get invoices by status and store', description: 'Retrieve count of invoices grouped by status and store.' })
-  @ApiResponse({ status: 200, description: 'Invoice status by store retrieved successfully' })
+  @ApiOperation({
+    summary: 'Get invoices by status and store',
+    description: 'Retrieve count of invoices grouped by status and store.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Invoice status by store retrieved successfully',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getInvoicesByStatusAndStore(
     @Request() req,
     @Query('storeId') storeId?: string,
   ) {
     // Organizations removed - organizationId is always null, data is user-scoped
-    return this.analyticsService.getInvoicesByStatusAndStore(req.user.userId, storeId);
+    return this.analyticsService.getInvoicesByStatusAndStore(
+      req.user.userId,
+      storeId,
+    );
   }
 
   @Post('stores/compare')
   @ApiOperation({
     summary: 'Compare multiple stores',
-    description: 'Compare performance metrics across multiple stores with optional date filtering.',
+    description:
+      'Compare performance metrics across multiple stores with optional date filtering.',
   })
-  @ApiResponse({ status: 200, description: 'Store comparison retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Store comparison retrieved successfully',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async compareStores(
     @Request() req,
@@ -231,7 +384,12 @@ export class AnalyticsController {
       const startDate = body.startDate ? new Date(body.startDate) : undefined;
       const endDate = body.endDate ? new Date(body.endDate) : undefined;
       // Organizations removed - organizationId is always null, data is user-scoped
-      const result = await this.analyticsService.compareStores(req.user.userId, body.storeIds, startDate, endDate);
+      const result = await this.analyticsService.compareStores(
+        req.user.userId,
+        body.storeIds,
+        startDate,
+        endDate,
+      );
       return result;
     } catch (error: any) {
       throw error;
@@ -243,11 +401,20 @@ export class AnalyticsController {
     summary: 'Export store analytics to CSV',
     description: 'Export store analytics data to CSV format.',
   })
-  @ApiResponse({ status: 200, description: 'CSV export generated successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'CSV export generated successfully',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async exportStoreCSV(@Param('storeId') storeId: string, @Request() req, @Res() res: Response) {
+  async exportStoreCSV(
+    @Param('storeId') storeId: string,
+    @Request() req,
+    @Res() res: Response,
+  ) {
     // Organizations removed - organizationId is always null, data is user-scoped
-    const summary = await this.analyticsService.getStoresSummary(req.user.userId);
+    const summary = await this.analyticsService.getStoresSummary(
+      req.user.userId,
+    );
     const storeSummary = summary.find((s) => s.storeId === storeId);
 
     if (!storeSummary) {
@@ -255,7 +422,12 @@ export class AnalyticsController {
     }
 
     const [revenue, topClients, topItems, turnover] = await Promise.all([
-      this.analyticsService.getStoreRevenueReport(req.user.userId, storeId, undefined, undefined),
+      this.analyticsService.getStoreRevenueReport(
+        req.user.userId,
+        storeId,
+        undefined,
+        undefined,
+      ),
       this.analyticsService.getTopClientsByStore(req.user.userId, storeId, 10),
       this.analyticsService.getTopItemsByStore(req.user.userId, storeId, 10),
       this.analyticsService.getStoreInventoryTurnover(req.user.userId, storeId),
@@ -271,7 +443,10 @@ export class AnalyticsController {
     csvRows.push(['Total Revenue', storeSummary.totalRevenue.toFixed(2)]);
     csvRows.push(['Paid Revenue', storeSummary.paidRevenue.toFixed(2)]);
     csvRows.push(['Total Invoices', storeSummary.totalInvoices.toString()]);
-    csvRows.push(['Average Invoice Value', storeSummary.averageInvoiceValue.toFixed(2)]);
+    csvRows.push([
+      'Average Invoice Value',
+      storeSummary.averageInvoiceValue.toFixed(2),
+    ]);
     if (turnover && turnover.length > 0 && turnover[0]) {
       csvRows.push(['Inventory Turnover', turnover[0].turnover.toFixed(2)]);
     }
@@ -280,7 +455,13 @@ export class AnalyticsController {
     // Add top items
     if (topItems && topItems.length > 0) {
       csvRows.push(['Top Items']);
-      csvRows.push(['Item Name', 'SKU', 'Revenue', 'Quantity', 'Invoice Count']);
+      csvRows.push([
+        'Item Name',
+        'SKU',
+        'Revenue',
+        'Quantity',
+        'Invoice Count',
+      ]);
       topItems.forEach((item) => {
         csvRows.push([
           item.itemName,
@@ -307,24 +488,42 @@ export class AnalyticsController {
       });
     }
 
-    const csvContent = csvRows.map((row) => row.map((cell) => `"${cell}"`).join(',')).join('\n');
+    const csvContent = csvRows
+      .map((row) => row.map((cell) => `"${cell}"`).join(','))
+      .join('\n');
 
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename="store-${storeId}-analytics.csv"`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="store-${storeId}-analytics.csv"`,
+    );
     res.send(csvContent);
   }
 
   @Get('stores/:storeId/export/excel')
   @ApiOperation({
     summary: 'Export store analytics to Excel',
-    description: 'Export store analytics report to Excel format with multiple sheets.',
+    description:
+      'Export store analytics report to Excel format with multiple sheets.',
   })
-  @ApiResponse({ status: 200, description: 'Excel export generated successfully', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': {} } })
+  @ApiResponse({
+    status: 200,
+    description: 'Excel export generated successfully',
+    content: {
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': {},
+    },
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Store not found' })
-  async exportStoreExcel(@Param('storeId') storeId: string, @Request() req, @Res() res: Response) {
+  async exportStoreExcel(
+    @Param('storeId') storeId: string,
+    @Request() req,
+    @Res() res: Response,
+  ) {
     // Organizations removed - organizationId is always null, data is user-scoped
-    const summary = await this.analyticsService.getStoresSummary(req.user.userId);
+    const summary = await this.analyticsService.getStoresSummary(
+      req.user.userId,
+    );
     const storeSummary = summary.find((s) => s.storeId === storeId);
 
     if (!storeSummary) {
@@ -332,7 +531,12 @@ export class AnalyticsController {
     }
 
     const [revenue, topClients, topItems, turnover] = await Promise.all([
-      this.analyticsService.getStoreRevenueReport(req.user.userId, storeId, undefined, undefined),
+      this.analyticsService.getStoreRevenueReport(
+        req.user.userId,
+        storeId,
+        undefined,
+        undefined,
+      ),
       this.analyticsService.getTopClientsByStore(req.user.userId, storeId, 10),
       this.analyticsService.getTopItemsByStore(req.user.userId, storeId, 10),
       this.analyticsService.getStoreInventoryTurnover(req.user.userId, storeId),
@@ -350,11 +554,17 @@ export class AnalyticsController {
       ['Total Revenue', formatCurrencyForExcel(storeSummary.totalRevenue)],
       ['Paid Revenue', formatCurrencyForExcel(storeSummary.paidRevenue)],
       ['Total Invoices', storeSummary.totalInvoices],
-      ['Average Invoice Value', formatCurrencyForExcel(storeSummary.averageInvoiceValue)],
+      [
+        'Average Invoice Value',
+        formatCurrencyForExcel(storeSummary.averageInvoiceValue),
+      ],
     ];
 
     if (turnover && turnover.length > 0 && turnover[0]) {
-      summaryData.push(['Inventory Turnover', formatCurrencyForExcel(turnover[0].turnover)]);
+      summaryData.push([
+        'Inventory Turnover',
+        formatCurrencyForExcel(turnover[0].turnover),
+      ]);
     }
 
     sheets.push({
@@ -392,7 +602,12 @@ export class AnalyticsController {
 
       sheets.push({
         name: 'Top Clients',
-        headers: ['Client Name', 'Total Revenue', 'Paid Revenue', 'Invoice Count'],
+        headers: [
+          'Client Name',
+          'Total Revenue',
+          'Paid Revenue',
+          'Invoice Count',
+        ],
         data: clientsData,
         columnWidths: [30, 18, 18, 15],
       });
@@ -404,8 +619,14 @@ export class AnalyticsController {
       sheets,
     });
 
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="store-${storeId}-analytics.xlsx"`);
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="store-${storeId}-analytics.xlsx"`,
+    );
     res.send(buffer);
   }
 
@@ -414,15 +635,28 @@ export class AnalyticsController {
     summary: 'Export store analytics to PDF',
     description: 'Export store analytics report to PDF format.',
   })
-  @ApiResponse({ status: 200, description: 'PDF export generated successfully', content: { 'application/pdf': {} } })
+  @ApiResponse({
+    status: 200,
+    description: 'PDF export generated successfully',
+    content: { 'application/pdf': {} },
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Store not found' })
-  async exportStorePDF(@Param('storeId') storeId: string, @Request() req, @Res() res: Response) {
+  async exportStorePDF(
+    @Param('storeId') storeId: string,
+    @Request() req,
+    @Res() res: Response,
+  ) {
     // Organizations removed - organizationId is always null, data is user-scoped
-    const pdfBuffer = await this.storeReportPdfService.generateStoreReportPdf(storeId, req.user.userId);
+    const pdfBuffer = await this.storeReportPdfService.generateStoreReportPdf(
+      storeId,
+      req.user.userId,
+    );
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=store-${storeId}-report.pdf`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=store-${storeId}-report.pdf`,
+    );
     res.send(pdfBuffer);
   }
 }
-

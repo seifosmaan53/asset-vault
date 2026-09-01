@@ -41,7 +41,9 @@ export class InvoiceRemindersService {
       relations: ['client', 'user', 'items'],
     });
 
-    this.logger.log(`Found ${overdueInvoices.length} overdue invoice(s) to check for reminders`);
+    this.logger.log(
+      `Found ${overdueInvoices.length} overdue invoice(s) to check for reminders`,
+    );
 
     let sentCount = 0;
     let errorCount = 0;
@@ -50,7 +52,9 @@ export class InvoiceRemindersService {
       try {
         // Skip if no client email
         if (!invoice.client?.email) {
-          this.logger.warn(`Skipping invoice ${invoice.number} - no client email`);
+          this.logger.warn(
+            `Skipping invoice ${invoice.number} - no client email`,
+          );
           continue;
         }
 
@@ -58,17 +62,23 @@ export class InvoiceRemindersService {
         if (invoice.lastReminderSentAt) {
           const lastReminder = new Date(invoice.lastReminderSentAt);
           if (lastReminder > sevenDaysAgo) {
-            this.logger.log(`Skipping invoice ${invoice.number} - reminder sent recently`);
+            this.logger.log(
+              `Skipping invoice ${invoice.number} - reminder sent recently`,
+            );
             continue;
           }
         }
 
         // Calculate days overdue
         const dueDate = new Date(invoice.dueDate);
-        const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+        const daysOverdue = Math.floor(
+          (now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24),
+        );
 
         // Email functionality removed - just log and update status
-        this.logger.log(`Invoice ${invoice.number} is ${daysOverdue} days overdue (email reminders disabled)`);
+        this.logger.log(
+          `Invoice ${invoice.number} is ${daysOverdue} days overdue (email reminders disabled)`,
+        );
 
         // Update invoice
         invoice.lastReminderSentAt = new Date();
@@ -78,10 +88,15 @@ export class InvoiceRemindersService {
         await this.invoicesRepository.save(invoice);
 
         sentCount++;
-        this.logger.log(`Invoice ${invoice.number} marked as overdue (${daysOverdue} days)`);
+        this.logger.log(
+          `Invoice ${invoice.number} marked as overdue (${daysOverdue} days)`,
+        );
       } catch (error) {
         errorCount++;
-        this.logger.error(`Failed to send reminder for invoice ${invoice.id}:`, error);
+        this.logger.error(
+          `Failed to send reminder for invoice ${invoice.id}:`,
+          error,
+        );
       }
     }
 
@@ -102,4 +117,3 @@ export class InvoiceRemindersService {
   //   return '';
   // }
 }
-

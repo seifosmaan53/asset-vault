@@ -1,6 +1,8 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddDeletedAtToRecurringInvoices1753000000000 implements MigrationInterface {
+export class AddDeletedAtToRecurringInvoices1753000000000
+  implements MigrationInterface
+{
   name = 'AddDeletedAtToRecurringInvoices1753000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -19,4 +21,3 @@ export class AddDeletedAtToRecurringInvoices1753000000000 implements MigrationIn
     `);
   }
 }
-

@@ -7,5 +7,5 @@ export const IS_ORGANIZATION_OPTIONAL_KEY = 'isOrganizationOptional';
  * If not provided, the guard will try to use the user's default organization
  * or allow the request if the user has no organizations
  */
-export const OrganizationOptional = () => SetMetadata(IS_ORGANIZATION_OPTIONAL_KEY, true);
-
+export const OrganizationOptional = () =>
+  SetMetadata(IS_ORGANIZATION_OPTIONAL_KEY, true);

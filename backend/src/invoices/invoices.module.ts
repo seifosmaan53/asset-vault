@@ -29,4 +29,3 @@ import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
   exports: [InvoicesService],
 })
 export class InvoicesModule {}
-

@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddDeletedAtToStores1752000000000 implements MigrationInterface {
   name = 'AddDeletedAtToStores1752000000000';
@@ -19,4 +19,3 @@ export class AddDeletedAtToStores1752000000000 implements MigrationInterface {
     `);
   }
 }
-

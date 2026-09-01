@@ -13,7 +13,13 @@ import { ClientsModule } from '../clients/clients.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Invoice, InvoiceItem, Client, InventoryItem, Store]),
+    TypeOrmModule.forFeature([
+      Invoice,
+      InvoiceItem,
+      Client,
+      InventoryItem,
+      Store,
+    ]),
     InvoicesModule,
     InventoryModule,
     ClientsModule,

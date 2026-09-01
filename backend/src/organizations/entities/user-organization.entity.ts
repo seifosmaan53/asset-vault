@@ -28,7 +28,9 @@ export class UserOrganization {
   @Column()
   organizationId: string;
 
-  @ManyToOne(() => Organization, (org) => org.userOrganizations, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Organization, (org) => org.userOrganizations, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'organizationId' })
   organization: Organization;
 
@@ -51,4 +53,3 @@ export class UserOrganization {
   @UpdateDateColumn()
   updatedAt: Date;
 }
-

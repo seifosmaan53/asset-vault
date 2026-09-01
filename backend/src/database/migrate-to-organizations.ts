@@ -20,7 +20,7 @@ config();
 
 /**
  * Migration script to convert existing user data to organizations
- * 
+ *
  * This script:
  * 1. Creates an organization for each existing user
  * 2. Adds the user as owner of their organization
@@ -64,14 +64,16 @@ async function migrateToOrganizations() {
 
     const userRepository = dataSource.getRepository(User);
     const organizationRepository = dataSource.getRepository(Organization);
-    const userOrganizationRepository = dataSource.getRepository(UserOrganization);
+    const userOrganizationRepository =
+      dataSource.getRepository(UserOrganization);
     const clientRepository = dataSource.getRepository(Client);
     const invoiceRepository = dataSource.getRepository(Invoice);
     const inventoryRepository = dataSource.getRepository(InventoryItem);
     const storeRepository = dataSource.getRepository(Store);
     // const recurringInvoiceRepository = dataSource.getRepository(RecurringInvoice); // Removed
     const stockMovementRepository = dataSource.getRepository(StockMovement);
-    const storeItemSettingsRepository = dataSource.getRepository(StoreItemSettings);
+    const storeItemSettingsRepository =
+      dataSource.getRepository(StoreItemSettings);
     const userSettingsRepository = dataSource.getRepository(UserSettings);
     // const invoiceTemplateRepository = dataSource.getRepository(InvoiceTemplate); // Removed
     const apiKeyRepository = dataSource.getRepository(ApiKey);
@@ -89,20 +91,25 @@ async function migrateToOrganizations() {
       });
 
       if (existingUserOrg) {
-        console.log(`  ⚠️  User already has organization: ${existingUserOrg.organizationId}`);
+        console.log(
+          `  ⚠️  User already has organization: ${existingUserOrg.organizationId}`,
+        );
         console.log(`  Skipping...\n`);
         continue;
       }
 
       // Create organization for this user
-      const organizationName = user.companyName || user.name || `${user.email}'s Organization`;
+      const organizationName =
+        user.companyName || user.name || `${user.email}'s Organization`;
       const organization = organizationRepository.create({
         name: organizationName,
         companyName: user.companyName || organizationName,
         email: user.email,
       });
       const savedOrg = await organizationRepository.save(organization);
-      console.log(`  ✓ Created organization: ${savedOrg.name} (${savedOrg.id})`);
+      console.log(
+        `  ✓ Created organization: ${savedOrg.name} (${savedOrg.id})`,
+      );
 
       // Add user as owner
       const userOrg = userOrganizationRepository.create({
@@ -116,11 +123,13 @@ async function migrateToOrganizations() {
       console.log(`  ✓ Added user as owner`);
 
       // Migrate all user data to organization
-      let migratedCount = 0;
+      const migratedCount = 0;
 
       // Organizations removed - migration script is obsolete
       // All data is now user-scoped, no organizationId migration needed
-      console.log(`  ✓ Organizations removed - data is already user-scoped for user ${user.id}`);
+      console.log(
+        `  ✓ Organizations removed - data is already user-scoped for user ${user.id}`,
+      );
 
       console.log(`  ✅ Total: ${migratedCount} data record(s) migrated\n`);
     }
@@ -148,4 +157,3 @@ async function migrateToOrganizations() {
 }
 
 migrateToOrganizations();
-

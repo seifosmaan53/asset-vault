@@ -1,6 +1,19 @@
-import { Controller, Get, Patch, Param, Query, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { StoreAlertsService } from './store-alerts.service';
 import { OrganizationId } from '../organizations/organization-context.decorator';
 
@@ -14,7 +27,8 @@ export class StoreAlertsController {
   @Get()
   @ApiOperation({
     summary: 'Get all store alerts',
-    description: 'Retrieve all store alerts for the authenticated user, optionally filtered by store and resolution status.',
+    description:
+      'Retrieve all store alerts for the authenticated user, optionally filtered by store and resolution status.',
   })
   @ApiResponse({ status: 200, description: 'List of store alerts' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -25,9 +39,15 @@ export class StoreAlertsController {
     @OrganizationId() organizationId?: string | null,
   ) {
     // FIX Issue #43: Add organization context validation
-    const resolvedBool = resolved === 'true' ? true : resolved === 'false' ? false : undefined;
+    const resolvedBool =
+      resolved === 'true' ? true : resolved === 'false' ? false : undefined;
     // Organizations removed - organizationId is always null, data is user-scoped
-    return this.storeAlertsService.getAlerts(req.user.userId, storeId, resolvedBool, null);
+    return this.storeAlertsService.getAlerts(
+      req.user.userId,
+      storeId,
+      resolvedBool,
+      null,
+    );
   }
 
   @Get('store/:storeId')
@@ -38,13 +58,17 @@ export class StoreAlertsController {
   @ApiResponse({ status: 200, description: 'List of store alerts' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getStoreAlerts(
-    @Param('storeId') storeId: string, 
+    @Param('storeId') storeId: string,
     @Request() req,
     @OrganizationId() organizationId?: string | null,
   ) {
     // FIX Issue #43: Add organization context validation
     // Organizations removed - organizationId is always null, data is user-scoped
-    return this.storeAlertsService.getStoreAlerts(storeId, req.user.userId, null);
+    return this.storeAlertsService.getStoreAlerts(
+      storeId,
+      req.user.userId,
+      null,
+    );
   }
 
   @Patch(':id/resolve')
@@ -57,7 +81,10 @@ export class StoreAlertsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async markAlertResolved(@Param('id') id: string, @Request() req) {
     try {
-      const result = await this.storeAlertsService.markAlertResolved(id, req.user.userId);
+      const result = await this.storeAlertsService.markAlertResolved(
+        id,
+        req.user.userId,
+      );
       return result;
     } catch (error: any) {
       throw error;
@@ -67,7 +94,8 @@ export class StoreAlertsController {
   @Get('check')
   @ApiOperation({
     summary: 'Manually trigger alert check',
-    description: 'Manually trigger a check for reorder alerts. This is normally done automatically via cron job.',
+    description:
+      'Manually trigger a check for reorder alerts. This is normally done automatically via cron job.',
   })
   @ApiResponse({ status: 200, description: 'Alert check completed' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -75,4 +103,3 @@ export class StoreAlertsController {
     return this.storeAlertsService.checkStoreAlerts(req.user.userId);
   }
 }
-

@@ -1,6 +1,8 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class RemoveRecurringInvoicesAndTemplates1757000000000 implements MigrationInterface {
+export class RemoveRecurringInvoicesAndTemplates1757000000000
+  implements MigrationInterface
+{
   name = 'RemoveRecurringInvoicesAndTemplates1757000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -31,13 +33,27 @@ export class RemoveRecurringInvoicesAndTemplates1757000000000 implements Migrati
     `);
 
     // Drop indexes
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_recurring_invoices_userId";`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_recurring_invoices_clientId";`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_recurring_invoices_storeId";`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_recurring_invoices_organizationId";`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "UX_recurring_invoices_org_code";`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_invoice_templates_userId";`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_invoice_templates_organizationId";`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_recurring_invoices_userId";`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_recurring_invoices_clientId";`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_recurring_invoices_storeId";`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_recurring_invoices_organizationId";`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "UX_recurring_invoices_org_code";`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_invoice_templates_userId";`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_invoice_templates_organizationId";`,
+    );
 
     // Drop tables
     await queryRunner.query(`DROP TABLE IF EXISTS "recurring_invoices";`);
@@ -147,4 +163,3 @@ export class RemoveRecurringInvoicesAndTemplates1757000000000 implements Migrati
     `);
   }
 }
-

@@ -1,6 +1,6 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class RemoveIsMadeToOrder1760000003000 implements MigrationInterface {
   name = 'RemoveIsMadeToOrder1760000003000';

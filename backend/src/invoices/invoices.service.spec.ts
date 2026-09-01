@@ -1,4 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
@@ -6,7 +7,7 @@ import { InvoiceStatusHistory } from './entities/invoice-status-history.entity';
 import { InventoryItem } from '../inventory/entities/inventory-item.entity';
 import { UsageService } from '../subscriptions/usage.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
-import { Repository } from 'typeorm';
+import type { Repository } from 'typeorm';
 import { InvoicesService } from './invoices.service';
 import { Invoice } from './entities/invoice.entity';
 import { InvoiceItem } from './entities/invoice-item.entity';
@@ -20,9 +21,26 @@ import { NotFoundException, BadRequestException } from '@nestjs/common';
 
 const mockQueryBuilder0 = () => {
   const qb: Record<string, jest.Mock> = {};
-  for (const m of ['select','addSelect','leftJoin','leftJoinAndSelect','innerJoin','where',
-                   'andWhere','orWhere','orderBy','addOrderBy','groupBy','skip','take',
-                   'withDeleted','setLock','update','set','delete']) {
+  for (const m of [
+    'select',
+    'addSelect',
+    'leftJoin',
+    'leftJoinAndSelect',
+    'innerJoin',
+    'where',
+    'andWhere',
+    'orWhere',
+    'orderBy',
+    'addOrderBy',
+    'groupBy',
+    'skip',
+    'take',
+    'withDeleted',
+    'setLock',
+    'update',
+    'set',
+    'delete',
+  ]) {
     qb[m] = jest.fn(() => qb);
   }
   qb.getOne = jest.fn().mockResolvedValue(null);
@@ -61,7 +79,9 @@ describe('InvoicesService', () => {
     createQueryBuilder: jest.fn(() => {
       const qb = mockQueryBuilder0();
       qb.getOne = jest.fn(() => mockInvoicesRepository.findOne());
-      qb.getMany = jest.fn(async () => (await mockInvoicesRepository.find()) ?? []);
+      qb.getMany = jest.fn(
+        async () => (await mockInvoicesRepository.find()) ?? [],
+      );
       lastInvoiceQb = qb; // so assertions can inspect the chain that was actually built
       return qb;
     }),
@@ -75,7 +95,9 @@ describe('InvoicesService', () => {
          `mockInvoicesRepository.count.mockResolvedValue(99)` stubs still drive it. */
       createQueryBuilder: jest.fn(() => {
         const qb = mockQueryBuilder0();
-        qb.getCount = jest.fn(async () => (await mockInvoicesRepository.count()) ?? 0);
+        qb.getCount = jest.fn(
+          async () => (await mockInvoicesRepository.count()) ?? 0,
+        );
         return qb;
       }),
       findOne: jest.fn(),
@@ -139,7 +161,10 @@ describe('InvoicesService', () => {
          items and status-history rows share this manager and must not be answered with
          an invoice fixture, so they just echo back what was written. */
       save: jest.fn((entity: unknown, data: unknown) =>
-        entity === Invoice ? mockInvoicesRepository.save(data) : Promise.resolve(data)),
+        entity === Invoice
+          ? mockInvoicesRepository.save(data)
+          : Promise.resolve(data),
+      ),
       /* update()/send() read the invoice back through the TRANSACTION manager, not the
          repository, so an unstubbed findOne here surfaced as "Invoice not found" no
          matter what the test had stubbed. Delegate so the existing stubs apply. */
@@ -149,16 +174,26 @@ describe('InvoicesService', () => {
          stock' or bailed before reaching createMovement. Invoice lookups still delegate
          to the repository stub; item lookups get a well-stocked default that a test can
          override via `stockedItem`. */
-      findOne: jest.fn((entity: unknown, options?: { where?: { id?: string } }) => {
-        if (entity === InventoryItem) {
-          return Promise.resolve(
-            stockedItem === undefined
-              ? { id: options?.where?.id ?? '11111111-1111-4111-8111-111111111111', userId: 'user-123', name: 'Test Item', sku: 'T-1', currentStock: 1000 }
-              : stockedItem,
-          );
-        }
-        return mockInvoicesRepository.findOne(options ?? entity);
-      }),
+      findOne: jest.fn(
+        (entity: unknown, options?: { where?: { id?: string } }) => {
+          if (entity === InventoryItem) {
+            return Promise.resolve(
+              stockedItem === undefined
+                ? {
+                    id:
+                      options?.where?.id ??
+                      '11111111-1111-4111-8111-111111111111',
+                    userId: 'user-123',
+                    name: 'Test Item',
+                    sku: 'T-1',
+                    currentStock: 1000,
+                  }
+                : stockedItem,
+            );
+          }
+          return mockInvoicesRepository.findOne(options ?? entity);
+        },
+      ),
       /* The service loads invoice items with a SEPARATE query (deliberately, to dodge
          TypeORM's soft-delete filtering on the relation), so returning [] here left
          `invoice.items` empty — and the store-stock block, which only runs when there
@@ -166,7 +201,9 @@ describe('InvoicesService', () => {
          the lines off the invoice fixture the test already set up. */
       find: jest.fn(async (entity: unknown) => {
         if (entity === InvoiceItem) {
-          const inv = (await mockInvoicesRepository.findOne()) as { items?: unknown[] } | null;
+          const inv = (await mockInvoicesRepository.findOne()) as {
+            items?: unknown[];
+          } | null;
           return inv?.items ?? [];
         }
         return (await mockInvoicesRepository.find()) ?? [];
@@ -187,10 +224,12 @@ describe('InvoicesService', () => {
         const qb = mockQueryBuilder0();
         const seen: Record<string, unknown> = {};
         for (const m of ['where', 'andWhere']) {
-          qb[m] = jest.fn((_sql?: unknown, params?: Record<string, unknown>) => {
-            if (params) Object.assign(seen, params);
-            return qb;
-          });
+          qb[m] = jest.fn(
+            (_sql?: unknown, params?: Record<string, unknown>) => {
+              if (params) Object.assign(seen, params);
+              return qb;
+            },
+          );
         }
         qb.getOne = jest.fn(async () => {
           /* Two different jobs go through this one builder, and answering both the same
@@ -220,13 +259,17 @@ describe('InvoicesService', () => {
        'reject when store stock validation fails' left the validator throwing, and the
        following test failed with an 'Insufficient stock' it never asked for. Reset the
        stateful collaborators to a known-good default before each test. */
-    mockStoreStockValidator.validateAndThrow.mockReset().mockResolvedValue(undefined);
+    mockStoreStockValidator.validateAndThrow
+      .mockReset()
+      .mockResolvedValue(undefined);
     mockStoreStockValidator.validateStoreStockAvailability
       .mockReset()
       .mockResolvedValue({ isValid: true, errors: [], itemValidations: [] });
     mockStoreService.findOne.mockReset();
     mockInventoryService.createMovement.mockReset();
-    mockInvoicesRepository.manager.connection.createQueryRunner.mockReturnValue(mockQueryRunner);
+    mockInvoicesRepository.manager.connection.createQueryRunner.mockReturnValue(
+      mockQueryRunner,
+    );
     mockQueryRunner.connect.mockResolvedValue(undefined);
     mockQueryRunner.startTransaction.mockResolvedValue(undefined);
     mockQueryRunner.commitTransaction.mockResolvedValue(undefined);
@@ -253,7 +296,10 @@ describe('InvoicesService', () => {
             createQueryBuilder: jest.fn(() => mockQueryBuilder0()),
           },
         },
-        { provide: CACHE_MANAGER, useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn() } },
+        {
+          provide: CACHE_MANAGER,
+          useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn() },
+        },
         {
           provide: DataSource,
           useValue: {
@@ -262,8 +308,18 @@ describe('InvoicesService', () => {
             transaction: jest.fn(),
           },
         },
-        { provide: UsageService, useValue: { increment: jest.fn(), decrement: jest.fn(), check: jest.fn() } },
-        { provide: SubscriptionsService, useValue: { getActivePlan: jest.fn(), getSubscription: jest.fn() } },
+        {
+          provide: UsageService,
+          useValue: {
+            increment: jest.fn(),
+            decrement: jest.fn(),
+            check: jest.fn(),
+          },
+        },
+        {
+          provide: SubscriptionsService,
+          useValue: { getActivePlan: jest.fn(), getSubscription: jest.fn() },
+        },
         {
           provide: getRepositoryToken(InvoiceItem),
           useValue: mockInvoiceItemsRepository,
@@ -381,7 +437,9 @@ describe('InvoicesService', () => {
          rounded. Money inputs are now validated up front instead, which is the better
          behaviour: silently rounding 33.333 hides a data-entry error inside a figure
          the customer is billed for. */
-      const items = [{ quantity: 3, unitPrice: 33.333, taxRate: 7.5, discountRate: 2.5 }];
+      const items = [
+        { quantity: 3, unitPrice: 33.333, taxRate: 7.5, discountRate: 2.5 },
+      ];
 
       expect(() => (service as any).calculateTotals(items)).toThrow(
         /at most 2 decimal places/i,
@@ -391,7 +449,9 @@ describe('InvoicesService', () => {
     it('returns every figure rounded to at most 2 decimal places', () => {
       // Asserts the property the old test was named for, rather than one hardcoded
       // total — rates chosen so the intermediate maths does not land on clean cents.
-      const items = [{ quantity: 3, unitPrice: 33.33, taxRate: 7.5, discountRate: 2.5 }];
+      const items = [
+        { quantity: 3, unitPrice: 33.33, taxRate: 7.5, discountRate: 2.5 },
+      ];
 
       const result = (service as any).calculateTotals(items);
 
@@ -423,8 +483,7 @@ describe('InvoicesService', () => {
       // legacy call shape kept for reference:
       // {
       //         where: { userId, type: 'invoice' },
-      //       
-
+      //
     });
 
     it('should generate estimate number with EST prefix', async () => {
@@ -474,10 +533,7 @@ describe('InvoicesService', () => {
         number: 'INV-2024-0011',
       });
 
-      const result = await service.convertEstimateToInvoice(
-        invoiceId,
-        userId,
-      );
+      const result = await service.convertEstimateToInvoice(invoiceId, userId);
 
       expect(result.type).toBe('invoice');
       expect(result.status).toBe('draft');
@@ -554,7 +610,9 @@ describe('InvoicesService', () => {
     });
 
     it('should reject invoice with invalid storeId', async () => {
-      mockStoreService.findOne.mockRejectedValue(new NotFoundException('Store not found'));
+      mockStoreService.findOne.mockRejectedValue(
+        new NotFoundException('Store not found'),
+      );
 
       const invoiceData = {
         clientId,
@@ -562,14 +620,26 @@ describe('InvoicesService', () => {
         type: 'invoice' as const,
         issueDate: new Date().toISOString(),
         currency: 'USD',
-        items: [{ description: 'Test', quantity: 1, unitPrice: 100, taxRate: 0, discountRate: 0 }],
+        items: [
+          {
+            description: 'Test',
+            quantity: 1,
+            unitPrice: 100,
+            taxRate: 0,
+            discountRate: 0,
+          },
+        ],
       };
 
-      await expect(service.create(userId, invoiceData)).rejects.toThrow(BadRequestException);
+      await expect(service.create(userId, invoiceData)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should reject invoice with storeId from different user', async () => {
-      mockStoreService.findOne.mockRejectedValue(new NotFoundException('Store not found'));
+      mockStoreService.findOne.mockRejectedValue(
+        new NotFoundException('Store not found'),
+      );
 
       const invoiceData = {
         clientId,
@@ -577,10 +647,20 @@ describe('InvoicesService', () => {
         type: 'invoice' as const,
         issueDate: new Date().toISOString(),
         currency: 'USD',
-        items: [{ description: 'Test', quantity: 1, unitPrice: 100, taxRate: 0, discountRate: 0 }],
+        items: [
+          {
+            description: 'Test',
+            quantity: 1,
+            unitPrice: 100,
+            taxRate: 0,
+            discountRate: 0,
+          },
+        ],
       };
 
-      await expect(service.create(userId, invoiceData)).rejects.toThrow(BadRequestException);
+      await expect(service.create(userId, invoiceData)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should handle empty string storeId (convert to undefined)', async () => {
@@ -590,7 +670,15 @@ describe('InvoicesService', () => {
         type: 'invoice' as const,
         issueDate: new Date().toISOString(),
         currency: 'USD',
-        items: [{ description: 'Test', quantity: 1, unitPrice: 100, taxRate: 0, discountRate: 0 }],
+        items: [
+          {
+            description: 'Test',
+            quantity: 1,
+            unitPrice: 100,
+            taxRate: 0,
+            discountRate: 0,
+          },
+        ],
       };
 
       await service.create(userId, invoiceData);
@@ -689,7 +777,7 @@ describe('InvoicesService', () => {
          persists its line, carrying the inventory item link that a later stock movement
          depends on. If that link is dropped — as it silently is when inventoryItemId
          fails UUID validation — this fails. */
-      const insertCall = (mockQueryRunner.query as jest.Mock).mock.calls.find((c) =>
+      const insertCall = mockQueryRunner.query.mock.calls.find((c) =>
         String(c[0]).includes('INSERT INTO "invoice_items"'),
       );
       expect(insertCall).toBeDefined();
@@ -808,7 +896,9 @@ describe('InvoicesService', () => {
         ],
       };
 
-      await expect(service.create(userId, invoiceData)).rejects.toThrow(BadRequestException);
+      await expect(service.create(userId, invoiceData)).rejects.toThrow(
+        BadRequestException,
+      );
       expect(mockStoreStockValidator.validateAndThrow).toHaveBeenCalled();
     });
 
@@ -855,7 +945,8 @@ describe('InvoicesService', () => {
          stock); only the layer enforcing it moved. So assert the delegation, and that
          the line really does reach it without an inventory link. */
       expect(mockStoreStockValidator.validateAndThrow).toHaveBeenCalledTimes(1);
-      const [, itemsPassed] = mockStoreStockValidator.validateAndThrow.mock.calls[0];
+      const [, itemsPassed] =
+        mockStoreStockValidator.validateAndThrow.mock.calls[0];
       expect(itemsPassed).toHaveLength(1);
       expect(itemsPassed[0].inventoryItemId).toBeUndefined();
     });
@@ -909,7 +1000,12 @@ describe('InvoicesService', () => {
     const invoiceId = 'invoice-123';
     const oldStoreId = 'store-old';
     const newStoreId = 'store-new';
-    const mockStore = { id: newStoreId, userId, name: 'New Store', code: 'NS1' };
+    const mockStore = {
+      id: newStoreId,
+      userId,
+      name: 'New Store',
+      code: 'NS1',
+    };
 
     beforeEach(() => {
       mockInvoicesRepository.findOne.mockResolvedValue({
@@ -919,7 +1015,11 @@ describe('InvoicesService', () => {
         status: 'draft',
         /* Marking an invoice sent now requires a client email — the transition guard
            refuses otherwise, which is right: 'sent' with no address is a lie. */
-        client: { id: 'client-123', name: 'Test Client', email: 'client@example.test' },
+        client: {
+          id: 'client-123',
+          name: 'Test Client',
+          email: 'client@example.test',
+        },
         type: 'invoice' as const,
         items: [],
       });
@@ -938,7 +1038,11 @@ describe('InvoicesService', () => {
           status: 'draft',
           /* Marking an invoice sent now requires a client email — the transition guard
              refuses otherwise, which is right: 'sent' with no address is a lie. */
-          client: { id: 'client-123', name: 'Test Client', email: 'client@example.test' },
+          client: {
+            id: 'client-123',
+            name: 'Test Client',
+            email: 'client@example.test',
+          },
           type: 'invoice' as const,
           items: [],
         })
@@ -949,13 +1053,16 @@ describe('InvoicesService', () => {
           status: 'draft',
           /* Marking an invoice sent now requires a client email — the transition guard
              refuses otherwise, which is right: 'sent' with no address is a lie. */
-          client: { id: 'client-123', name: 'Test Client', email: 'client@example.test' },
+          client: {
+            id: 'client-123',
+            name: 'Test Client',
+            email: 'client@example.test',
+          },
           type: 'invoice' as const,
           items: [],
         });
 
       await service.update(invoiceId, userId, { storeId: newStoreId });
-
 
       /* The write moved inside the transaction — repository.update() is no longer
 
@@ -968,24 +1075,21 @@ describe('InvoicesService', () => {
 
          anything is written, and the invoice is persisted carrying it. */
 
-
       expect(mockStoreService.findOne).toHaveBeenCalledWith(newStoreId, userId);
 
-
-      const savedWithStore = (mockQueryRunner.manager.save as jest.Mock).mock.calls.some(
-
-
+      const savedWithStore = (
+        mockQueryRunner.manager.save as jest.Mock
+      ).mock.calls.some(
         (c) => (c[1] as { storeId?: string })?.storeId === newStoreId,
-
-
       );
-
 
       expect(savedWithStore).toBe(true);
     });
 
     it('should validate new storeId belongs to user', async () => {
-      mockStoreService.findOne.mockRejectedValue(new NotFoundException('Store not found'));
+      mockStoreService.findOne.mockRejectedValue(
+        new NotFoundException('Store not found'),
+      );
 
       await expect(
         service.update(invoiceId, userId, { storeId: 'invalid-store' }),
@@ -1001,7 +1105,11 @@ describe('InvoicesService', () => {
           status: 'draft',
           /* Marking an invoice sent now requires a client email — the transition guard
              refuses otherwise, which is right: 'sent' with no address is a lie. */
-          client: { id: 'client-123', name: 'Test Client', email: 'client@example.test' },
+          client: {
+            id: 'client-123',
+            name: 'Test Client',
+            email: 'client@example.test',
+          },
           type: 'invoice' as const,
           items: [],
         })
@@ -1012,7 +1120,11 @@ describe('InvoicesService', () => {
           status: 'draft',
           /* Marking an invoice sent now requires a client email — the transition guard
              refuses otherwise, which is right: 'sent' with no address is a lie. */
-          client: { id: 'client-123', name: 'Test Client', email: 'client@example.test' },
+          client: {
+            id: 'client-123',
+            name: 'Test Client',
+            email: 'client@example.test',
+          },
           type: 'invoice' as const,
           items: [],
         });
@@ -1032,7 +1144,11 @@ describe('InvoicesService', () => {
         status: 'draft',
         /* Marking an invoice sent now requires a client email — the transition guard
            refuses otherwise, which is right: 'sent' with no address is a lie. */
-        client: { id: 'client-123', name: 'Test Client', email: 'client@example.test' },
+        client: {
+          id: 'client-123',
+          name: 'Test Client',
+          email: 'client@example.test',
+        },
         type: 'invoice' as const,
         items: [
           {
@@ -1044,8 +1160,7 @@ describe('InvoicesService', () => {
         ],
       };
 
-      mockInvoicesRepository.findOne
-        .mockResolvedValue(existingInvoice);
+      mockInvoicesRepository.findOne.mockResolvedValue(existingInvoice);
 
       await service.update(invoiceId, userId, { storeId: newStoreId });
       /* The deep branch this asserted — store-stock re-validation when the storeId
@@ -1076,7 +1191,11 @@ describe('InvoicesService', () => {
         status: 'draft',
         /* Marking an invoice sent now requires a client email — the transition guard
            refuses otherwise, which is right: 'sent' with no address is a lie. */
-        client: { id: 'client-123', name: 'Test Client', email: 'client@example.test' },
+        client: {
+          id: 'client-123',
+          name: 'Test Client',
+          email: 'client@example.test',
+        },
         type: 'invoice' as const,
         items: [
           {
@@ -1090,7 +1209,7 @@ describe('InvoicesService', () => {
 
       mockInvoicesRepository.findOne.mockResolvedValueOnce(existingInvoice);
 
-      await service.update(invoiceId, userId, { storeId: newStoreId });  // no longer rejects: the branch is not reached
+      await service.update(invoiceId, userId, { storeId: newStoreId }); // no longer rejects: the branch is not reached
       /* The deep branch this asserted — store-stock re-validation when the storeId
          changes — is not reachable from a unit test without standing in for the whole
          query chain update() runs inside its transaction: a locked invoice read, a
@@ -1116,7 +1235,11 @@ describe('InvoicesService', () => {
         status: 'draft',
         /* Marking an invoice sent now requires a client email — the transition guard
            refuses otherwise, which is right: 'sent' with no address is a lie. */
-        client: { id: 'client-123', name: 'Test Client', email: 'client@example.test' },
+        client: {
+          id: 'client-123',
+          name: 'Test Client',
+          email: 'client@example.test',
+        },
         type: 'invoice' as const,
         items: [
           {
@@ -1128,8 +1251,7 @@ describe('InvoicesService', () => {
         ],
       };
 
-      mockInvoicesRepository.findOne
-        .mockResolvedValue(existingInvoice);
+      mockInvoicesRepository.findOne.mockResolvedValue(existingInvoice);
 
       await service.update(invoiceId, userId, { status: 'sent' });
 
@@ -1191,7 +1313,9 @@ describe('InvoicesService', () => {
          keep the local handles the assertions below use. */
       const mockQueryBuilder = mockQueryBuilder0();
 
-      mockInvoicesRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
+      mockInvoicesRepository.createQueryBuilder.mockReturnValue(
+        mockQueryBuilder,
+      );
 
       await service.findAll(userId);
 
@@ -1211,12 +1335,16 @@ describe('InvoicesService', () => {
          keep the local handles the assertions below use. */
       const mockQueryBuilder = mockQueryBuilder0();
 
-      mockInvoicesRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
+      mockInvoicesRepository.createQueryBuilder.mockReturnValue(
+        mockQueryBuilder,
+      );
 
       await service.findAll(userId, { storeId });
 
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith('invoice.storeId = :storeId', { storeId });
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'invoice.storeId = :storeId',
+        { storeId },
+      );
     });
   });
 });
-

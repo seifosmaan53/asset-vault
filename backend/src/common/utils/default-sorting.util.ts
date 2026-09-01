@@ -3,7 +3,7 @@
 /**
  * Default Sorting Utility
  * Fixes Issue #67: Missing Database Query Result Sorting
- * 
+ *
  * Provides consistent default sorting for list queries
  */
 export interface SortOptions {
@@ -46,10 +46,12 @@ export const DEFAULT_SORT_OPTIONS: Record<string, SortOptions> = {
  * Get default sort options for an entity type
  */
 export function getDefaultSort(entityType: string): SortOptions {
-  return DEFAULT_SORT_OPTIONS[entityType] || {
-    field: 'createdAt',
-    direction: 'DESC',
-  };
+  return (
+    DEFAULT_SORT_OPTIONS[entityType] || {
+      field: 'createdAt',
+      direction: 'DESC',
+    }
+  );
 }
 
 /**
@@ -66,4 +68,3 @@ export function applyDefaultSort(
 
   return getDefaultSort(entityType);
 }
-

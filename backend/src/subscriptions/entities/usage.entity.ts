@@ -56,4 +56,3 @@ export class Usage {
   @UpdateDateColumn()
   updatedAt: Date;
 }
-

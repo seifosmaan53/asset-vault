@@ -1,6 +1,9 @@
-import { MigrationInterface, QueryRunner, TableColumn, TableForeignKey } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
+import { TableColumn, TableForeignKey } from 'typeorm';
 
-export class AddOrganizationIdToEntities1746000000000 implements MigrationInterface {
+export class AddOrganizationIdToEntities1746000000000
+  implements MigrationInterface
+{
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Add organizationId to clients
     await queryRunner.addColumn(
@@ -196,16 +199,36 @@ export class AddOrganizationIdToEntities1746000000000 implements MigrationInterf
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Drop foreign keys
-    await queryRunner.query(`ALTER TABLE "clients" DROP CONSTRAINT "FK_clients_organization"`);
-    await queryRunner.query(`ALTER TABLE "invoices" DROP CONSTRAINT "FK_invoices_organization"`);
-    await queryRunner.query(`ALTER TABLE "inventory_items" DROP CONSTRAINT "FK_inventory_items_organization"`);
-    await queryRunner.query(`ALTER TABLE "stores" DROP CONSTRAINT "FK_stores_organization"`);
-    await queryRunner.query(`ALTER TABLE "recurring_invoices" DROP CONSTRAINT "FK_recurring_invoices_organization"`);
-    await queryRunner.query(`ALTER TABLE "stock_movements" DROP CONSTRAINT "FK_stock_movements_organization"`);
-    await queryRunner.query(`ALTER TABLE "store_item_settings" DROP CONSTRAINT "FK_store_item_settings_organization"`);
-    await queryRunner.query(`ALTER TABLE "user_settings" DROP CONSTRAINT "FK_user_settings_organization"`);
-    await queryRunner.query(`ALTER TABLE "invoice_templates" DROP CONSTRAINT "FK_invoice_templates_organization"`);
-    await queryRunner.query(`ALTER TABLE "api_keys" DROP CONSTRAINT "FK_api_keys_organization"`);
+    await queryRunner.query(
+      `ALTER TABLE "clients" DROP CONSTRAINT "FK_clients_organization"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "invoices" DROP CONSTRAINT "FK_invoices_organization"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "inventory_items" DROP CONSTRAINT "FK_inventory_items_organization"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "stores" DROP CONSTRAINT "FK_stores_organization"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "recurring_invoices" DROP CONSTRAINT "FK_recurring_invoices_organization"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "stock_movements" DROP CONSTRAINT "FK_stock_movements_organization"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "store_item_settings" DROP CONSTRAINT "FK_store_item_settings_organization"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "user_settings" DROP CONSTRAINT "FK_user_settings_organization"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "invoice_templates" DROP CONSTRAINT "FK_invoice_templates_organization"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "api_keys" DROP CONSTRAINT "FK_api_keys_organization"`,
+    );
 
     // Drop columns
     await queryRunner.dropColumn('clients', 'organizationId');
@@ -220,4 +243,3 @@ export class AddOrganizationIdToEntities1746000000000 implements MigrationInterf
     await queryRunner.dropColumn('api_keys', 'organizationId');
   }
 }
-

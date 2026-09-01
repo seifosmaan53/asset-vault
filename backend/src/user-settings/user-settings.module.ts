@@ -40,4 +40,3 @@ import { UsersModule } from '../users/users.module';
   exports: [UserSettingsService, TwoFactorService],
 })
 export class UserSettingsModule {}
-

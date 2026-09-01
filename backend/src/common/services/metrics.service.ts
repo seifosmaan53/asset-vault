@@ -98,7 +98,9 @@ export class MetricsService {
         this.slowQueries.shift();
       }
 
-      this.logger.warn(`Slow query detected: ${duration}ms - ${query.substring(0, 100)}`);
+      this.logger.warn(
+        `Slow query detected: ${duration}ms - ${query.substring(0, 100)}`,
+      );
     }
   }
 
@@ -107,8 +109,10 @@ export class MetricsService {
    */
   async getCacheMetrics(): Promise<CacheMetrics> {
     const totalRequests = this.cacheHits + this.cacheMisses;
-    const hitRate = totalRequests > 0 ? (this.cacheHits / totalRequests) * 100 : 0;
-    const missRate = totalRequests > 0 ? (this.cacheMisses / totalRequests) * 100 : 0;
+    const hitRate =
+      totalRequests > 0 ? (this.cacheHits / totalRequests) * 100 : 0;
+    const missRate =
+      totalRequests > 0 ? (this.cacheMisses / totalRequests) * 100 : 0;
 
     // Try to get cache size (may not be available depending on cache store)
     let cacheSize = 0;
@@ -138,7 +142,8 @@ export class MetricsService {
   getQueryMetrics(): QueryMetrics {
     const averageQueryTime =
       this.queryExecutionTimes.length > 0
-        ? this.queryExecutionTimes.reduce((sum, time) => sum + time, 0) / this.queryExecutionTimes.length
+        ? this.queryExecutionTimes.reduce((sum, time) => sum + time, 0) /
+          this.queryExecutionTimes.length
         : 0;
 
     return {
@@ -172,7 +177,9 @@ export class MetricsService {
           activeConnections: parseInt(row.active_connections || '0', 10),
           idleConnections: parseInt(row.idle_connections || '0', 10),
           totalConnections: parseInt(row.total_connections || '0', 10),
-          maxConnections: row.max_connections ? parseInt(row.max_connections, 10) : undefined,
+          maxConnections: row.max_connections
+            ? parseInt(row.max_connections, 10)
+            : undefined,
         };
       }
 
@@ -220,4 +227,3 @@ export class MetricsService {
     this.logger.log('Metrics reset');
   }
 }
-

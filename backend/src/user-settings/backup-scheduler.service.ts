@@ -57,21 +57,34 @@ export class BackupSchedulerService {
     switch (schedule) {
       case 'daily':
         // Run if current time matches backup time (within the hour window)
-        return currentHour === targetHour && currentMinute >= targetMinute && currentMinute < targetMinute + 10;
+        return (
+          currentHour === targetHour &&
+          currentMinute >= targetMinute &&
+          currentMinute < targetMinute + 10
+        );
 
       case 'weekly':
         // Run once per week on Sunday at the backup time
         const isSunday = now.getDay() === 0;
-        return isSunday && currentHour === targetHour && currentMinute >= targetMinute && currentMinute < targetMinute + 10;
+        return (
+          isSunday &&
+          currentHour === targetHour &&
+          currentMinute >= targetMinute &&
+          currentMinute < targetMinute + 10
+        );
 
       case 'monthly':
         // Run on the 1st of each month at the backup time
         const isFirstOfMonth = now.getDate() === 1;
-        return isFirstOfMonth && currentHour === targetHour && currentMinute >= targetMinute && currentMinute < targetMinute + 10;
+        return (
+          isFirstOfMonth &&
+          currentHour === targetHour &&
+          currentMinute >= targetMinute &&
+          currentMinute < targetMinute + 10
+        );
 
       default:
         return false;
     }
   }
 }
-

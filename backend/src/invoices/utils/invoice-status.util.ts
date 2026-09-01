@@ -18,7 +18,7 @@ const VALID_TRANSITIONS: Record<InvoiceStatus, InvoiceStatus[]> = {
 
 /**
  * Validate if a status transition is allowed
- * 
+ *
  * @param fromStatus - Current status
  * @param toStatus - Desired new status
  * @returns true if transition is valid, throws BadRequestException if invalid
@@ -37,7 +37,7 @@ export function validateStatusTransition(
   if (!allowedTransitions || !allowedTransitions.includes(toStatus)) {
     throw new BadRequestException(
       `Invalid status transition: Cannot change invoice status from "${fromStatus}" to "${toStatus}". ` +
-      `Valid transitions from "${fromStatus}": ${allowedTransitions.length > 0 ? allowedTransitions.join(', ') : 'none (terminal state)'}`
+        `Valid transitions from "${fromStatus}": ${allowedTransitions.length > 0 ? allowedTransitions.join(', ') : 'none (terminal state)'}`,
     );
   }
 
@@ -46,7 +46,7 @@ export function validateStatusTransition(
 
 /**
  * Business rule validation for status changes
- * 
+ *
  * @param toStatus - Desired new status
  * @param invoiceTotal - Total amount of the invoice
  * @param itemCount - Number of items in the invoice
@@ -63,12 +63,12 @@ export function validateStatusBusinessRules(
   if (toStatus === 'paid') {
     if (invoiceTotal <= 0) {
       throw new BadRequestException(
-        'Cannot mark invoice as paid: Invoice total must be greater than 0'
+        'Cannot mark invoice as paid: Invoice total must be greater than 0',
       );
     }
     if (itemCount === 0) {
       throw new BadRequestException(
-        'Cannot mark invoice as paid: Invoice must have at least one item'
+        'Cannot mark invoice as paid: Invoice must have at least one item',
       );
     }
   }
@@ -77,7 +77,7 @@ export function validateStatusBusinessRules(
   if (toStatus === 'sent') {
     if (!clientEmail || clientEmail.trim() === '') {
       throw new BadRequestException(
-        'Cannot mark invoice as sent: Client email address is required'
+        'Cannot mark invoice as sent: Client email address is required',
       );
     }
   }
@@ -86,7 +86,7 @@ export function validateStatusBusinessRules(
 /**
  * Check if a status change affects stock
  * Stock should only be affected at specific transitions, not in Draft state
- * 
+ *
  * @param fromStatus - Current status
  * @param toStatus - Desired new status
  * @returns true if this transition should affect stock
@@ -101,17 +101,27 @@ export function shouldAffectStock(
   }
 
   // Stock is affected when moving to 'paid' from 'sent' or 'overdue'
-  if ((fromStatus === 'sent' || fromStatus === 'overdue') && toStatus === 'paid') {
+  if (
+    (fromStatus === 'sent' || fromStatus === 'overdue') &&
+    toStatus === 'paid'
+  ) {
     return true;
   }
 
   // Stock is returned when moving to 'cancelled' from any active status
-  if (toStatus === 'cancelled' && fromStatus !== 'cancelled' && fromStatus !== 'draft') {
+  if (
+    toStatus === 'cancelled' &&
+    fromStatus !== 'cancelled' &&
+    fromStatus !== 'draft'
+  ) {
     return true; // Return stock
   }
 
   // Stock is returned when moving from 'cancelled' back to active status
-  if (fromStatus === 'cancelled' && (toStatus === 'draft' || toStatus === 'sent' || toStatus === 'paid')) {
+  if (
+    fromStatus === 'cancelled' &&
+    (toStatus === 'draft' || toStatus === 'sent' || toStatus === 'paid')
+  ) {
     return true; // Deduct stock again
   }
 
@@ -120,21 +130,22 @@ export function shouldAffectStock(
 
 /**
  * Get all valid transitions from a given status
- * 
+ *
  * @param fromStatus - Current status
  * @returns Array of valid target statuses
  */
-export function getValidTransitions(fromStatus: InvoiceStatus): InvoiceStatus[] {
+export function getValidTransitions(
+  fromStatus: InvoiceStatus,
+): InvoiceStatus[] {
   return VALID_TRANSITIONS[fromStatus] || [];
 }
 
 /**
  * Check if a status is terminal (no transitions allowed)
- * 
+ *
  * @param status - Status to check
  * @returns true if status is terminal
  */
 export function isTerminalStatus(status: InvoiceStatus): boolean {
   return VALID_TRANSITIONS[status]?.length === 0;
 }
-

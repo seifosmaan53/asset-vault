@@ -1,7 +1,10 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { computeInvoiceTotalsCents, invoiceTotalsToMoney } from './invoice-totals.util';
-import { InvoiceItemDto } from '../dto';
+import {
+  computeInvoiceTotalsCents,
+  invoiceTotalsToMoney,
+} from './invoice-totals.util';
+import type { InvoiceItemDto } from '../dto';
 import { BadRequestException } from '@nestjs/common';
 
 describe('computeInvoiceTotalsCents', () => {
@@ -103,21 +106,37 @@ describe('computeInvoiceTotalsCents', () => {
          discount is rejected as an out-of-range percentage rather than reaching the
          "exceeds subtotal" branch. The old assertion expected the later message and
          had been failing ever since validation moved earlier. */
-      expect(() => computeInvoiceTotalsCents(items)).toThrow(BadRequestException);
+      expect(() => computeInvoiceTotalsCents(items)).toThrow(
+        BadRequestException,
+      );
       expect(() => computeInvoiceTotalsCents(items)).toThrow(/at most 100/i);
     });
 
     it('should reject a discount rate below zero', () => {
       const items: InvoiceItemDto[] = [
-        { quantity: 1, unitPrice: 100, taxRate: 0, discountRate: -5, description: 'Item' },
+        {
+          quantity: 1,
+          unitPrice: 100,
+          taxRate: 0,
+          discountRate: -5,
+          description: 'Item',
+        },
       ];
 
-      expect(() => computeInvoiceTotalsCents(items)).toThrow(BadRequestException);
+      expect(() => computeInvoiceTotalsCents(items)).toThrow(
+        BadRequestException,
+      );
     });
 
     it('accepts a 100% discount and returns a zero total', () => {
       const items: InvoiceItemDto[] = [
-        { quantity: 1, unitPrice: 100, taxRate: 0, discountRate: 100, description: 'Item' },
+        {
+          quantity: 1,
+          unitPrice: 100,
+          taxRate: 0,
+          discountRate: 100,
+          description: 'Item',
+        },
       ];
 
       const result = computeInvoiceTotalsCents(items);
@@ -135,8 +154,12 @@ describe('computeInvoiceTotalsCents', () => {
         },
       ];
 
-      expect(() => computeInvoiceTotalsCents(items)).toThrow(BadRequestException);
-      expect(() => computeInvoiceTotalsCents(items)).toThrow(/quantity.*integer/i);
+      expect(() => computeInvoiceTotalsCents(items)).toThrow(
+        BadRequestException,
+      );
+      expect(() => computeInvoiceTotalsCents(items)).toThrow(
+        /quantity.*integer/i,
+      );
     });
 
     it('should reject zero quantity', () => {
@@ -150,8 +173,12 @@ describe('computeInvoiceTotalsCents', () => {
         },
       ];
 
-      expect(() => computeInvoiceTotalsCents(items)).toThrow(BadRequestException);
-      expect(() => computeInvoiceTotalsCents(items)).toThrow(/quantity.*at least 1/i);
+      expect(() => computeInvoiceTotalsCents(items)).toThrow(
+        BadRequestException,
+      );
+      expect(() => computeInvoiceTotalsCents(items)).toThrow(
+        /quantity.*at least 1/i,
+      );
     });
 
     it('should handle empty items array', () => {
@@ -206,9 +233,8 @@ describe('computeInvoiceTotalsCents', () => {
       // Line tax: 99.99 * 0.10 = 9.999 -> rounded to 10.00
       // Line total: 99.99 + 10.00 = 109.99
       expect(totals.lines[0].lineSubtotal).toBeCloseTo(99.99, 2);
-      expect(totals.lines[0].lineTax).toBeCloseTo(10.00, 2);
+      expect(totals.lines[0].lineTax).toBeCloseTo(10.0, 2);
       expect(totals.lines[0].lineTotal).toBeCloseTo(109.99, 2);
     });
   });
 });
-

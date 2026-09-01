@@ -11,10 +11,7 @@ export const AppDataSource = new DataSource({
   password: process.env.DB_PASSWORD || 'postgres',
   database: process.env.DB_DATABASE || 'invoiceme',
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-  migrations: [
-    __dirname + '/../migrations/*{.ts,.js}',
-  ],
+  migrations: [__dirname + '/../migrations/*{.ts,.js}'],
   synchronize: false,
   logging: process.env.NODE_ENV === 'development',
 });
-

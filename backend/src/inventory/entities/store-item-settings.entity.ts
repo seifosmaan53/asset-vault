@@ -49,4 +49,3 @@ export class StoreItemSettings {
   @UpdateDateColumn()
   updatedAt: Date;
 }
-

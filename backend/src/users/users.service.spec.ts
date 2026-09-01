@@ -1,6 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import type { Repository } from 'typeorm';
 import { UsersService } from './users.service';
 import { User, UserRole } from './entities/user.entity';
 
@@ -40,7 +41,10 @@ describe('UsersService', () => {
     } as unknown as jest.Mocked<Partial<Repository<User>>>;
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [UsersService, { provide: getRepositoryToken(User), useValue: repo }],
+      providers: [
+        UsersService,
+        { provide: getRepositoryToken(User), useValue: repo },
+      ],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
@@ -107,7 +111,9 @@ describe('UsersService', () => {
 
     it('refuses to re-point an account that already belongs to a different Clerk id', async () => {
       // Silently overwriting here would hand one person's data to another identity.
-      (repo.findOne as jest.Mock).mockResolvedValue(makeUser({ clerkUserId: 'clerk_someone_else' }));
+      (repo.findOne as jest.Mock).mockResolvedValue(
+        makeUser({ clerkUserId: 'clerk_someone_else' }),
+      );
 
       await expect(service.createFromClerk(payload)).rejects.toThrow(
         /already exists with different Clerk ID/i,
@@ -125,7 +131,9 @@ describe('UsersService', () => {
       (repo.findOne as jest.Mock)
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(makeUser({ clerkUserId: undefined }));
-      (repo.save as jest.Mock).mockRejectedValueOnce(dup).mockImplementationOnce((x) => x);
+      (repo.save as jest.Mock)
+        .mockRejectedValueOnce(dup)
+        .mockImplementationOnce((x) => x);
 
       const result = await service.createFromClerk(payload);
 
@@ -138,13 +146,17 @@ describe('UsersService', () => {
         Object.assign(new Error('connection lost'), { code: '08006' }),
       );
 
-      await expect(service.createFromClerk(payload)).rejects.toThrow(/connection lost/i);
+      await expect(service.createFromClerk(payload)).rejects.toThrow(
+        /connection lost/i,
+      );
     });
   });
 
   describe('linkToClerk', () => {
     it('sets the Clerk id on an existing user', async () => {
-      (repo.findOne as jest.Mock).mockResolvedValue(makeUser({ clerkUserId: undefined }));
+      (repo.findOne as jest.Mock).mockResolvedValue(
+        makeUser({ clerkUserId: undefined }),
+      );
 
       const result = await service.linkToClerk('user-1', 'clerk_abc');
 
@@ -154,13 +166,17 @@ describe('UsersService', () => {
     it('throws for an unknown user', async () => {
       (repo.findOne as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.linkToClerk('nope', 'clerk_abc')).rejects.toThrow(/not found/i);
+      await expect(service.linkToClerk('nope', 'clerk_abc')).rejects.toThrow(
+        /not found/i,
+      );
     });
   });
 
   describe('update', () => {
     it('re-reads the row so the caller gets the persisted state', async () => {
-      (repo.findOne as jest.Mock).mockResolvedValue(makeUser({ name: 'Updated' }));
+      (repo.findOne as jest.Mock).mockResolvedValue(
+        makeUser({ name: 'Updated' }),
+      );
 
       const result = await service.update('user-1', { name: 'Updated' });
 
@@ -171,13 +187,18 @@ describe('UsersService', () => {
     it('throws if the row vanished between the write and the read', async () => {
       (repo.findOne as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.update('user-1', { name: 'x' })).rejects.toThrow(/not found/i);
+      await expect(service.update('user-1', { name: 'x' })).rejects.toThrow(
+        /not found/i,
+      );
     });
   });
 
   describe('findAll / delete', () => {
     it('returns every user', async () => {
-      (repo.find as jest.Mock).mockResolvedValue([makeUser(), makeUser({ id: 'user-2' })]);
+      (repo.find as jest.Mock).mockResolvedValue([
+        makeUser(),
+        makeUser({ id: 'user-2' }),
+      ]);
 
       expect(await service.findAll()).toHaveLength(2);
     });

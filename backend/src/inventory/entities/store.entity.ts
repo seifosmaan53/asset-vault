@@ -69,7 +69,10 @@ export class Store {
   active: boolean;
 
   // Issue #46: Explicit cascade rules for relationships
-  @OneToMany(() => StoreItemSettings, (settings) => settings.store, { cascade: true, onDelete: 'CASCADE' })
+  @OneToMany(() => StoreItemSettings, (settings) => settings.store, {
+    cascade: true,
+    onDelete: 'CASCADE',
+  })
   itemSettings: StoreItemSettings[];
 
   @CreateDateColumn()
@@ -81,4 +84,3 @@ export class Store {
   @DeleteDateColumn()
   deletedAt: Date;
 }
-

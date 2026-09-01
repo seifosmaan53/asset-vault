@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateStoreAlerts1737000000000 implements MigrationInterface {
   name = 'CreateStoreAlerts1737000000000';
@@ -58,4 +58,3 @@ export class CreateStoreAlerts1737000000000 implements MigrationInterface {
     `);
   }
 }
-

@@ -1,6 +1,9 @@
-import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
+import { TableColumn } from 'typeorm';
 
-export class AddAccountLockoutFields1744000000000 implements MigrationInterface {
+export class AddAccountLockoutFields1744000000000
+  implements MigrationInterface
+{
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Add failedLoginAttempts column
     await queryRunner.addColumn(
@@ -32,4 +35,3 @@ export class AddAccountLockoutFields1744000000000 implements MigrationInterface 
     await queryRunner.dropColumn('users', 'failedLoginAttempts');
   }
 }
-

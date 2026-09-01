@@ -59,15 +59,23 @@ export class UsersController {
     // Note: User creation is now handled by Clerk webhooks
     // This endpoint is kept for backward compatibility but should not be used
     // Users should be created through Clerk sign-up flow
-    throw new BadRequestException('User creation is now handled by Clerk. Please use the sign-up flow.');
+    throw new BadRequestException(
+      'User creation is now handled by Clerk. Please use the sign-up flow.',
+    );
   }
 
   @Patch(':id')
   @Roles(UserRole.OWNER) // FIX Issue #44: Only OWNER can update users
-  async update(@Param('id') id: string, @Body() updateDto: UpdateUserDto, @Request() req) {
+  async update(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateUserDto,
+    @Request() req,
+  ) {
     try {
       if (updateDto.email) {
-        const existingUser = await this.usersService.findByEmail(updateDto.email);
+        const existingUser = await this.usersService.findByEmail(
+          updateDto.email,
+        );
         if (existingUser && existingUser.id !== id) {
           throw new BadRequestException('User with this email already exists');
         }
@@ -110,4 +118,3 @@ export class UsersController {
     return { message: 'User deleted successfully' };
   }
 }
-

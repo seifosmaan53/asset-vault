@@ -38,10 +38,8 @@ export class AnalyticsService {
       .addSelect('COUNT(*)', 'count')
       // Organizations removed - filter by userId only (user-scoped data)
       .where('invoice.userId = :userId', { userId });
-    
-    const invoices = await query
-      .groupBy('invoice.status')
-      .getRawMany();
+
+    const invoices = await query.groupBy('invoice.status').getRawMany();
 
     return invoices.map((item) => ({
       status: item.status,
@@ -58,15 +56,18 @@ export class AnalyticsService {
       .addSelect('client.name', 'clientName')
       .addSelect('SUM(invoice.total)', 'totalRevenue')
       .addSelect('COUNT(invoice.id)', 'invoiceCount')
-      .addSelect(`SUM(CASE WHEN invoice.status = 'paid' THEN invoice.total ELSE 0 END)`, 'paidRevenue')
+      .addSelect(
+        `SUM(CASE WHEN invoice.status = 'paid' THEN invoice.total ELSE 0 END)`,
+        'paidRevenue',
+      )
       .leftJoin('invoice.client', 'client')
       // CRITICAL: Filter by invoice.userId AND client.userId for complete data isolation
       .where('invoice.userId = :userId', { userId })
       .andWhere('client.userId = :userId', { userId });
-    
+
     const topClients = await query
-      .andWhere('invoice.status IN (:...statuses)', { 
-        statuses: ['sent', 'paid', 'overdue']
+      .andWhere('invoice.status IN (:...statuses)', {
+        statuses: ['sent', 'paid', 'overdue'],
       })
       .groupBy('invoice.clientId')
       .addGroupBy('client.name')
@@ -99,11 +100,11 @@ export class AnalyticsService {
       // CRITICAL: Filter by invoice.userId AND inventory.userId for complete data isolation
       .where('invoice.userId = :userId', { userId })
       .andWhere('inventory.userId = :userId', { userId });
-    
+
     const topItems = await query
       .andWhere('item.inventoryItemId IS NOT NULL')
-      .andWhere('invoice.status IN (:...statuses)', { 
-        statuses: ['sent', 'paid', 'overdue']
+      .andWhere('invoice.status IN (:...statuses)', {
+        statuses: ['sent', 'paid', 'overdue'],
       })
       .groupBy('item.inventoryItemId')
       .addGroupBy('inventory.name')
@@ -137,7 +138,7 @@ export class AnalyticsService {
 
       const query = this.invoiceItemRepository
         .createQueryBuilder('item')
-        .select('\'Uncategorized\'', 'category')
+        .select("'Uncategorized'", 'category')
         .addSelect('SUM(item.quantity)', 'totalQuantity')
         .addSelect('SUM(item.lineTotal)', 'totalRevenue')
         .addSelect('COUNT(DISTINCT invoice.id)', 'invoiceCount')
@@ -145,8 +146,8 @@ export class AnalyticsService {
         .leftJoin('item.inventoryItem', 'inventory')
         .where('invoice.userId = :userId', { userId })
         .andWhere('item.inventoryItemId IS NOT NULL')
-        .andWhere('invoice.status IN (:...statuses)', { 
-          statuses: ['sent', 'paid', 'overdue']
+        .andWhere('invoice.status IN (:...statuses)', {
+          statuses: ['sent', 'paid', 'overdue'],
         })
         .andWhere('invoice.deletedAt IS NULL'); // Exclude soft-deleted invoices
 
@@ -175,7 +176,10 @@ export class AnalyticsService {
         invoiceCount: parseInt(item.invoiceCount || '0', 10),
       }));
     } catch (error) {
-      this.logger.error(`Error in getSalesByCategory for user ${userId}:`, error);
+      this.logger.error(
+        `Error in getSalesByCategory for user ${userId}:`,
+        error,
+      );
       // Return empty array instead of throwing to prevent frontend errors
       return [];
     }
@@ -207,7 +211,10 @@ export class AnalyticsService {
     if (lowerNote.includes('credit_card') || lowerNote.includes('creditcard')) {
       return 'Credit Card';
     }
-    if (lowerNote.includes('bank') && (lowerNote.includes('transfer') || lowerNote.includes('wire'))) {
+    if (
+      lowerNote.includes('bank') &&
+      (lowerNote.includes('transfer') || lowerNote.includes('wire'))
+    ) {
       return 'Bank Transfer';
     }
     if (lowerNote.includes('bank_transfer')) {
@@ -219,7 +226,11 @@ export class AnalyticsService {
     if (lowerNote.includes('stripe')) {
       return 'Stripe';
     }
-    if (lowerNote.includes('venmo') || lowerNote.includes('zelle') || lowerNote.includes('square')) {
+    if (
+      lowerNote.includes('venmo') ||
+      lowerNote.includes('zelle') ||
+      lowerNote.includes('square')
+    ) {
       return 'Digital Payment';
     }
     if (lowerNote.includes('other') || lowerNote.includes('misc')) {
@@ -274,13 +285,22 @@ export class AnalyticsService {
       }
 
       // Group by payment method
-      const methodMap = new Map<string, { totalRevenue: number; invoiceCount: number }>();
+      const methodMap = new Map<
+        string,
+        { totalRevenue: number; invoiceCount: number }
+      >();
 
       invoices.forEach((invoice) => {
-        const paymentMethod = this.parsePaymentMethod(invoice.paymentMethodNote);
-        const existing = methodMap.get(paymentMethod) || { totalRevenue: 0, invoiceCount: 0 };
+        const paymentMethod = this.parsePaymentMethod(
+          invoice.paymentMethodNote,
+        );
+        const existing = methodMap.get(paymentMethod) || {
+          totalRevenue: 0,
+          invoiceCount: 0,
+        };
         methodMap.set(paymentMethod, {
-          totalRevenue: existing.totalRevenue + parseFloat(invoice.total || '0'),
+          totalRevenue:
+            existing.totalRevenue + parseFloat(invoice.total || '0'),
           invoiceCount: existing.invoiceCount + 1,
         });
       });
@@ -294,13 +314,19 @@ export class AnalyticsService {
         }))
         .sort((a, b) => b.totalRevenue - a.totalRevenue);
     } catch (error) {
-      this.logger.error(`Error in getRevenueByPaymentMethod for user ${userId}:`, error);
+      this.logger.error(
+        `Error in getRevenueByPaymentMethod for user ${userId}:`,
+        error,
+      );
       // Return empty array instead of throwing to prevent frontend errors
       return [];
     }
   }
 
-  async getInvoicesByStatusAndStore(userId: string, storeId: string | undefined) {
+  async getInvoicesByStatusAndStore(
+    userId: string,
+    storeId: string | undefined,
+  ) {
     // CRITICAL: Validate store ownership to prevent data leakage
     if (storeId) {
       await this.validateStoreOwnership(storeId, userId);
@@ -334,7 +360,11 @@ export class AnalyticsService {
     }));
   }
 
-  async getTopClientsByStore(userId: string, storeId: string | undefined, limit: number) {
+  async getTopClientsByStore(
+    userId: string,
+    storeId: string | undefined,
+    limit: number,
+  ) {
     // CRITICAL: Validate store ownership to prevent data leakage
     if (storeId) {
       await this.validateStoreOwnership(storeId, userId);
@@ -348,13 +378,16 @@ export class AnalyticsService {
       .addSelect('store.name', 'storeName')
       .addSelect('SUM(invoice.total)', 'totalRevenue')
       .addSelect('COUNT(invoice.id)', 'invoiceCount')
-      .addSelect(`SUM(CASE WHEN invoice.status = 'paid' THEN invoice.total ELSE 0 END)`, 'paidRevenue')
+      .addSelect(
+        `SUM(CASE WHEN invoice.status = 'paid' THEN invoice.total ELSE 0 END)`,
+        'paidRevenue',
+      )
       .leftJoin('invoice.client', 'client')
       .leftJoin('invoice.store', 'store')
       // CRITICAL: Filter by invoice.userId AND client.userId for complete data isolation
       .where('invoice.userId = :userId', { userId })
       .andWhere('client.userId = :userId', { userId });
-    
+
     query.andWhere('invoice.status IN (:...statuses)', {
       statuses: ['sent', 'paid', 'overdue'],
     });
@@ -383,7 +416,11 @@ export class AnalyticsService {
     }));
   }
 
-  async getTopItemsByStore(userId: string, storeId: string | undefined, limit: number) {
+  async getTopItemsByStore(
+    userId: string,
+    storeId: string | undefined,
+    limit: number,
+  ) {
     // CRITICAL: Validate store ownership to prevent data leakage
     if (storeId) {
       await this.validateStoreOwnership(storeId, userId);
@@ -405,7 +442,7 @@ export class AnalyticsService {
       // CRITICAL: Filter by invoice.userId AND inventory.userId for complete data isolation
       .where('invoice.userId = :userId', { userId })
       .andWhere('inventory.userId = :userId', { userId });
-    
+
     query
       .andWhere('item.inventoryItemId IS NOT NULL')
       .andWhere('invoice.status IN (:...statuses)', {
@@ -456,13 +493,22 @@ export class AnalyticsService {
       .addSelect('store.code', 'storeCode')
       .addSelect('SUM(invoice.total)', 'totalRevenue')
       .addSelect('COUNT(invoice.id)', 'totalInvoices')
-      .addSelect(`SUM(CASE WHEN invoice.status = 'paid' THEN invoice.total ELSE 0 END)`, 'paidRevenue')
-      .addSelect(`SUM(CASE WHEN invoice.status = 'sent' THEN invoice.total ELSE 0 END)`, 'sentRevenue')
-      .addSelect(`SUM(CASE WHEN invoice.status = 'overdue' THEN invoice.total ELSE 0 END)`, 'overdueRevenue')
+      .addSelect(
+        `SUM(CASE WHEN invoice.status = 'paid' THEN invoice.total ELSE 0 END)`,
+        'paidRevenue',
+      )
+      .addSelect(
+        `SUM(CASE WHEN invoice.status = 'sent' THEN invoice.total ELSE 0 END)`,
+        'sentRevenue',
+      )
+      .addSelect(
+        `SUM(CASE WHEN invoice.status = 'overdue' THEN invoice.total ELSE 0 END)`,
+        'overdueRevenue',
+      )
       .leftJoin('invoice.store', 'store')
       // CRITICAL: Filter by invoice.userId to ensure data isolation
       .where('invoice.userId = :userId', { userId });
-    
+
     query.andWhere('invoice.status IN (:...statuses)', {
       statuses: ['sent', 'paid', 'overdue'],
     });
@@ -496,7 +542,8 @@ export class AnalyticsService {
       totalInvoices: parseInt(item.totalInvoices, 10),
       averageInvoiceValue:
         parseInt(item.totalInvoices, 10) > 0
-          ? parseFloat(item.totalRevenue || '0') / parseInt(item.totalInvoices, 10)
+          ? parseFloat(item.totalRevenue || '0') /
+            parseInt(item.totalInvoices, 10)
           : 0,
     }));
   }
@@ -506,16 +553,21 @@ export class AnalyticsService {
    * CRITICAL: Prevents data leakage between users
    * This ensures multi-tenant data isolation for thousands of users
    */
-  private async validateStoreOwnership(storeId: string, userId: string): Promise<void> {
+  private async validateStoreOwnership(
+    storeId: string,
+    userId: string,
+  ): Promise<void> {
     const store = await this.storeRepository
       .createQueryBuilder('store')
       .where('store.id = :storeId', { storeId })
       .andWhere('store.userId = :userId', { userId })
       .andWhere('store.deletedAt IS NULL')
       .getOne();
-    
+
     if (!store) {
-      throw new NotFoundException(`Store with ID "${storeId}" not found or does not belong to user`);
+      throw new NotFoundException(
+        `Store with ID "${storeId}" not found or does not belong to user`,
+      );
     }
   }
 
@@ -530,8 +582,14 @@ export class AnalyticsService {
       .select('movement.storeId', 'storeId')
       .addSelect('store.name', 'storeName')
       .addSelect('COUNT(DISTINCT movement.inventoryItemId)', 'uniqueItems')
-      .addSelect('SUM(CASE WHEN movement.type = \'sale\' THEN movement.quantity ELSE 0 END)', 'totalSales')
-      .addSelect('SUM(CASE WHEN movement.type = \'purchase\' THEN movement.quantity ELSE 0 END)', 'totalPurchases')
+      .addSelect(
+        "SUM(CASE WHEN movement.type = 'sale' THEN movement.quantity ELSE 0 END)",
+        'totalSales',
+      )
+      .addSelect(
+        "SUM(CASE WHEN movement.type = 'purchase' THEN movement.quantity ELSE 0 END)",
+        'totalPurchases',
+      )
       .leftJoin('movement.store', 'store')
       // CRITICAL FIX: Filter by BOTH movement.userId AND store.userId to prevent data leakage
       // This ensures we only get movements created by the user AND linked to stores owned by the user
@@ -567,7 +625,10 @@ export class AnalyticsService {
       .getRawMany();
 
     const stockMap = new Map(
-      stockLevels.map((s) => [s.storeId, parseFloat(s.totalCurrentStock || '0')]),
+      stockLevels.map((s) => [
+        s.storeId,
+        parseFloat(s.totalCurrentStock || '0'),
+      ]),
     );
 
     return results.map((item) => {
@@ -606,7 +667,7 @@ export class AnalyticsService {
       .leftJoin('invoice.store', 'store')
       // CRITICAL: Filter by invoice.userId to ensure data isolation
       .where('invoice.userId = :userId', { userId });
-    
+
     query
       .andWhere('invoice.status IN (:...statuses)', {
         statuses: ['sent', 'paid', 'overdue'],
@@ -626,7 +687,7 @@ export class AnalyticsService {
         break;
       case 'weekly':
         dateFormat = 'YYYY-"W"WW';
-        query.addSelect("TO_CHAR(invoice.issueDate, 'IYYY-\"W\"IW')", 'period');
+        query.addSelect('TO_CHAR(invoice.issueDate, \'IYYY-"W"IW\')', 'period');
         break;
       case 'monthly':
         dateFormat = 'YYYY-MM';
@@ -657,7 +718,7 @@ export class AnalyticsService {
   async getStoresSummary(userId: string) {
     try {
       this.logger.debug(`Getting stores summary for user ${userId}`);
-      
+
       // Get all stores with summary metrics
       // Organizations removed - filter by userId only (user-scoped data)
       const stores = await this.storeRepository
@@ -672,7 +733,9 @@ export class AnalyticsService {
       const storeIds = stores.map((s) => s.id);
 
       if (storeIds.length === 0) {
-        this.logger.debug(`No stores found for user ${userId}, returning empty array`);
+        this.logger.debug(
+          `No stores found for user ${userId}, returning empty array`,
+        );
         return [];
       }
 
@@ -682,18 +745,26 @@ export class AnalyticsService {
         .createQueryBuilder('invoice')
         .select('invoice.storeId', 'storeId')
         // Revenue: Only count finalized invoices (sent, paid, overdue) - exclude drafts and cancelled
-        .addSelect(`SUM(CASE WHEN invoice.status IN ('sent', 'paid', 'overdue') THEN invoice.total ELSE 0 END)`, 'totalRevenue')
+        .addSelect(
+          `SUM(CASE WHEN invoice.status IN ('sent', 'paid', 'overdue') THEN invoice.total ELSE 0 END)`,
+          'totalRevenue',
+        )
         // Total invoices: Count ALL invoices regardless of status
         .addSelect('COUNT(invoice.id)', 'totalInvoices')
         // Paid revenue: Only count paid invoices
-        .addSelect(`SUM(CASE WHEN invoice.status = 'paid' THEN invoice.total ELSE 0 END)`, 'paidRevenue')
+        .addSelect(
+          `SUM(CASE WHEN invoice.status = 'paid' THEN invoice.total ELSE 0 END)`,
+          'paidRevenue',
+        )
         // Organizations removed - filter by userId only (user-scoped data)
         .where('invoice.userId = :userId', { userId })
         .andWhere('invoice.storeId IN (:...storeIds)', { storeIds })
         // FIX: Include all statuses to get accurate invoice count
-        .andWhere('invoice.status != :cancelledStatus', { cancelledStatus: 'cancelled' })
+        .andWhere('invoice.status != :cancelledStatus', {
+          cancelledStatus: 'cancelled',
+        })
         .groupBy('invoice.storeId');
-      
+
       const revenueData = await revenueQuery.getRawMany();
 
       this.logger.debug(`Found revenue data for ${revenueData.length} stores`);
@@ -731,7 +802,9 @@ export class AnalyticsService {
         };
       });
 
-      this.logger.debug(`Successfully generated summary for ${result.length} stores`);
+      this.logger.debug(
+        `Successfully generated summary for ${result.length} stores`,
+      );
       return result;
     } catch (error) {
       this.logger.error(`Error in getStoresSummary for user ${userId}:`, error);
@@ -759,7 +832,9 @@ export class AnalyticsService {
       .getMany();
 
     if (stores.length !== storeIds.length) {
-      throw new NotFoundException('One or more stores not found or do not belong to user');
+      throw new NotFoundException(
+        'One or more stores not found or do not belong to user',
+      );
     }
 
     // Build date filter
@@ -770,12 +845,15 @@ export class AnalyticsService {
       .addSelect('store.code', 'storeCode')
       .addSelect('SUM(invoice.total)', 'totalRevenue')
       .addSelect('COUNT(invoice.id)', 'totalInvoices')
-      .addSelect(`SUM(CASE WHEN invoice.status = 'paid' THEN invoice.total ELSE 0 END)`, 'paidRevenue')
+      .addSelect(
+        `SUM(CASE WHEN invoice.status = 'paid' THEN invoice.total ELSE 0 END)`,
+        'paidRevenue',
+      )
       .addSelect(`AVG(invoice.total)`, 'averageInvoiceValue')
       .leftJoin('invoice.store', 'store')
       // Organizations removed - filter by userId only (user-scoped data)
       .where('invoice.userId = :userId', { userId });
-    
+
     invoiceQuery
       .andWhere('invoice.storeId IN (:...storeIds)', { storeIds })
       .andWhere('invoice.status IN (:...statuses)', {
@@ -797,7 +875,10 @@ export class AnalyticsService {
       .getRawMany();
 
     // Get inventory turnover data
-    const turnoverData = await this.getStoreInventoryTurnover(userId, undefined);
+    const turnoverData = await this.getStoreInventoryTurnover(
+      userId,
+      undefined,
+    );
     const turnoverMap = new Map(
       turnoverData.map((t) => [t.storeId, t.turnover]),
     );
@@ -820,7 +901,7 @@ export class AnalyticsService {
             .select('SUM(invoice.total)', 'revenue')
             .where('invoice.userId = :userId', { userId })
             .andWhere('invoice.storeId = :storeId', { storeId });
-          
+
           const firstHalfRevenue = await firstHalfQuery
             .andWhere('invoice.status IN (:...statuses)', {
               statuses: ['sent', 'paid', 'overdue'],
@@ -835,7 +916,7 @@ export class AnalyticsService {
             .select('SUM(invoice.total)', 'revenue')
             .where('invoice.userId = :userId', { userId })
             .andWhere('invoice.storeId = :storeId', { storeId });
-          
+
           const secondHalfRevenue = await secondHalfQuery
             .andWhere('invoice.status IN (:...statuses)', {
               statuses: ['sent', 'paid', 'overdue'],
@@ -854,8 +935,14 @@ export class AnalyticsService {
 
         return {
           storeId,
-          storeName: revenue?.storeName || stores.find((s) => s.id === storeId)?.name || '',
-          storeCode: revenue?.storeCode || stores.find((s) => s.id === storeId)?.code || '',
+          storeName:
+            revenue?.storeName ||
+            stores.find((s) => s.id === storeId)?.name ||
+            '',
+          storeCode:
+            revenue?.storeCode ||
+            stores.find((s) => s.id === storeId)?.code ||
+            '',
           totalRevenue: parseFloat(revenue?.totalRevenue || '0'),
           paidRevenue: parseFloat(revenue?.paidRevenue || '0'),
           totalInvoices: parseInt(revenue?.totalInvoices || '0', 10),
@@ -869,4 +956,3 @@ export class AnalyticsService {
     return comparisonResults;
   }
 }
-

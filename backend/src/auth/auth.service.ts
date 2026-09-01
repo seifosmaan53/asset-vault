@@ -1,6 +1,13 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { Injectable, UnauthorizedException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+  Logger,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -39,10 +46,14 @@ export class AuthService {
     svixTimestamp: string,
     svixSignature: string,
   ) {
-    const webhookSecret = this.configService.get<string>('CLERK_WEBHOOK_SECRET');
-    
+    const webhookSecret = this.configService.get<string>(
+      'CLERK_WEBHOOK_SECRET',
+    );
+
     if (!webhookSecret) {
-      this.logger.warn('CLERK_WEBHOOK_SECRET not set, skipping webhook verification');
+      this.logger.warn(
+        'CLERK_WEBHOOK_SECRET not set, skipping webhook verification',
+      );
       // In development, you might want to allow webhooks without verification
       // In production, you should always verify webhooks
     }
@@ -134,15 +145,22 @@ export class AuthService {
     try {
       const defaultPlan = await this.subscriptionsService.getDefaultPlan();
       if (defaultPlan) {
-        await this.subscriptionsService.createPendingSubscription(user.id, defaultPlan.id);
+        await this.subscriptionsService.createPendingSubscription(
+          user.id,
+          defaultPlan.id,
+        );
         this.logger.log(`Created pending subscription for user ${user.id}`);
       }
     } catch (error: any) {
       // Don't fail user creation if subscription creation fails
-      this.logger.error(`Failed to create subscription for user ${user.id}: ${error.message}`);
+      this.logger.error(
+        `Failed to create subscription for user ${user.id}: ${error.message}`,
+      );
     }
 
-    this.logger.log(`User created from Clerk webhook: ${email} (${clerkUserId})`);
+    this.logger.log(
+      `User created from Clerk webhook: ${email} (${clerkUserId})`,
+    );
   }
 
   private async handleUserUpdated(data: any) {
@@ -164,13 +182,15 @@ export class AuthService {
     user.emailVerified = true; // Clerk handles email verification
 
     await this.usersRepository.save(user);
-    this.logger.log(`User updated from Clerk webhook: ${email} (${clerkUserId})`);
+    this.logger.log(
+      `User updated from Clerk webhook: ${email} (${clerkUserId})`,
+    );
   }
 
   private async handleUserDeleted(data: any) {
     const clerkUserId = data.id;
     const user = await this.usersService.findByClerkId(clerkUserId);
-    
+
     if (!user) {
       this.logger.warn(`User not found for deletion: ${clerkUserId}`);
       return;
@@ -203,16 +223,27 @@ export class AuthService {
     };
   }
 
-  async updateProfile(userId: string, data: { name?: string; companyName?: string; phone?: string; address?: string; timezone?: string; bio?: string }) {
+  async updateProfile(
+    userId: string,
+    data: {
+      name?: string;
+      companyName?: string;
+      phone?: string;
+      address?: string;
+      timezone?: string;
+      bio?: string;
+    },
+  ) {
     // Only allow whitelisted fields to be updated
     const allowedFields: Partial<User> = {};
     if (data.name !== undefined) allowedFields.name = data.name;
-    if (data.companyName !== undefined) allowedFields.companyName = data.companyName;
+    if (data.companyName !== undefined)
+      allowedFields.companyName = data.companyName;
     if (data.phone !== undefined) allowedFields.phone = data.phone;
     if (data.address !== undefined) allowedFields.address = data.address;
     if (data.timezone !== undefined) allowedFields.timezone = data.timezone;
     if (data.bio !== undefined) allowedFields.bio = data.bio;
-    
+
     const user = await this.usersService.update(userId, allowedFields);
     return {
       id: user.id,
@@ -229,7 +260,10 @@ export class AuthService {
     };
   }
 
-  async changePassword(userId: string, dto: { currentPassword: string; newPassword: string }) {
+  async changePassword(
+    userId: string,
+    dto: { currentPassword: string; newPassword: string },
+  ) {
     // Get user to verify they exist and get their Clerk ID
     const user = await this.usersService.findById(userId);
     if (!user) {
@@ -252,21 +286,34 @@ export class AuthService {
         password: dto.newPassword,
       });
 
-      this.logger.log(`Password changed for user ${userId} (Clerk ID: ${user.clerkUserId})`);
-      
-      return { 
+      this.logger.log(
+        `Password changed for user ${userId} (Clerk ID: ${user.clerkUserId})`,
+      );
+
+      return {
         message: 'Password changed successfully',
       };
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to change password for user ${userId}:`, errorMessage);
-      
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `Failed to change password for user ${userId}:`,
+        errorMessage,
+      );
+
       // Handle specific Clerk errors
-      if (errorMessage.includes('password') || errorMessage.includes('Password')) {
-        throw new BadRequestException('Failed to change password. Please ensure your new password meets the requirements.');
+      if (
+        errorMessage.includes('password') ||
+        errorMessage.includes('Password')
+      ) {
+        throw new BadRequestException(
+          'Failed to change password. Please ensure your new password meets the requirements.',
+        );
       }
-      
-      throw new BadRequestException('Failed to change password. Please try again.');
+
+      throw new BadRequestException(
+        'Failed to change password. Please try again.',
+      );
     }
   }
 }

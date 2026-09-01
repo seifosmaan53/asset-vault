@@ -14,7 +14,7 @@ import { MetricsService } from '../services/metrics.service';
 
 /**
  * Enhanced cache interceptor that tracks cache hits and misses
- * 
+ *
  * Usage: Replace @UseInterceptors(CacheInterceptor) with @UseInterceptors(MetricsCacheInterceptor)
  * in controllers where you want to track cache metrics.
  */
@@ -26,7 +26,10 @@ export class MetricsCacheInterceptor implements NestInterceptor {
     private metricsService: MetricsService,
   ) {}
 
-  async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
+  async intercept(
+    context: ExecutionContext,
+    next: CallHandler,
+  ): Promise<Observable<any>> {
     const request = context.switchToHttp().getRequest();
     const key = this.trackBy(context);
 
@@ -51,7 +54,9 @@ export class MetricsCacheInterceptor implements NestInterceptor {
       return next.handle().pipe(
         tap(async (response) => {
           // Get TTL from metadata or use default
-          const ttl = this.reflector.get<number>('cache-ttl', context.getHandler()) || 300000; // Default 5 minutes
+          const ttl =
+            this.reflector.get<number>('cache-ttl', context.getHandler()) ||
+            300000; // Default 5 minutes
           try {
             await this.cacheManager.set(key, response, ttl);
           } catch (error) {
@@ -69,7 +74,7 @@ export class MetricsCacheInterceptor implements NestInterceptor {
   protected trackBy(context: ExecutionContext): string | undefined {
     const request = context.switchToHttp().getRequest();
     const { url, method } = request;
-    
+
     // Generate a simple cache key based on URL and method
     // For more complex scenarios, you might want to include query params, user ID, etc.
     if (method === 'GET') {
@@ -78,4 +83,3 @@ export class MetricsCacheInterceptor implements NestInterceptor {
     return undefined; // Only cache GET requests by default
   }
 }
-

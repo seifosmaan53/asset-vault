@@ -1,6 +1,11 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { Injectable, NestMiddleware, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NestMiddleware,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 
 /**
@@ -10,7 +15,7 @@ import { Request, Response, NextFunction } from 'express';
 @Injectable()
 export class FileUploadValidationMiddleware implements NestMiddleware {
   private readonly logger = new Logger(FileUploadValidationMiddleware.name);
-  
+
   // Allowed MIME types for images
   private readonly allowedMimeTypes = [
     'image/jpeg',
@@ -46,14 +51,14 @@ export class FileUploadValidationMiddleware implements NestMiddleware {
     // Check file size
     if (file.size > this.maxFileSize) {
       throw new BadRequestException(
-        `File size exceeds maximum allowed size of ${this.maxFileSize / 1024 / 1024}MB`
+        `File size exceeds maximum allowed size of ${this.maxFileSize / 1024 / 1024}MB`,
       );
     }
 
     // Check MIME type
     if (!this.allowedMimeTypes.includes(file.mimetype)) {
       throw new BadRequestException(
-        `File type not allowed. Allowed types: ${this.allowedMimeTypes.join(', ')}`
+        `File type not allowed. Allowed types: ${this.allowedMimeTypes.join(', ')}`,
       );
     }
 
@@ -70,7 +75,7 @@ export class FileUploadValidationMiddleware implements NestMiddleware {
     if (extension && expectedExtensions[file.mimetype]) {
       if (!expectedExtensions[file.mimetype].includes(extension)) {
         this.logger.warn(
-          `File extension (${extension}) does not match MIME type (${file.mimetype})`
+          `File extension (${extension}) does not match MIME type (${file.mimetype})`,
         );
       }
     }
@@ -84,19 +89,22 @@ export class FileUploadValidationMiddleware implements NestMiddleware {
       limits: {
         fileSize: this.maxFileSize,
       },
-      fileFilter: (req: Request, file: Express.Multer.File, cb: (error: Error | null, acceptFile: boolean) => void) => {
+      fileFilter: (
+        req: Request,
+        file: Express.Multer.File,
+        cb: (error: Error | null, acceptFile: boolean) => void,
+      ) => {
         if (this.allowedMimeTypes.includes(file.mimetype)) {
           cb(null, true);
         } else {
           cb(
             new BadRequestException(
-              `File type not allowed. Allowed types: ${this.allowedMimeTypes.join(', ')}`
+              `File type not allowed. Allowed types: ${this.allowedMimeTypes.join(', ')}`,
             ),
-            false
+            false,
           );
         }
       },
     };
   }
 }
-

@@ -38,7 +38,10 @@ export class InventoryRouter {
   }
 }
 
-export function inventoryRouter(trpc: TrpcService, inventoryService: InventoryService) {
+export function inventoryRouter(
+  trpc: TrpcService,
+  inventoryService: InventoryService,
+) {
   const router = new InventoryRouter(inventoryService);
   return router.createRouter(trpc);
 }

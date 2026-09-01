@@ -3,7 +3,7 @@
 /**
  * Error Codes Utility
  * Fixes Issue #65: Missing Standardized Error Codes
- * 
+ *
  * Centralized error codes for consistent error handling
  */
 
@@ -59,9 +59,13 @@ export enum ErrorCode {
  * Get error code from error type
  */
 export function getErrorCode(error: Error | string): ErrorCode {
-  const errorMessage = typeof error === 'string' ? error : error.message.toLowerCase();
+  const errorMessage =
+    typeof error === 'string' ? error : error.message.toLowerCase();
 
-  if (errorMessage.includes('unauthorized') || errorMessage.includes('authentication')) {
+  if (
+    errorMessage.includes('unauthorized') ||
+    errorMessage.includes('authentication')
+  ) {
     return ErrorCode.AUTH_REQUIRED;
   }
   if (errorMessage.includes('not found')) {
@@ -119,4 +123,3 @@ export function getErrorMessage(code: ErrorCode): string {
 
   return messages[code] || 'An error occurred';
 }
-

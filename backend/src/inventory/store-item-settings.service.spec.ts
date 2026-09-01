@@ -1,6 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import type { Repository } from 'typeorm';
 import { StoreItemSettingsService } from './store-item-settings.service';
 import { StoreItemSettings } from './entities/store-item-settings.entity';
 import { Store } from './entities/store.entity';
@@ -19,9 +20,24 @@ describe('StoreItemSettingsService', () => {
      existing stubs in these tests keep working. */
   const makeQb = (one?: jest.Mock, many?: jest.Mock) => {
     const qb: Record<string, jest.Mock> = {};
-    for (const m of ['where','andWhere','orWhere','leftJoinAndSelect','leftJoin','orderBy',
-                     'addOrderBy','select','addSelect','skip','take','withDeleted','setLock',
-                     'groupBy','update','set']) {
+    for (const m of [
+      'where',
+      'andWhere',
+      'orWhere',
+      'leftJoinAndSelect',
+      'leftJoin',
+      'orderBy',
+      'addOrderBy',
+      'select',
+      'addSelect',
+      'skip',
+      'take',
+      'withDeleted',
+      'setLock',
+      'groupBy',
+      'update',
+      'set',
+    ]) {
       qb[m] = jest.fn(() => qb);
     }
     qb.getOne = jest.fn(() => (one ? one() : null));
@@ -48,15 +64,20 @@ describe('StoreItemSettingsService', () => {
        tests already set up. */
     manager: {
       findOne: jest.fn((_entity: unknown, options: unknown) =>
-        mockStoreItemSettingsRepository.findOne(options)),
+        mockStoreItemSettingsRepository.findOne(options),
+      ),
       // default to [] — the service reduces over the result, and an unstubbed find()
       // returning undefined blows up with "Cannot read properties of undefined"
-      find: jest.fn(async (_entity: unknown, options: unknown) =>
-        (await mockStoreItemSettingsRepository.find(options)) ?? []),
+      find: jest.fn(
+        async (_entity: unknown, options: unknown) =>
+          (await mockStoreItemSettingsRepository.find(options)) ?? [],
+      ),
       create: jest.fn((_entity: unknown, data: unknown) =>
-        mockStoreItemSettingsRepository.create(data)),
+        mockStoreItemSettingsRepository.create(data),
+      ),
       save: jest.fn((_entity: unknown, data: unknown) =>
-        mockStoreItemSettingsRepository.save(data)),
+        mockStoreItemSettingsRepository.save(data),
+      ),
     },
   };
 
@@ -71,7 +92,10 @@ describe('StoreItemSettingsService', () => {
   };
 
   beforeEach(async () => {
-    settingsQb = makeQb(mockStoreItemSettingsRepository.findOne, mockStoreItemSettingsRepository.find);
+    settingsQb = makeQb(
+      mockStoreItemSettingsRepository.findOne,
+      mockStoreItemSettingsRepository.find,
+    );
     storeQb = makeQb(mockStoreRepository.findOne);
     itemQb = makeQb(mockInventoryItemRepository.findOne);
     const module: TestingModule = await Test.createTestingModule({
@@ -136,7 +160,11 @@ describe('StoreItemSettingsService', () => {
       mockInventoryItemRepository.findOne.mockResolvedValue(mockInventoryItem);
       mockStoreItemSettingsRepository.findOne.mockResolvedValue(mockSettings);
 
-      const result = await service.getOrCreateSettings(storeId, inventoryItemId, userId);
+      const result = await service.getOrCreateSettings(
+        storeId,
+        inventoryItemId,
+        userId,
+      );
 
       expect(result).toEqual(mockSettings);
       // The lookup now takes a pessimistic write lock so two concurrent adjustments
@@ -162,7 +190,11 @@ describe('StoreItemSettingsService', () => {
       mockStoreItemSettingsRepository.create.mockReturnValue(newSettings);
       mockStoreItemSettingsRepository.save.mockResolvedValue(newSettings);
 
-      const result = await service.getOrCreateSettings(storeId, inventoryItemId, userId);
+      const result = await service.getOrCreateSettings(
+        storeId,
+        inventoryItemId,
+        userId,
+      );
 
       expect(result).toEqual(newSettings);
       expect(mockStoreItemSettingsRepository.create).toHaveBeenCalledWith({
@@ -278,7 +310,13 @@ describe('StoreItemSettingsService', () => {
          correct-looking zero, so the books balance while the shelf does not. The error
          names both numbers so the caller can act on it. */
       await expect(
-        service.adjustStoreStock(storeId, inventoryItemId, 100, userId, 'decrease'),
+        service.adjustStoreStock(
+          storeId,
+          inventoryItemId,
+          100,
+          userId,
+          'decrease',
+        ),
       ).rejects.toThrow(/insufficient store stock/i);
 
       expect(mockStoreItemSettingsRepository.save).not.toHaveBeenCalled();
@@ -311,4 +349,3 @@ describe('StoreItemSettingsService', () => {
     });
   });
 });
-

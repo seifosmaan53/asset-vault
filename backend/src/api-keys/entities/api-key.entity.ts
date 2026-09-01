@@ -55,4 +55,3 @@ export class ApiKey {
     return crypto.createHash('sha256').update(key).digest('hex');
   }
 }
-

@@ -21,8 +21,15 @@ const CreateInvoiceSchema = z.object({
   clientId: z.string().uuid(),
   storeId: z.string().uuid().optional(),
   type: z.enum(['invoice', 'estimate']),
-  issueDate: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
-  dueDate: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).optional(),
+  issueDate: z
+    .string()
+    .datetime()
+    .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
+  dueDate: z
+    .string()
+    .datetime()
+    .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/))
+    .optional(),
   currency: z.string(),
   notes: z.string().optional(),
   items: z.array(InvoiceItemSchema).min(1),
@@ -33,8 +40,16 @@ const UpdateInvoiceSchema = z.object({
   storeId: z.string().uuid().optional(),
   number: z.string().optional(),
   type: z.enum(['invoice', 'estimate']).optional(),
-  issueDate: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).optional(),
-  dueDate: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).optional(),
+  issueDate: z
+    .string()
+    .datetime()
+    .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/))
+    .optional(),
+  dueDate: z
+    .string()
+    .datetime()
+    .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/))
+    .optional(),
   currency: z.string().optional(),
   notes: z.string().optional(),
   status: z.enum(['draft', 'sent', 'paid', 'overdue', 'cancelled']).optional(),
@@ -127,7 +142,11 @@ export class InvoicesRouter {
         )
         .mutation(async ({ input, ctx }) => {
           try {
-            return await this.invoicesService.update(input.id, ctx.user.id, input.data);
+            return await this.invoicesService.update(
+              input.id,
+              ctx.user.id,
+              input.data,
+            );
           } catch (error: any) {
             if (error.status === 404) {
               throw new TRPCError({
@@ -173,7 +192,10 @@ export class InvoicesRouter {
         .input(z.object({ id: z.string().uuid() }))
         .mutation(async ({ input, ctx }) => {
           try {
-            return await this.invoicesService.duplicateInvoice(input.id, ctx.user.id);
+            return await this.invoicesService.duplicateInvoice(
+              input.id,
+              ctx.user.id,
+            );
           } catch (error: any) {
             if (error.status === 404) {
               throw new TRPCError({
@@ -192,7 +214,10 @@ export class InvoicesRouter {
 }
 
 // Export function for backward compatibility
-export function invoicesRouter(trpc: TrpcService, invoicesService: InvoicesService) {
+export function invoicesRouter(
+  trpc: TrpcService,
+  invoicesService: InvoicesService,
+) {
   const router = new InvoicesRouter(invoicesService);
   return router.createRouter(trpc);
 }

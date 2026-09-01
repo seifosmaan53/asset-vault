@@ -46,7 +46,10 @@ export class StoreAlertsService {
       try {
         await this.checkStoreAlerts(store.userId);
       } catch (error) {
-        this.logger.error(`Error checking alerts for store ${store.id}: ${error.message}`, error);
+        this.logger.error(
+          `Error checking alerts for store ${store.id}: ${error.message}`,
+          error,
+        );
       }
     }
 
@@ -108,7 +111,8 @@ export class StoreAlertsService {
           // Update existing alert if stock changed
           if (existingAlert.currentStock !== currentStock) {
             existingAlert.currentStock = currentStock;
-            existingAlert.alertType = currentStock === 0 ? 'out_of_stock' : 'low_stock';
+            existingAlert.alertType =
+              currentStock === 0 ? 'out_of_stock' : 'low_stock';
             await this.storeAlertRepository.save(existingAlert);
           }
         }
@@ -143,25 +147,30 @@ export class StoreAlertsService {
    * Get all alerts for a user
    * FIX Issue #43: Filter by organization context
    */
-  async getAlerts(userId: string, storeId?: string, resolved?: boolean, organizationId?: string | null): Promise<StoreAlert[]> {
+  async getAlerts(
+    userId: string,
+    storeId?: string,
+    resolved?: boolean,
+    organizationId?: string | null,
+  ): Promise<StoreAlert[]> {
     // FIX Issue #43: Use query builder to filter by organization through store relationship
     const query = this.storeAlertRepository
       .createQueryBuilder('alert')
       .leftJoinAndSelect('alert.store', 'store')
       .leftJoinAndSelect('alert.inventoryItem', 'inventoryItem')
       .where('alert.userId = :userId', { userId });
-    
+
     // Organizations removed - filter by userId only (user-scoped data)
     query.andWhere('store.userId = :userId', { userId });
-    
+
     if (storeId) {
       query.andWhere('alert.storeId = :storeId', { storeId });
     }
-    
+
     if (resolved !== undefined) {
       query.andWhere('alert.resolved = :resolved', { resolved });
     }
-    
+
     return query.orderBy('alert.createdAt', 'DESC').getMany();
   }
 
@@ -169,7 +178,11 @@ export class StoreAlertsService {
    * Get alerts for a specific store
    * FIX Issue #43: Validate organization access
    */
-  async getStoreAlerts(storeId: string, userId: string, organizationId?: string | null): Promise<StoreAlert[]> {
+  async getStoreAlerts(
+    storeId: string,
+    userId: string,
+    organizationId?: string | null,
+  ): Promise<StoreAlert[]> {
     // FIX Issue #43: Verify store belongs to organization before querying alerts
     if (organizationId) {
       const store = await this.storeRepository.findOne({
@@ -184,7 +197,7 @@ export class StoreAlertsService {
         throw new NotFoundException(`Store with ID "${storeId}" not found`);
       }
     }
-    
+
     return this.storeAlertRepository.find({
       where: {
         storeId,
@@ -199,7 +212,10 @@ export class StoreAlertsService {
   /**
    * Mark alert as resolved
    */
-  async markAlertResolved(alertId: string, userId: string): Promise<StoreAlert> {
+  async markAlertResolved(
+    alertId: string,
+    userId: string,
+  ): Promise<StoreAlert> {
     const alert = await this.storeAlertRepository.findOne({
       where: { id: alertId, userId },
     });
@@ -217,23 +233,31 @@ export class StoreAlertsService {
   /**
    * Send email notifications for alerts
    */
-  private async sendAlertNotifications(userId: string, alerts: StoreAlert[]): Promise<void> {
+  private async sendAlertNotifications(
+    userId: string,
+    alerts: StoreAlert[],
+  ): Promise<void> {
     try {
       // Get user's first organization for settings (alerts are user-level notifications)
       // For email notifications, we use the first org's settings
-      const userOrgs = await this.organizationsService.getUserOrganizations(userId);
+      const userOrgs =
+        await this.organizationsService.getUserOrganizations(userId);
       let userSettings: any = {};
-      
+
       if (userOrgs.length > 0) {
         try {
           userSettings = await this.userSettingsService.getSettings(userId);
         } catch (error) {
           // If settings don't exist for this org, use defaults
-          this.logger.warn(`No settings found for user ${userId}, using defaults`);
+          this.logger.warn(
+            `No settings found for user ${userId}, using defaults`,
+          );
         }
       } else {
         // User has no orgs - use default settings
-        this.logger.warn(`User ${userId} has no organizations, using default email settings`);
+        this.logger.warn(
+          `User ${userId} has no organizations, using default email settings`,
+        );
       }
 
       // Check if email notifications are enabled (default to true if not set)
@@ -253,7 +277,9 @@ export class StoreAlertsService {
 
       // Load store and inventory item details
       for (const [storeId, storeAlerts] of alertsByStore) {
-        const store = await this.storeRepository.findOne({ where: { id: storeId } });
+        const store = await this.storeRepository.findOne({
+          where: { id: storeId },
+        });
         if (!store) continue;
 
         const alertDetails = await Promise.all(
@@ -271,24 +297,39 @@ export class StoreAlertsService {
         );
 
         // Get user email
-        const user = await this.userRepository.findOne({ where: { id: userId } });
+        const user = await this.userRepository.findOne({
+          where: { id: userId },
+        });
         if (!user || !user.email) {
           this.logger.warn(`User ${userId} not found or has no email address`);
           continue;
         }
 
         // Email functionality removed - just log the alert
-        this.logger.log(`Store alert: ${storeAlerts.length} item(s) need attention at ${store.name} (email functionality disabled)`);
+        this.logger.log(
+          `Store alert: ${storeAlerts.length} item(s) need attention at ${store.name} (email functionality disabled)`,
+        );
       }
     } catch (error) {
-      this.logger.error(`Error sending alert notifications: ${error.message}`, error);
+      this.logger.error(
+        `Error sending alert notifications: ${error.message}`,
+        error,
+      );
     }
   }
 
   /**
    * Build HTML email template for alerts
    */
-  private buildAlertEmailHtml(storeName: string, alertDetails: Array<{ itemName: string; currentStock: number; minQty: number; alertType: string }>): string {
+  private buildAlertEmailHtml(
+    storeName: string,
+    alertDetails: Array<{
+      itemName: string;
+      currentStock: number;
+      minQty: number;
+      alertType: string;
+    }>,
+  ): string {
     const itemsHtml = alertDetails
       .map(
         (alert) => `
@@ -346,4 +387,3 @@ export class StoreAlertsService {
     `;
   }
 }
-

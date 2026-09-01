@@ -1,6 +1,8 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddInventoryPlanningFields1735000000000 implements MigrationInterface {
+export class AddInventoryPlanningFields1735000000000
+  implements MigrationInterface
+{
   name = 'AddInventoryPlanningFields1735000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -59,4 +61,3 @@ export class AddInventoryPlanningFields1735000000000 implements MigrationInterfa
     `);
   }
 }
-

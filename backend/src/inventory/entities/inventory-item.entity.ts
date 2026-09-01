@@ -102,4 +102,3 @@ export class InventoryItem {
   @UpdateDateColumn()
   updatedAt: Date;
 }
-

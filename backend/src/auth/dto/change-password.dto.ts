@@ -8,9 +8,10 @@ export class ChangePasswordDto {
   @MinLength(1, { message: 'Current password is required' })
   currentPassword: string;
 
-  @ApiProperty({ 
-    example: 'NewPassword123!', 
-    description: 'New password (8-128 characters with uppercase, lowercase, and number)' 
+  @ApiProperty({
+    example: 'NewPassword123!',
+    description:
+      'New password (8-128 characters with uppercase, lowercase, and number)',
   })
   @IsString()
   @MinLength(8, { message: 'Password must be at least 8 characters long' })
@@ -18,4 +19,3 @@ export class ChangePasswordDto {
   @IsStrongPassword()
   newPassword: string;
 }
-

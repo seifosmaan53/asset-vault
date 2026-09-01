@@ -16,7 +16,10 @@ export class StoreReportPdfService {
     private readonly puppeteerService: PuppeteerService,
   ) {}
 
-  async generateStoreReportPdf(storeId: string, userId: string): Promise<Buffer> {
+  async generateStoreReportPdf(
+    storeId: string,
+    userId: string,
+  ): Promise<Buffer> {
     // Get store and analytics data
     // Organizations removed - filter by userId only (user-scoped data)
     const store = await this.storeRepository
@@ -34,27 +37,47 @@ export class StoreReportPdfService {
     const storeSummary = summary.find((s) => s.storeId === storeId);
 
     if (!storeSummary) {
-      throw new NotFoundException(`Store analytics not found for store ID "${storeId}"`);
+      throw new NotFoundException(
+        `Store analytics not found for store ID "${storeId}"`,
+      );
     }
 
-    const [revenue, topClients, topItems, turnover, trends] = await Promise.all([
-      this.analyticsService.getStoreRevenueReport(userId, storeId, undefined, undefined),
-      this.analyticsService.getTopClientsByStore(userId, storeId, 10),
-      this.analyticsService.getTopItemsByStore(userId, storeId, 10),
-      this.analyticsService.getStoreInventoryTurnover(userId, storeId),
-      this.analyticsService.getStoreSalesTrends(userId, storeId, 'monthly'),
-    ]);
+    const [revenue, topClients, topItems, turnover, trends] = await Promise.all(
+      [
+        this.analyticsService.getStoreRevenueReport(
+          userId,
+          storeId,
+          undefined,
+          undefined,
+        ),
+        this.analyticsService.getTopClientsByStore(userId, storeId, 10),
+        this.analyticsService.getTopItemsByStore(userId, storeId, 10),
+        this.analyticsService.getStoreInventoryTurnover(userId, storeId),
+        this.analyticsService.getStoreSalesTrends(userId, storeId, 'monthly'),
+      ],
+    );
 
     try {
       // Generate HTML content
-      const htmlContent = this.generateHtmlReport(storeSummary, revenue[0], topClients, topItems, turnover[0], trends);
+      const htmlContent = this.generateHtmlReport(
+        storeSummary,
+        revenue[0],
+        topClients,
+        topItems,
+        turnover[0],
+        trends,
+      );
 
-      const pdfBuffer = await this.puppeteerService.generatePdfFromHtml(htmlContent);
+      const pdfBuffer =
+        await this.puppeteerService.generatePdfFromHtml(htmlContent);
 
       this.logger.log(`PDF generated successfully for store ${store.name}`);
       return pdfBuffer;
     } catch (error) {
-      this.logger.error(`Failed to generate PDF for store ${store.name}:`, error);
+      this.logger.error(
+        `Failed to generate PDF for store ${store.name}:`,
+        error,
+      );
       throw error;
     }
   }
@@ -212,7 +235,9 @@ export class StoreReportPdfService {
             </div>
           </div>
 
-          ${turnover ? `
+          ${
+            turnover
+              ? `
           <div class="section">
             <div class="section-title">Inventory Turnover</div>
             <div class="metrics-grid">
@@ -234,9 +259,13 @@ export class StoreReportPdfService {
               </div>
             </div>
           </div>
-          ` : ''}
+          `
+              : ''
+          }
 
-          ${topItems.length > 0 ? `
+          ${
+            topItems.length > 0
+              ? `
           <div class="section">
             <div class="section-title">Top Items by Revenue</div>
             <table>
@@ -250,7 +279,9 @@ export class StoreReportPdfService {
                 </tr>
               </thead>
               <tbody>
-                ${topItems.map((item) => `
+                ${topItems
+                  .map(
+                    (item) => `
                   <tr>
                     <td>${item.itemName}</td>
                     <td>${item.sku || '-'}</td>
@@ -258,13 +289,19 @@ export class StoreReportPdfService {
                     <td class="text-right">${item.totalQuantity}</td>
                     <td class="text-right">${item.invoiceCount}</td>
                   </tr>
-                `).join('')}
+                `,
+                  )
+                  .join('')}
               </tbody>
             </table>
           </div>
-          ` : ''}
+          `
+              : ''
+          }
 
-          ${topClients.length > 0 ? `
+          ${
+            topClients.length > 0
+              ? `
           <div class="section">
             <div class="section-title">Top Clients by Revenue</div>
             <table>
@@ -277,20 +314,28 @@ export class StoreReportPdfService {
                 </tr>
               </thead>
               <tbody>
-                ${topClients.map((client) => `
+                ${topClients
+                  .map(
+                    (client) => `
                   <tr>
                     <td>${client.clientName}</td>
                     <td class="text-right">${formatCurrency(client.totalRevenue)}</td>
                     <td class="text-right">${formatCurrency(client.paidRevenue)}</td>
                     <td class="text-right">${client.invoiceCount}</td>
                   </tr>
-                `).join('')}
+                `,
+                  )
+                  .join('')}
               </tbody>
             </table>
           </div>
-          ` : ''}
+          `
+              : ''
+          }
 
-          ${trends.length > 0 ? `
+          ${
+            trends.length > 0
+              ? `
           <div class="section">
             <div class="section-title">Monthly Sales Trends</div>
             <table>
@@ -302,17 +347,23 @@ export class StoreReportPdfService {
                 </tr>
               </thead>
               <tbody>
-                ${trends.map((trend) => `
+                ${trends
+                  .map(
+                    (trend) => `
                   <tr>
                     <td>${trend.period}</td>
                     <td class="text-right">${formatCurrency(trend.revenue)}</td>
                     <td class="text-right">${trend.invoiceCount}</td>
                   </tr>
-                `).join('')}
+                `,
+                  )
+                  .join('')}
               </tbody>
             </table>
           </div>
-          ` : ''}
+          `
+              : ''
+          }
 
           <div class="footer">
             <p>This report was generated automatically by Asset Vault</p>
@@ -323,4 +374,3 @@ export class StoreReportPdfService {
     `;
   }
 }
-

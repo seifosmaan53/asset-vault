@@ -4,4 +4,3 @@ import { SetMetadata } from '@nestjs/common';
 
 export const SKIP_QUOTA_KEY = 'skip-quota';
 export const SkipQuota = () => SetMetadata(SKIP_QUOTA_KEY, true);
-

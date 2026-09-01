@@ -13,5 +13,5 @@ export interface CacheOptions {
  * Decorator to configure cache headers for an endpoint
  * Usage: @Cache({ maxAge: 600, private: false })
  */
-export const Cache = (options: CacheOptions = {}) => SetMetadata(CACHE_KEY, options);
-
+export const Cache = (options: CacheOptions = {}) =>
+  SetMetadata(CACHE_KEY, options);

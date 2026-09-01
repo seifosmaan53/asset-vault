@@ -10,4 +10,3 @@ import { Feedback } from './entities/feedback.entity';
   providers: [FeedbackService],
 })
 export class FeedbackModule {}
-

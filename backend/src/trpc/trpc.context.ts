@@ -1,7 +1,7 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { Request } from 'express';
-import { Context } from './trpc.service';
+import type { Request } from 'express';
+import type { Context } from './trpc.service';
 
 /**
  * Create tRPC context from Express request

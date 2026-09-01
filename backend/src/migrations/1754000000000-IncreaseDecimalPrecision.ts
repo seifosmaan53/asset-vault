@@ -1,19 +1,21 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
  * Migration: Increase Decimal Precision for Financial Fields
  * Fixes Issue #9: Currency calculations may need higher precision
- * 
+ *
  * Changes decimal precision from (10,2) to (12,4) for financial calculations
  * to support higher precision currency values and calculations.
- * 
+ *
  * Affected tables:
  * - invoices: subtotal, taxTotal, discountTotal, total
  * - inventory_items: defaultUnitPrice, costPrice
  */
-export class IncreaseDecimalPrecision1754000000000 implements MigrationInterface {
+export class IncreaseDecimalPrecision1754000000000
+  implements MigrationInterface
+{
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Update invoice financial fields
     await queryRunner.query(`
@@ -64,4 +66,3 @@ export class IncreaseDecimalPrecision1754000000000 implements MigrationInterface
     `);
   }
 }
-

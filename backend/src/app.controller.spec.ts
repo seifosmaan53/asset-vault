@@ -1,4 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { MetricsService } from './common/services/metrics.service';
@@ -11,7 +12,9 @@ describe('AppController', () => {
   let appController: AppController;
 
   const metricsService = {
-    getCacheMetrics: jest.fn().mockResolvedValue({ hitRate: 0.9, totalRequests: 10 }),
+    getCacheMetrics: jest
+      .fn()
+      .mockResolvedValue({ hitRate: 0.9, totalRequests: 10 }),
     getDatabaseMetrics: jest.fn().mockResolvedValue({
       activeConnections: 1,
       totalConnections: 2,

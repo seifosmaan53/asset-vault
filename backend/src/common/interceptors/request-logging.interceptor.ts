@@ -1,6 +1,12 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NestInterceptor,
+  ExecutionContext,
+  CallHandler,
+  Logger,
+} from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { Request, Response } from 'express';
@@ -28,7 +34,9 @@ export class RequestLoggingInterceptor implements NestInterceptor {
     // Log request body for non-GET requests (sanitize sensitive data)
     if (method !== 'GET' && body) {
       const sanitizedBody = this.sanitizeBody(body);
-      this.logger.debug(`[${requestId}] Request body: ${JSON.stringify(sanitizedBody)}`);
+      this.logger.debug(
+        `[${requestId}] Request body: ${JSON.stringify(sanitizedBody)}`,
+      );
     }
 
     return next.handle().pipe(
@@ -36,7 +44,7 @@ export class RequestLoggingInterceptor implements NestInterceptor {
         next: (data) => {
           const duration = Date.now() - startTime;
           const statusCode = response.statusCode;
-          
+
           this.logger.log(
             `[${requestId}] ${method} ${url} ${statusCode} - ${duration}ms`,
           );
@@ -51,7 +59,7 @@ export class RequestLoggingInterceptor implements NestInterceptor {
         error: (error) => {
           const duration = Date.now() - startTime;
           const statusCode = response.statusCode || 500;
-          
+
           this.logger.error(
             `[${requestId}] ${method} ${url} ${statusCode} - ${duration}ms - Error: ${error.message}`,
             error.stack,
@@ -67,7 +75,14 @@ export class RequestLoggingInterceptor implements NestInterceptor {
     }
 
     const sanitized = { ...body };
-    const sensitiveFields = ['password', 'token', 'secret', 'key', 'authorization', 'apiKey'];
+    const sensitiveFields = [
+      'password',
+      'token',
+      'secret',
+      'key',
+      'authorization',
+      'apiKey',
+    ];
 
     for (const field of sensitiveFields) {
       if (sanitized[field]) {
@@ -78,4 +93,3 @@ export class RequestLoggingInterceptor implements NestInterceptor {
     return sanitized;
   }
 }
-

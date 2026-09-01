@@ -48,7 +48,9 @@ import { DataSource } from 'typeorm';
     ConfigModule.forRoot({
       isGlobal: true,
       validationSchema: Joi.object({
-        NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
+        NODE_ENV: Joi.string()
+          .valid('development', 'production', 'test')
+          .default('development'),
         PORT: Joi.number().default(3000).min(1).max(65535),
 
         DB_HOST: Joi.string().required(),
@@ -67,20 +69,26 @@ import { DataSource } from 'typeorm';
         SMTP_PORT: Joi.number().allow(null).min(1).max(65535).optional(),
         SMTP_USER: Joi.string().allow('', null).optional(),
         SMTP_PASS: Joi.string().allow('', null).optional(),
-        SMTP_FROM: Joi.string().allow('', null).optional().custom((value, helpers) => {
-          if (!value || value === '') return value;
-          // Allow format: "Name <email@domain.com>" or just "email@domain.com"
-          const emailMatch = value.match(/<?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>?/);
-          if (emailMatch) {
-            // Validate the extracted email
-            const email = emailMatch[1];
-            const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-            if (emailRegex.test(email)) {
-              return value;
+        SMTP_FROM: Joi.string()
+          .allow('', null)
+          .optional()
+          .custom((value, helpers) => {
+            if (!value || value === '') return value;
+            // Allow format: "Name <email@domain.com>" or just "email@domain.com"
+            const emailMatch = value.match(
+              /<?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>?/,
+            );
+            if (emailMatch) {
+              // Validate the extracted email
+              const email = emailMatch[1];
+              const emailRegex =
+                /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+              if (emailRegex.test(email)) {
+                return value;
+              }
             }
-          }
-          return helpers.error('string.email');
-        }),
+            return helpers.error('string.email');
+          }),
 
         // Optional: IP filtering
         IP_WHITELIST: Joi.string().allow('', null).optional(),
@@ -107,10 +115,12 @@ import { DataSource } from 'typeorm';
     }),
     // FIX #165: Rate limiting to prevent overwhelming server
     ThrottlerModule.forRoot({
-      throttlers: [{
-        ttl: 60000, // Time window in milliseconds (60 seconds)
-        limit: 100, // Max requests per time window per IP
-      }],
+      throttlers: [
+        {
+          ttl: 60000, // Time window in milliseconds (60 seconds)
+          limit: 100, // Max requests per time window per IP
+        },
+      ],
       // Custom storage for distributed systems (optional)
       // storage: new ThrottlerStorageRedisService(),
     }),

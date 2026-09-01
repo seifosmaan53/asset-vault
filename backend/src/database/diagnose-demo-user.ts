@@ -19,7 +19,16 @@ async function diagnoseDemoUser() {
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.DB_DATABASE || 'invoiceme',
-    entities: [User, Client, Invoice, InvoiceItem, InventoryItem, StockMovement, Store, StoreItemSettings],
+    entities: [
+      User,
+      Client,
+      Invoice,
+      InvoiceItem,
+      InventoryItem,
+      StockMovement,
+      Store,
+      StoreItemSettings,
+    ],
     synchronize: false,
     logging: false,
   });
@@ -36,7 +45,7 @@ async function diagnoseDemoUser() {
     // Find demo user using case-insensitive search (more efficient)
     const demoEmail = 'demo@example.com';
     console.log(`Looking for demo user with email: "${demoEmail}"`);
-    
+
     // Use ILIKE for case-insensitive search in PostgreSQL (single efficient query)
     const demoUser = await userRepository
       .createQueryBuilder('user')
@@ -47,12 +56,12 @@ async function diagnoseDemoUser() {
       console.log('\n❌ Demo user NOT FOUND!');
       console.log('\nAll users in database:');
       // Only load users if demo user not found (avoid unnecessary query if found)
-      const allUsers = await userRepository.find({ 
+      const allUsers = await userRepository.find({
         select: ['id', 'email', 'role'],
-        take: 20 // Limit to first 20 users
+        take: 20, // Limit to first 20 users
       });
       if (allUsers.length > 0) {
-        allUsers.forEach(u => {
+        allUsers.forEach((u) => {
           console.log(`  - ${u.email} (ID: ${u.id}, Role: ${u.role})`);
         });
         if (allUsers.length === 20) {
@@ -61,7 +70,9 @@ async function diagnoseDemoUser() {
       } else {
         console.log('  (No users found in database)');
       }
-      console.log('\n💡 Solution: Run "npm run seed" to create demo user and data');
+      console.log(
+        '\n💡 Solution: Run "npm run seed" to create demo user and data',
+      );
       await dataSource.destroy();
       process.exit(1);
     }
@@ -73,16 +84,18 @@ async function diagnoseDemoUser() {
     console.log(`   Created: ${demoUser.createdAt}`);
 
     // Check for clients (use count for efficiency, only load sample if needed)
-    const clientCount = await clientRepository.count({ where: { userId: demoUser.id } });
+    const clientCount = await clientRepository.count({
+      where: { userId: demoUser.id },
+    });
     console.log(`\n📋 Clients: ${clientCount}`);
     if (clientCount > 0) {
-      const sampleClients = await clientRepository.find({ 
+      const sampleClients = await clientRepository.find({
         where: { userId: demoUser.id },
         take: 5,
-        select: ['name', 'email']
+        select: ['name', 'email'],
       });
       console.log('   Sample clients:');
-      sampleClients.forEach(c => {
+      sampleClients.forEach((c) => {
         console.log(`     - ${c.name} (${c.email || 'no email'})`);
       });
       if (clientCount > 5) {
@@ -93,16 +106,18 @@ async function diagnoseDemoUser() {
     }
 
     // Check for invoices (use count for efficiency)
-    const totalInvoices = await invoiceRepository.count({ where: { userId: demoUser.id } });
+    const totalInvoices = await invoiceRepository.count({
+      where: { userId: demoUser.id },
+    });
     console.log(`\n📄 Invoices: ${totalInvoices}`);
     if (totalInvoices > 0) {
-      const sampleInvoices = await invoiceRepository.find({ 
+      const sampleInvoices = await invoiceRepository.find({
         where: { userId: demoUser.id },
         take: 10,
-        select: ['number', 'status', 'total']
+        select: ['number', 'status', 'total'],
       });
       console.log('   Sample invoices:');
-      sampleInvoices.forEach(inv => {
+      sampleInvoices.forEach((inv) => {
         console.log(`     - ${inv.number} (${inv.status}, $${inv.total})`);
       });
       if (totalInvoices > 10) {
@@ -113,17 +128,21 @@ async function diagnoseDemoUser() {
     }
 
     // Check for inventory items (use count for efficiency)
-    const totalInventory = await inventoryRepository.count({ where: { userId: demoUser.id } });
+    const totalInventory = await inventoryRepository.count({
+      where: { userId: demoUser.id },
+    });
     console.log(`\n📦 Inventory Items: ${totalInventory}`);
     if (totalInventory > 0) {
-      const sampleItems = await inventoryRepository.find({ 
+      const sampleItems = await inventoryRepository.find({
         where: { userId: demoUser.id },
         take: 10,
-        select: ['name', 'sku', 'currentStock']
+        select: ['name', 'sku', 'currentStock'],
       });
       console.log('   Sample items:');
-      sampleItems.forEach(item => {
-        console.log(`     - ${item.name} (SKU: ${item.sku}, Stock: ${item.currentStock})`);
+      sampleItems.forEach((item) => {
+        console.log(
+          `     - ${item.name} (SKU: ${item.sku}, Stock: ${item.currentStock})`,
+        );
       });
       if (totalInventory > 10) {
         console.log(`     ... and ${totalInventory - 10} more`);
@@ -141,17 +160,23 @@ async function diagnoseDemoUser() {
     console.log(`Clients: ${clientCount}`);
     console.log(`Invoices: ${totalInvoices}`);
     console.log(`Inventory Items: ${totalInventory}`);
-    
+
     if (clientCount === 0 && totalInvoices === 0 && totalInventory === 0) {
       console.log('\n⚠️  WARNING: Demo user exists but has NO DATA!');
       console.log('💡 Solution: Run "npm run seed" to populate demo data');
-    } else if (clientCount === 0 || totalInvoices === 0 || totalInventory === 0) {
+    } else if (
+      clientCount === 0 ||
+      totalInvoices === 0 ||
+      totalInventory === 0
+    ) {
       console.log('\n⚠️  WARNING: Demo user has incomplete data!');
-      console.log('💡 Solution: Run "npm run clear-demo-data" then "npm run seed"');
+      console.log(
+        '💡 Solution: Run "npm run clear-demo-data" then "npm run seed"',
+      );
     } else {
       console.log('\n✅ Demo user has data!');
-      console.log('\nIf you still don\'t see data in the frontend:');
-      console.log('1. Check that you\'re logged in with the correct user');
+      console.log("\nIf you still don't see data in the frontend:");
+      console.log("1. Check that you're logged in with the correct user");
       console.log('2. Check browser console for errors');
       console.log('3. Verify the JWT token contains the correct userId');
       console.log(`4. Expected userId in JWT: ${demoUser.id}`);
@@ -171,4 +196,3 @@ async function diagnoseDemoUser() {
 }
 
 diagnoseDemoUser();
-

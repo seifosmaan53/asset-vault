@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddStoreIndexes1738000000000 implements MigrationInterface {
   name = 'AddStoreIndexes1738000000000';
@@ -77,4 +77,3 @@ export class AddStoreIndexes1738000000000 implements MigrationInterface {
     `);
   }
 }
-

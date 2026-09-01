@@ -3,7 +3,7 @@
 /**
  * Pagination Links Utility
  * Fixes Issue #71: Missing Database Query Result Pagination Links
- * 
+ *
  * Generates HATEOAS-style pagination links
  */
 export interface PaginationLinks {
@@ -103,4 +103,3 @@ export function createPaginatedResponse<T>(
     links: generatePaginationLinks(baseUrl, page, limit, total, queryParams),
   };
 }
-

@@ -61,4 +61,3 @@ export class User {
   @UpdateDateColumn()
   updatedAt: Date;
 }
-

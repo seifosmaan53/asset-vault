@@ -1,8 +1,11 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { DataSource } from 'typeorm';
+import type { DataSource } from 'typeorm';
 import { User } from '../users/entities/user.entity';
-import { Subscription, SubscriptionStatus } from '../subscriptions/entities/subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from '../subscriptions/entities/subscription.entity';
 import { Plan } from '../subscriptions/entities/plan.entity';
 
 /**
@@ -66,14 +69,15 @@ export async function migrateExistingUsers(dataSource: DataSource) {
   console.log(`\nMigration complete!`);
   console.log(`- Migrated: ${migrated} users`);
   console.log(`- Skipped: ${skipped} users (already have subscriptions)`);
-  console.log(`\nExisting users will be prompted to select a plan on their next login.`);
+  console.log(
+    `\nExisting users will be prompted to select a plan on their next login.`,
+  );
 }
 
 // Run migration if called directly
 if (require.main === module) {
   import('../database/data-source.js').then(({ AppDataSource }) => {
-    AppDataSource
-      .initialize()
+    AppDataSource.initialize()
       .then(async () => {
         await migrateExistingUsers(AppDataSource);
         await AppDataSource.destroy();
@@ -85,4 +89,3 @@ if (require.main === module) {
       });
   });
 }
-

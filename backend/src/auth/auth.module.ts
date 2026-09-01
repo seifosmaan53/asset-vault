@@ -21,4 +21,3 @@ import { ClerkAuthGuard } from './clerk-auth.guard';
   exports: [AuthService, ClerkAuthGuard, RolesGuard],
 })
 export class AuthModule {}
-

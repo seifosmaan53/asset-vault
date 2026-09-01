@@ -22,7 +22,18 @@ async function clearDemoData() {
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.DB_DATABASE || 'invoiceme',
-    entities: [User, Client, InventoryItem, Invoice, InvoiceItem, StockMovement, UserSettings, Store, StoreItemSettings, ApiKey], // RecurringInvoice and InvoiceTemplate removed
+    entities: [
+      User,
+      Client,
+      InventoryItem,
+      Invoice,
+      InvoiceItem,
+      StockMovement,
+      UserSettings,
+      Store,
+      StoreItemSettings,
+      ApiKey,
+    ], // RecurringInvoice and InvoiceTemplate removed
     synchronize: false,
     logging: false,
   });
@@ -40,12 +51,15 @@ async function clearDemoData() {
     // const recurringInvoiceRepository = dataSource.getRepository(RecurringInvoice); // Removed
     const userSettingsRepository = dataSource.getRepository(UserSettings);
     const storeRepository = dataSource.getRepository(Store);
-    const storeItemSettingsRepository = dataSource.getRepository(StoreItemSettings);
+    const storeItemSettingsRepository =
+      dataSource.getRepository(StoreItemSettings);
     // const invoiceTemplateRepository = dataSource.getRepository(InvoiceTemplate); // Removed
     const apiKeyRepository = dataSource.getRepository(ApiKey);
 
     // Find demo user
-    const demoUser = await userRepository.findOne({ where: { email: 'demo@example.com' } });
+    const demoUser = await userRepository.findOne({
+      where: { email: 'demo@example.com' },
+    });
 
     if (!demoUser) {
       console.log('No demo user found (demo@example.com). Nothing to clear.');
@@ -54,27 +68,53 @@ async function clearDemoData() {
     }
 
     // Count data before deletion
-    const invoiceCount = await invoiceRepository.count({ where: { userId: demoUser.id } });
-    const clientCount = await clientRepository.count({ where: { userId: demoUser.id } });
-    const inventoryCount = await inventoryRepository.count({ where: { userId: demoUser.id } });
-    const storeCount = await storeRepository.count({ where: { userId: demoUser.id } });
+    const invoiceCount = await invoiceRepository.count({
+      where: { userId: demoUser.id },
+    });
+    const clientCount = await clientRepository.count({
+      where: { userId: demoUser.id },
+    });
+    const inventoryCount = await inventoryRepository.count({
+      where: { userId: demoUser.id },
+    });
+    const storeCount = await storeRepository.count({
+      where: { userId: demoUser.id },
+    });
 
     // Check for user-created invoices (not part of seed data)
-    const demoClientNames = ['Acme Corporation', 'Tech Solutions Ltd', 'Global Enterprises', 'Small Business Co'];
-    const allClients = await clientRepository.find({ where: { userId: demoUser.id } });
-    const hasDemoClients = allClients.some(client => demoClientNames.includes(client.name));
-    
+    const demoClientNames = [
+      'Acme Corporation',
+      'Tech Solutions Ltd',
+      'Global Enterprises',
+      'Small Business Co',
+    ];
+    const allClients = await clientRepository.find({
+      where: { userId: demoUser.id },
+    });
+    const hasDemoClients = allClients.some((client) =>
+      demoClientNames.includes(client.name),
+    );
+
     // If demo clients exist, check if there are invoices beyond the seed data
     // Seed data typically has 166 invoices, so if there are more, user created them
-    const userCreatedInvoices = hasDemoClients && invoiceCount > 170 ? invoiceCount - 166 : (hasDemoClients ? 0 : invoiceCount);
+    const userCreatedInvoices =
+      hasDemoClients && invoiceCount > 170
+        ? invoiceCount - 166
+        : hasDemoClients
+          ? 0
+          : invoiceCount;
 
-    console.log('\n⚠️  WARNING: This will PERMANENTLY DELETE all demo user data!');
+    console.log(
+      '\n⚠️  WARNING: This will PERMANENTLY DELETE all demo user data!',
+    );
     console.log('='.repeat(60));
     console.log(`Demo User: ${demoUser.email} (ID: ${demoUser.id})`);
     console.log(`\nData to be deleted:`);
     console.log(`  - ${invoiceCount} invoice(s)`);
     if (userCreatedInvoices > 0) {
-      console.log(`    ⚠️  WARNING: ${userCreatedInvoices} of these appear to be user-created (not seed data)!`);
+      console.log(
+        `    ⚠️  WARNING: ${userCreatedInvoices} of these appear to be user-created (not seed data)!`,
+      );
     }
     console.log(`  - ${clientCount} client(s)`);
     console.log(`  - ${inventoryCount} inventory item(s)`);
@@ -82,13 +122,15 @@ async function clearDemoData() {
     console.log(`  - All user settings, templates, and API keys`);
     console.log('='.repeat(60));
     console.log('\n⚠️  THIS ACTION CANNOT BE UNDONE!');
-    console.log('\nIf you have created invoices or other data, it will be PERMANENTLY LOST.');
+    console.log(
+      '\nIf you have created invoices or other data, it will be PERMANENTLY LOST.',
+    );
     console.log('\nTo proceed, you must set the environment variable:');
     console.log('  CONFIRM_DELETE_DEMO_DATA=true');
     console.log('\nExample:');
     console.log('  CONFIRM_DELETE_DEMO_DATA=true npm run clear-demo-data');
     console.log('\nExiting without deleting data...');
-    
+
     if (process.env.CONFIRM_DELETE_DEMO_DATA !== 'true') {
       await dataSource.destroy();
       process.exit(0);
@@ -98,15 +140,19 @@ async function clearDemoData() {
 
     // Clear existing data for this user (order matters due to foreign keys)
     // 1. Delete invoice items first (they reference invoices)
-    const userInvoices = await invoiceRepository.find({ where: { userId: demoUser.id } });
-    const invoiceIds = userInvoices.map(inv => inv.id);
+    const userInvoices = await invoiceRepository.find({
+      where: { userId: demoUser.id },
+    });
+    const invoiceIds = userInvoices.map((inv) => inv.id);
     if (invoiceIds.length > 0) {
       await invoiceItemRepository
         .createQueryBuilder()
         .delete()
         .where('invoiceId IN (:...ids)', { ids: invoiceIds })
         .execute();
-      console.log(`  ✓ Deleted ${invoiceIds.length} invoice(s) and their items`);
+      console.log(
+        `  ✓ Deleted ${invoiceIds.length} invoice(s) and their items`,
+      );
     }
 
     // 2. Delete invoices (they reference clients)
@@ -121,7 +167,9 @@ async function clearDemoData() {
     await storeItemSettingsRepository
       .createQueryBuilder()
       .delete()
-      .where('"storeId" IN (SELECT id FROM stores WHERE "userId" = :userId)', { userId: demoUser.id })
+      .where('"storeId" IN (SELECT id FROM stores WHERE "userId" = :userId)', {
+        userId: demoUser.id,
+      })
       .execute();
 
     // 6. Delete stores
@@ -145,7 +193,9 @@ async function clearDemoData() {
     await userRepository.delete({ id: demoUser.id });
 
     console.log('✅ All demo data cleared successfully!');
-    console.log('   (Deleted demo user: demo@example.com and all associated data)');
+    console.log(
+      '   (Deleted demo user: demo@example.com and all associated data)',
+    );
 
     await dataSource.destroy();
     process.exit(0);
@@ -157,4 +207,3 @@ async function clearDemoData() {
 }
 
 clearDemoData();
-

@@ -1,10 +1,10 @@
-import { 
-  IsString, 
-  IsOptional, 
-  IsNumber, 
-  IsEmail, 
-  IsBoolean, 
-  IsInt, 
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  IsEmail,
+  IsBoolean,
+  IsInt,
   ValidateIf,
   IsEnum,
   Min,
@@ -26,49 +26,159 @@ import { isURL } from 'validator';
 export class IsValidTimezoneConstraint implements ValidatorConstraintInterface {
   private readonly validTimezones = [
     // Americas
-    'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
-    'America/Phoenix', 'America/Anchorage', 'America/Toronto', 'America/Vancouver',
-    'America/Mexico_City', 'America/Sao_Paulo', 'America/Buenos_Aires', 'America/Lima',
-    'America/Bogota', 'America/Caracas', 'America/Santiago', 'America/Montevideo',
-    'America/Asuncion', 'America/La_Paz', 'America/Guayaquil', 'America/Managua',
-    'America/Guatemala', 'America/Tegucigalpa', 'America/San_Jose', 'America/Panama',
-    'America/Havana', 'America/Jamaica', 'America/Port-au-Prince', 'America/Santo_Domingo',
-    'America/Puerto_Rico', 'America/Martinique', 'America/Cayenne', 'America/Paramaribo',
+    'America/New_York',
+    'America/Chicago',
+    'America/Denver',
+    'America/Los_Angeles',
+    'America/Phoenix',
+    'America/Anchorage',
+    'America/Toronto',
+    'America/Vancouver',
+    'America/Mexico_City',
+    'America/Sao_Paulo',
+    'America/Buenos_Aires',
+    'America/Lima',
+    'America/Bogota',
+    'America/Caracas',
+    'America/Santiago',
+    'America/Montevideo',
+    'America/Asuncion',
+    'America/La_Paz',
+    'America/Guayaquil',
+    'America/Managua',
+    'America/Guatemala',
+    'America/Tegucigalpa',
+    'America/San_Jose',
+    'America/Panama',
+    'America/Havana',
+    'America/Jamaica',
+    'America/Port-au-Prince',
+    'America/Santo_Domingo',
+    'America/Puerto_Rico',
+    'America/Martinique',
+    'America/Cayenne',
+    'America/Paramaribo',
     // Europe
-    'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Rome', 'Europe/Madrid',
-    'Europe/Amsterdam', 'Europe/Brussels', 'Europe/Vienna', 'Europe/Prague', 'Europe/Warsaw',
-    'Europe/Stockholm', 'Europe/Copenhagen', 'Europe/Oslo', 'Europe/Helsinki',
-    'Europe/Dublin', 'Europe/Lisbon', 'Europe/Athens', 'Europe/Bucharest', 'Europe/Sofia',
-    'Europe/Budapest', 'Europe/Zagreb', 'Europe/Belgrade', 'Europe/Kiev', 'Europe/Moscow',
-    'Europe/Istanbul', 'Europe/Zurich', 'Europe/Brussels', 'Europe/Luxembourg',
+    'Europe/London',
+    'Europe/Paris',
+    'Europe/Berlin',
+    'Europe/Rome',
+    'Europe/Madrid',
+    'Europe/Amsterdam',
+    'Europe/Brussels',
+    'Europe/Vienna',
+    'Europe/Prague',
+    'Europe/Warsaw',
+    'Europe/Stockholm',
+    'Europe/Copenhagen',
+    'Europe/Oslo',
+    'Europe/Helsinki',
+    'Europe/Dublin',
+    'Europe/Lisbon',
+    'Europe/Athens',
+    'Europe/Bucharest',
+    'Europe/Sofia',
+    'Europe/Budapest',
+    'Europe/Zagreb',
+    'Europe/Belgrade',
+    'Europe/Kiev',
+    'Europe/Moscow',
+    'Europe/Istanbul',
+    'Europe/Zurich',
+    'Europe/Brussels',
+    'Europe/Luxembourg',
     // Asia
-    'Asia/Tokyo', 'Asia/Shanghai', 'Asia/Hong_Kong', 'Asia/Singapore', 'Asia/Seoul',
-    'Asia/Dubai', 'Asia/Kolkata', 'Asia/Karachi', 'Asia/Dhaka', 'Asia/Bangkok',
-    'Asia/Jakarta', 'Asia/Manila', 'Asia/Ho_Chi_Minh', 'Asia/Kuala_Lumpur',
-    'Asia/Taipei', 'Asia/Mumbai', 'Asia/Colombo', 'Asia/Kathmandu', 'Asia/Dhaka',
-    'Asia/Yangon', 'Asia/Phnom_Penh', 'Asia/Vientiane', 'Asia/Ulaanbaatar',
-    'Asia/Almaty', 'Asia/Tashkent', 'Asia/Baku', 'Asia/Yerevan', 'Asia/Tbilisi',
-    'Asia/Tehran', 'Asia/Baghdad', 'Asia/Riyadh', 'Asia/Kuwait', 'Asia/Qatar',
-    'Asia/Bahrain', 'Asia/Muscat', 'Asia/Jerusalem', 'Asia/Beirut', 'Asia/Amman',
-    'Asia/Damascus', 'Asia/Nicosia',
+    'Asia/Tokyo',
+    'Asia/Shanghai',
+    'Asia/Hong_Kong',
+    'Asia/Singapore',
+    'Asia/Seoul',
+    'Asia/Dubai',
+    'Asia/Kolkata',
+    'Asia/Karachi',
+    'Asia/Dhaka',
+    'Asia/Bangkok',
+    'Asia/Jakarta',
+    'Asia/Manila',
+    'Asia/Ho_Chi_Minh',
+    'Asia/Kuala_Lumpur',
+    'Asia/Taipei',
+    'Asia/Mumbai',
+    'Asia/Colombo',
+    'Asia/Kathmandu',
+    'Asia/Dhaka',
+    'Asia/Yangon',
+    'Asia/Phnom_Penh',
+    'Asia/Vientiane',
+    'Asia/Ulaanbaatar',
+    'Asia/Almaty',
+    'Asia/Tashkent',
+    'Asia/Baku',
+    'Asia/Yerevan',
+    'Asia/Tbilisi',
+    'Asia/Tehran',
+    'Asia/Baghdad',
+    'Asia/Riyadh',
+    'Asia/Kuwait',
+    'Asia/Qatar',
+    'Asia/Bahrain',
+    'Asia/Muscat',
+    'Asia/Jerusalem',
+    'Asia/Beirut',
+    'Asia/Amman',
+    'Asia/Damascus',
+    'Asia/Nicosia',
     // Pacific
-    'Pacific/Honolulu', 'Pacific/Auckland', 'Pacific/Sydney', 'Pacific/Melbourne',
-    'Pacific/Brisbane', 'Pacific/Perth', 'Pacific/Adelaide', 'Pacific/Darwin',
-    'Pacific/Guam', 'Pacific/Port_Moresby', 'Pacific/Fiji', 'Pacific/Tahiti',
-    'Pacific/Apia', 'Pacific/Tongatapu', 'Pacific/Chatham', 'Pacific/Easter',
-    'Pacific/Galapagos', 'Pacific/Marquesas',
+    'Pacific/Honolulu',
+    'Pacific/Auckland',
+    'Pacific/Sydney',
+    'Pacific/Melbourne',
+    'Pacific/Brisbane',
+    'Pacific/Perth',
+    'Pacific/Adelaide',
+    'Pacific/Darwin',
+    'Pacific/Guam',
+    'Pacific/Port_Moresby',
+    'Pacific/Fiji',
+    'Pacific/Tahiti',
+    'Pacific/Apia',
+    'Pacific/Tongatapu',
+    'Pacific/Chatham',
+    'Pacific/Easter',
+    'Pacific/Galapagos',
+    'Pacific/Marquesas',
     // Africa
-    'Africa/Cairo', 'Africa/Johannesburg', 'Africa/Lagos', 'Africa/Nairobi',
-    'Africa/Casablanca', 'Africa/Tunis', 'Africa/Algiers', 'Africa/Addis_Ababa',
-    'Africa/Dar_es_Salaam', 'Africa/Kampala', 'Africa/Khartoum', 'Africa/Accra',
-    'Africa/Abidjan', 'Africa/Dakar', 'Africa/Luanda', 'Africa/Maputo',
+    'Africa/Cairo',
+    'Africa/Johannesburg',
+    'Africa/Lagos',
+    'Africa/Nairobi',
+    'Africa/Casablanca',
+    'Africa/Tunis',
+    'Africa/Algiers',
+    'Africa/Addis_Ababa',
+    'Africa/Dar_es_Salaam',
+    'Africa/Kampala',
+    'Africa/Khartoum',
+    'Africa/Accra',
+    'Africa/Abidjan',
+    'Africa/Dakar',
+    'Africa/Luanda',
+    'Africa/Maputo',
     // Atlantic
-    'Atlantic/Azores', 'Atlantic/Canary', 'Atlantic/Cape_Verde', 'Atlantic/Reykjavik',
-    'Atlantic/Bermuda', 'Atlantic/Madeira',
+    'Atlantic/Azores',
+    'Atlantic/Canary',
+    'Atlantic/Cape_Verde',
+    'Atlantic/Reykjavik',
+    'Atlantic/Bermuda',
+    'Atlantic/Madeira',
     // Indian Ocean
-    'Indian/Mauritius', 'Indian/Reunion', 'Indian/Maldives', 'Indian/Seychelles',
+    'Indian/Mauritius',
+    'Indian/Reunion',
+    'Indian/Maldives',
+    'Indian/Seychelles',
     // Antarctica
-    'Antarctica/McMurdo', 'Antarctica/Davis',
+    'Antarctica/McMurdo',
+    'Antarctica/Davis',
     // UTC
     'UTC',
   ];
@@ -76,7 +186,9 @@ export class IsValidTimezoneConstraint implements ValidatorConstraintInterface {
   validate(timezone: string, args: ValidationArguments) {
     if (!timezone) return true; // Optional field
     // Fix Issue #13: Case-insensitive matching for better UX
-    return this.validTimezones.some(tz => tz.toLowerCase() === timezone.toLowerCase());
+    return this.validTimezones.some(
+      (tz) => tz.toLowerCase() === timezone.toLowerCase(),
+    );
   }
 
   defaultMessage(args: ValidationArguments) {
@@ -85,7 +197,7 @@ export class IsValidTimezoneConstraint implements ValidatorConstraintInterface {
 }
 
 function IsValidTimezone(validationOptions?: any) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
@@ -110,7 +222,7 @@ export class IsValidHexColorConstraint implements ValidatorConstraintInterface {
 }
 
 function IsValidHexColor(validationOptions?: any) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
@@ -123,20 +235,24 @@ function IsValidHexColor(validationOptions?: any) {
 
 // Custom validator for invoice number format
 @ValidatorConstraint({ name: 'isValidInvoiceNumberFormat', async: false })
-export class IsValidInvoiceNumberFormatConstraint implements ValidatorConstraintInterface {
+export class IsValidInvoiceNumberFormatConstraint
+  implements ValidatorConstraintInterface
+{
   validate(format: string, args: ValidationArguments) {
     if (!format) return true; // Optional field
     // Must contain at least one placeholder
     const placeholders = ['{YYYY}', '{YY}', '{MM}', '{DD}', '{NUM}', '{####}'];
-    const hasPlaceholder = placeholders.some(placeholder => format.includes(placeholder));
-    
+    const hasPlaceholder = placeholders.some((placeholder) =>
+      format.includes(placeholder),
+    );
+
     // Also check that format is not too long (max 100 characters)
     if (format.length > 100) return false;
-    
+
     // Check for invalid characters (only allow alphanumeric, dashes, underscores, spaces, hash for {####}, and placeholders)
     const validPattern = /^[A-Za-z0-9\s\-_{}#]+$/;
     if (!validPattern.test(format)) return false;
-    
+
     return hasPlaceholder;
   }
 
@@ -146,7 +262,7 @@ export class IsValidInvoiceNumberFormatConstraint implements ValidatorConstraint
 }
 
 function IsValidInvoiceNumberFormat(validationOptions?: any) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
@@ -159,11 +275,43 @@ function IsValidInvoiceNumberFormat(validationOptions?: any) {
 
 // Custom validator for ISO language code
 @ValidatorConstraint({ name: 'isValidLanguageCode', async: false })
-export class IsValidLanguageCodeConstraint implements ValidatorConstraintInterface {
+export class IsValidLanguageCodeConstraint
+  implements ValidatorConstraintInterface
+{
   private readonly validLanguages = [
-    'en', 'es', 'fr', 'de', 'it', 'pt', 'ja', 'zh', 'ar', 'hi', 'ru',
-    'nl', 'sv', 'no', 'da', 'fi', 'pl', 'cs', 'hu', 'ro', 'bg', 'hr',
-    'sk', 'sl', 'et', 'lv', 'lt', 'el', 'tr', 'he', 'th', 'vi', 'ko',
+    'en',
+    'es',
+    'fr',
+    'de',
+    'it',
+    'pt',
+    'ja',
+    'zh',
+    'ar',
+    'hi',
+    'ru',
+    'nl',
+    'sv',
+    'no',
+    'da',
+    'fi',
+    'pl',
+    'cs',
+    'hu',
+    'ro',
+    'bg',
+    'hr',
+    'sk',
+    'sl',
+    'et',
+    'lv',
+    'lt',
+    'el',
+    'tr',
+    'he',
+    'th',
+    'vi',
+    'ko',
   ];
 
   validate(language: string, args: ValidationArguments) {
@@ -179,7 +327,7 @@ export class IsValidLanguageCodeConstraint implements ValidatorConstraintInterfa
 }
 
 function IsValidLanguageCode(validationOptions?: any) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
@@ -204,7 +352,7 @@ export class IsValidUrlConstraint implements ValidatorConstraintInterface {
 }
 
 function IsValidUrl(validationOptions?: any) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
@@ -215,17 +363,17 @@ function IsValidUrl(validationOptions?: any) {
   };
 }
 
-
-
-
-
 // Custom validator for phone number
 @ValidatorConstraint({ name: 'isValidPhoneNumber', async: false })
-export class IsValidPhoneNumberConstraint implements ValidatorConstraintInterface {
+export class IsValidPhoneNumberConstraint
+  implements ValidatorConstraintInterface
+{
   validate(phone: string, args: ValidationArguments) {
     if (!phone) return true; // Optional field
     // Allow international format: +, digits, spaces, dashes, parentheses
-    return /^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}$/.test(phone);
+    return /^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}$/.test(
+      phone,
+    );
   }
 
   defaultMessage(args: ValidationArguments) {
@@ -234,7 +382,7 @@ export class IsValidPhoneNumberConstraint implements ValidatorConstraintInterfac
 }
 
 function IsValidPhoneNumber(validationOptions?: any) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
@@ -245,23 +393,37 @@ function IsValidPhoneNumber(validationOptions?: any) {
   };
 }
 
-
 export class UpdateSettingsDto {
   // Existing fields
   @IsOptional()
-  @ValidateIf((o) => o.invoiceNumberFormat !== undefined && o.invoiceNumberFormat !== null && o.invoiceNumberFormat !== '')
+  @ValidateIf(
+    (o) =>
+      o.invoiceNumberFormat !== undefined &&
+      o.invoiceNumberFormat !== null &&
+      o.invoiceNumberFormat !== '',
+  )
   @IsString()
-  @IsValidInvoiceNumberFormat({ message: 'Invoice number format must contain at least one placeholder: {YYYY}, {YY}, {MM}, {DD}, {NUM}, or {####}' })
+  @IsValidInvoiceNumberFormat({
+    message:
+      'Invoice number format must contain at least one placeholder: {YYYY}, {YY}, {MM}, {DD}, {NUM}, or {####}',
+  })
   invoiceNumberFormat?: string;
 
   @IsOptional()
   @IsString()
-  @Length(3, 3, { message: 'Currency code must be exactly 3 characters (ISO 4217)' })
-  @Matches(/^[A-Z]{3}$/, { message: 'Currency code must be uppercase letters only' })
+  @Length(3, 3, {
+    message: 'Currency code must be exactly 3 characters (ISO 4217)',
+  })
+  @Matches(/^[A-Z]{3}$/, {
+    message: 'Currency code must be uppercase letters only',
+  })
   defaultCurrency?: string;
 
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'Tax rate must be a number with max 2 decimal places' })
+  @IsNumber(
+    { maxDecimalPlaces: 2 },
+    { message: 'Tax rate must be a number with max 2 decimal places' },
+  )
   @Min(0, { message: 'Tax rate cannot be negative' })
   @Max(100, { message: 'Tax rate cannot exceed 100%' })
   defaultTaxRate?: number;
@@ -273,7 +435,9 @@ export class UpdateSettingsDto {
 
   @IsOptional()
   @IsString()
-  @Length(0, 1000, { message: 'Company address must not exceed 1000 characters' })
+  @Length(0, 1000, {
+    message: 'Company address must not exceed 1000 characters',
+  })
   companyAddress?: string;
 
   @IsOptional()
@@ -285,7 +449,12 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsString()
   @Length(0, 255, { message: 'Email must not exceed 255 characters' })
-  @ValidateIf((o) => o.companyEmail !== '' && o.companyEmail !== null && o.companyEmail !== undefined)
+  @ValidateIf(
+    (o) =>
+      o.companyEmail !== '' &&
+      o.companyEmail !== null &&
+      o.companyEmail !== undefined,
+  )
   @IsEmail({}, { message: 'Company email must be a valid email address' })
   companyEmail?: string;
 
@@ -304,19 +473,28 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsString()
   @Length(0, 100, { message: 'Tax ID must not exceed 100 characters' })
-  @Matches(/^[A-Z0-9\-]+$/i, { message: 'Tax ID can only contain letters, numbers, and hyphens' })
+  @Matches(/^[A-Z0-9\-]+$/i, {
+    message: 'Tax ID can only contain letters, numbers, and hyphens',
+  })
   companyTaxId?: string;
 
   @IsOptional()
   @IsString()
-  @Length(0, 100, { message: 'Registration number must not exceed 100 characters' })
-  @Matches(/^[A-Z0-9\-]+$/i, { message: 'Registration number can only contain letters, numbers, and hyphens' })
+  @Length(0, 100, {
+    message: 'Registration number must not exceed 100 characters',
+  })
+  @Matches(/^[A-Z0-9\-]+$/i, {
+    message:
+      'Registration number can only contain letters, numbers, and hyphens',
+  })
   companyRegistrationNumber?: string;
 
   @IsOptional()
   @IsString()
   @Length(0, 100, { message: 'VAT number must not exceed 100 characters' })
-  @Matches(/^[A-Z0-9\-]+$/i, { message: 'VAT number can only contain letters, numbers, and hyphens' })
+  @Matches(/^[A-Z0-9\-]+$/i, {
+    message: 'VAT number can only contain letters, numbers, and hyphens',
+  })
   companyVatNumber?: string;
 
   // Invoice Defaults
@@ -350,14 +528,20 @@ export class UpdateSettingsDto {
 
   @IsOptional()
   @IsString()
-  @Length(0, 2000, { message: 'Invoice footer text must not exceed 2000 characters' })
+  @Length(0, 2000, {
+    message: 'Invoice footer text must not exceed 2000 characters',
+  })
   invoiceFooterText?: string;
 
   // Date & Time Formats
   @IsOptional()
-  @IsEnum(['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD', 'DD-MM-YYYY', 'MMM DD, YYYY'], {
-    message: 'Date format must be one of: MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD, DD-MM-YYYY, MMM DD, YYYY',
-  })
+  @IsEnum(
+    ['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD', 'DD-MM-YYYY', 'MMM DD, YYYY'],
+    {
+      message:
+        'Date format must be one of: MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD, DD-MM-YYYY, MMM DD, YYYY',
+    },
+  )
   dateFormat?: string;
 
   @IsOptional()
@@ -366,7 +550,9 @@ export class UpdateSettingsDto {
 
   @IsOptional()
   @IsString()
-  @IsValidTimezone({ message: 'Timezone must be a valid IANA timezone identifier' })
+  @IsValidTimezone({
+    message: 'Timezone must be a valid IANA timezone identifier',
+  })
   timezone?: string;
 
   // Number & Currency Formats
@@ -381,7 +567,9 @@ export class UpdateSettingsDto {
   thousandsSeparator?: string;
 
   @IsOptional()
-  @IsEnum(['left', 'right'], { message: 'Currency symbol position must be either "left" or "right"' })
+  @IsEnum(['left', 'right'], {
+    message: 'Currency symbol position must be either "left" or "right"',
+  })
   currencySymbolPosition?: string;
 
   @IsOptional()
@@ -395,20 +583,49 @@ export class UpdateSettingsDto {
 
   @IsOptional()
   @IsString()
-  @Length(0, 100, { message: 'Tax registration number must not exceed 100 characters' })
-  @Matches(/^[A-Z0-9\-]+$/i, { message: 'Tax registration number can only contain letters, numbers, and hyphens' })
+  @Length(0, 100, {
+    message: 'Tax registration number must not exceed 100 characters',
+  })
+  @Matches(/^[A-Z0-9\-]+$/i, {
+    message:
+      'Tax registration number can only contain letters, numbers, and hyphens',
+  })
   taxRegistrationNumber?: string;
 
   // Inventory Defaults
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'Reorder level must be a number with max 2 decimal places' })
+  @IsNumber(
+    { maxDecimalPlaces: 2 },
+    { message: 'Reorder level must be a number with max 2 decimal places' },
+  )
   @Min(0, { message: 'Reorder level cannot be negative' })
   defaultReorderLevel?: number;
 
   @IsOptional()
-  @IsEnum(['piece', 'kg', 'g', 'lb', 'oz', 'l', 'ml', 'm', 'cm', 'ft', 'in', 'box', 'pack', 'case', 'pallet', 'other'], {
-    message: 'Inventory unit must be one of: piece, kg, g, lb, oz, l, ml, m, cm, ft, in, box, pack, case, pallet, other',
-  })
+  @IsEnum(
+    [
+      'piece',
+      'kg',
+      'g',
+      'lb',
+      'oz',
+      'l',
+      'ml',
+      'm',
+      'cm',
+      'ft',
+      'in',
+      'box',
+      'pack',
+      'case',
+      'pallet',
+      'other',
+    ],
+    {
+      message:
+        'Inventory unit must be one of: piece, kg, g, lb, oz, l, ml, m, cm, ft, in, box, pack, case, pallet, other',
+    },
+  )
   defaultInventoryUnit?: string;
 
   @IsOptional()
@@ -436,7 +653,9 @@ export class UpdateSettingsDto {
   @IsOptional()
   smtpHost?: string;
 
-  @ValidateIf((o) => o.smtpHost !== undefined && o.smtpHost !== null && o.smtpHost !== '')
+  @ValidateIf(
+    (o) => o.smtpHost !== undefined && o.smtpHost !== null && o.smtpHost !== '',
+  )
   @IsInt({ message: 'SMTP port is required when SMTP host is provided' })
   @Min(1, { message: 'SMTP port must be between 1 and 65535' })
   @Max(65535, { message: 'SMTP port must be between 1 and 65535' })
@@ -447,7 +666,12 @@ export class UpdateSettingsDto {
   @IsBoolean()
   smtpSecure?: boolean;
 
-  @ValidateIf((o) => o.smtpPassword !== undefined && o.smtpPassword !== null && o.smtpPassword !== '')
+  @ValidateIf(
+    (o) =>
+      o.smtpPassword !== undefined &&
+      o.smtpPassword !== null &&
+      o.smtpPassword !== '',
+  )
   @IsString({ message: 'SMTP user is required when SMTP password is provided' })
   @Length(1, 255, { message: 'SMTP user must be between 1 and 255 characters' })
   @IsOptional()
@@ -455,7 +679,9 @@ export class UpdateSettingsDto {
 
   @IsOptional()
   @IsString()
-  @Length(1, 500, { message: 'SMTP password must be between 1 and 500 characters' })
+  @Length(1, 500, {
+    message: 'SMTP password must be between 1 and 500 characters',
+  })
   smtpPassword?: string;
 
   @IsOptional()
@@ -465,8 +691,15 @@ export class UpdateSettingsDto {
 
   @ValidateIf((o) => {
     // Required if SMTP is configured
-    const hasSmtpConfig = (o.smtpHost && o.smtpHost !== '') || (o.smtpPort !== undefined && o.smtpPort !== null);
-    return hasSmtpConfig || (o.emailFromAddress !== '' && o.emailFromAddress !== null && o.emailFromAddress !== undefined);
+    const hasSmtpConfig =
+      (o.smtpHost && o.smtpHost !== '') ||
+      (o.smtpPort !== undefined && o.smtpPort !== null);
+    return (
+      hasSmtpConfig ||
+      (o.emailFromAddress !== '' &&
+        o.emailFromAddress !== null &&
+        o.emailFromAddress !== undefined)
+    );
   })
   @IsEmail({}, { message: 'Email must be a valid email address' })
   @Length(0, 255, { message: 'Email address must not exceed 255 characters' })
@@ -504,7 +737,9 @@ export class UpdateSettingsDto {
 
   // UI/Display Settings
   @IsOptional()
-  @IsEnum(['light', 'dark'], { message: 'Theme must be either "light" or "dark"' })
+  @IsEnum(['light', 'dark'], {
+    message: 'Theme must be either "light" or "dark"',
+  })
   theme?: string;
 
   @IsOptional()
@@ -515,18 +750,29 @@ export class UpdateSettingsDto {
 
   @IsOptional()
   @IsString()
-  @IsValidLanguageCode({ message: 'Language must be a valid ISO 639-1 language code' })
+  @IsValidLanguageCode({
+    message: 'Language must be a valid ISO 639-1 language code',
+  })
   language?: string;
 
   @IsOptional()
   @IsString()
-  @Length(4, 7, { message: 'Primary color must be a valid hex color (4-7 characters)' })
-  @Matches(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, { message: 'Primary color must be a valid hex color (e.g., #FF5733 or #F53)' })
+  @Length(4, 7, {
+    message: 'Primary color must be a valid hex color (4-7 characters)',
+  })
+  @Matches(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, {
+    message: 'Primary color must be a valid hex color (e.g., #FF5733 or #F53)',
+  })
   primaryColor?: string;
 
   @IsOptional()
   @IsString()
-  @Length(4, 7, { message: 'Secondary color must be a valid hex color (4-7 characters)' })
-  @Matches(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, { message: 'Secondary color must be a valid hex color (e.g., #FF5733 or #F53)' })
+  @Length(4, 7, {
+    message: 'Secondary color must be a valid hex color (4-7 characters)',
+  })
+  @Matches(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, {
+    message:
+      'Secondary color must be a valid hex color (e.g., #FF5733 or #F53)',
+  })
   secondaryColor?: string;
 }

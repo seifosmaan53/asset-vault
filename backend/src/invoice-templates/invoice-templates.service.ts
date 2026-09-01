@@ -1,7 +1,15 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
-import { InvoiceTemplate, TemplateData } from './entities/invoice-template.entity';
+import {
+  InvoiceTemplate,
+  TemplateData,
+} from './entities/invoice-template.entity';
 import { CreateInvoiceTemplateDto, UpdateInvoiceTemplateDto } from './dto';
 
 @Injectable()
@@ -48,7 +56,10 @@ export class InvoiceTemplatesService {
       .getOne();
   }
 
-  async create(userId: string, data: CreateInvoiceTemplateDto): Promise<InvoiceTemplate> {
+  async create(
+    userId: string,
+    data: CreateInvoiceTemplateDto,
+  ): Promise<InvoiceTemplate> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -75,19 +86,28 @@ export class InvoiceTemplatesService {
 
       const saved = await queryRunner.manager.save(template);
       await queryRunner.commitTransaction();
-      
-      this.logger.log(`Created invoice template ${saved.id} for user ${userId}`);
+
+      this.logger.log(
+        `Created invoice template ${saved.id} for user ${userId}`,
+      );
       return saved;
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      this.logger.error(`Failed to create invoice template for user ${userId}`, error);
+      this.logger.error(
+        `Failed to create invoice template for user ${userId}`,
+        error,
+      );
       throw error;
     } finally {
       await queryRunner.release();
     }
   }
 
-  async update(id: string, userId: string, data: UpdateInvoiceTemplateDto): Promise<InvoiceTemplate> {
+  async update(
+    id: string,
+    userId: string,
+    data: UpdateInvoiceTemplateDto,
+  ): Promise<InvoiceTemplate> {
     const template = await this.findOne(id, userId);
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -109,12 +129,15 @@ export class InvoiceTemplatesService {
       Object.assign(template, data);
       const updated = await queryRunner.manager.save(template);
       await queryRunner.commitTransaction();
-      
+
       this.logger.log(`Updated invoice template ${id} for user ${userId}`);
       return updated;
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      this.logger.error(`Failed to update invoice template ${id} for user ${userId}`, error);
+      this.logger.error(
+        `Failed to update invoice template ${id} for user ${userId}`,
+        error,
+      );
       throw error;
     } finally {
       await queryRunner.release();
@@ -123,11 +146,11 @@ export class InvoiceTemplatesService {
 
   async remove(id: string, userId: string): Promise<void> {
     const template = await this.findOne(id, userId);
-    
+
     // Soft delete
     template.deletedAt = new Date();
     await this.templateRepository.save(template);
-    
+
     this.logger.log(`Deleted invoice template ${id} for user ${userId}`);
   }
 
@@ -138,7 +161,7 @@ export class InvoiceTemplatesService {
     // This would generate HTML for the invoice using the template
     // For now, return a basic structure
     // In a full implementation, this would use a templating engine like Handlebars or Mustache
-    
+
     const data = template.templateData;
     let html = '';
 
@@ -155,7 +178,7 @@ export class InvoiceTemplatesService {
     }
 
     // Invoice content would be rendered here based on template sections
-    
+
     // Footer
     if (data.footer) {
       html += '<div class="invoice-footer">';

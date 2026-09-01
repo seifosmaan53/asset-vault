@@ -6,7 +6,7 @@ import { ErrorCode, getErrorCode, getErrorMessage } from './error-codes.util';
 /**
  * Error Formatter Utility
  * Fixes Issue #100: Missing Consistent Error Response Formatting
- * 
+ *
  * Provides consistent error response formatting across the application
  */
 export class ErrorFormatter {
@@ -34,19 +34,23 @@ export class ErrorFormatter {
     if (error instanceof HttpException) {
       status = error.getStatus();
       const response = error.getResponse();
-      
+
       if (typeof response === 'string') {
         message = response;
       } else if (typeof response === 'object' && response !== null) {
-        const responseObj = response as { message?: string | string[]; errors?: Record<string, string[]> };
-        message = Array.isArray(responseObj.message) 
-          ? responseObj.message.join(', ') 
-          : (responseObj.message || message);
+        const responseObj = response as {
+          message?: string | string[];
+          errors?: Record<string, string[]>;
+        };
+        message = Array.isArray(responseObj.message)
+          ? responseObj.message.join(', ')
+          : responseObj.message || message;
         errors = responseObj.errors;
       }
     } else if (error instanceof Error) {
       message = error.message;
-      details = process.env.NODE_ENV === 'development' ? error.stack : undefined;
+      details =
+        process.env.NODE_ENV === 'development' ? error.stack : undefined;
     }
 
     const errorCode = getErrorCode(error instanceof Error ? error : message);
@@ -66,11 +70,14 @@ export class ErrorFormatter {
    * Format validation errors
    */
   static formatValidationErrors(
-    validationErrors: Array<{ property: string; constraints?: Record<string, string> }>,
+    validationErrors: Array<{
+      property: string;
+      constraints?: Record<string, string>;
+    }>,
   ): Record<string, string[]> {
     const errors: Record<string, string[]> = {};
 
-    validationErrors.forEach(error => {
+    validationErrors.forEach((error) => {
       if (error.constraints) {
         errors[error.property] = Object.values(error.constraints);
       }
@@ -88,7 +95,7 @@ export class ErrorFormatter {
     details?: any;
   } {
     const errorMessage = error?.message || 'Database error';
-    
+
     // Check for specific database error types
     if (errorMessage.includes('deadlock')) {
       return {
@@ -96,27 +103,31 @@ export class ErrorFormatter {
         errorCode: ErrorCode.DB_DEADLOCK,
       };
     }
-    
+
     if (errorMessage.includes('timeout')) {
       return {
         message: 'Database query timed out. Please try again.',
         errorCode: ErrorCode.DB_TIMEOUT,
       };
     }
-    
-    if (errorMessage.includes('constraint') || errorMessage.includes('unique')) {
+
+    if (
+      errorMessage.includes('constraint') ||
+      errorMessage.includes('unique')
+    ) {
       return {
         message: 'Database constraint violation',
         errorCode: ErrorCode.DB_CONSTRAINT_VIOLATION,
-        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+        details:
+          process.env.NODE_ENV === 'development' ? errorMessage : undefined,
       };
     }
 
     return {
       message: 'Database error occurred',
       errorCode: ErrorCode.DB_QUERY_ERROR,
-      details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      details:
+        process.env.NODE_ENV === 'development' ? errorMessage : undefined,
     };
   }
 }
-

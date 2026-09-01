@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class EnhanceStoreFields1740000000000 implements MigrationInterface {
   name = 'EnhanceStoreFields1740000000000';
@@ -91,4 +91,3 @@ export class EnhanceStoreFields1740000000000 implements MigrationInterface {
     `);
   }
 }
-

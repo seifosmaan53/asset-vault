@@ -2,7 +2,7 @@
 // Migration to add missing indexes for performance optimization
 // Fixes issues #171-185: Database Performance & Queries
 
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddMissingIndexes1758000001000 implements MigrationInterface {
   name = 'AddMissingIndexes1758000001000';
@@ -96,17 +96,29 @@ export class AddMissingIndexes1758000001000 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Drop indexes in reverse order
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_invoice_items_inventory_item_id;`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_invoice_items_invoice_id;`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS idx_invoice_items_inventory_item_id;`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS idx_invoice_items_invoice_id;`,
+    );
     await queryRunner.query(`DROP INDEX IF EXISTS idx_invoices_store_id;`);
     await queryRunner.query(`DROP INDEX IF EXISTS idx_invoices_client_id;`);
     // Note: idx_inventory_items_deleted_at was never created (inventory_items has no deletedAt)
     await queryRunner.query(`DROP INDEX IF EXISTS idx_clients_deleted_at;`);
     await queryRunner.query(`DROP INDEX IF EXISTS idx_invoices_deleted_at;`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_store_item_settings_store_item;`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_stock_movements_created_at;`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_inventory_items_user_id;`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_inventory_items_sku_user;`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS idx_store_item_settings_store_item;`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS idx_stock_movements_created_at;`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS idx_inventory_items_user_id;`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS idx_inventory_items_sku_user;`,
+    );
     await queryRunner.query(`DROP INDEX IF EXISTS idx_clients_name_trgm;`);
     await queryRunner.query(`DROP INDEX IF EXISTS idx_invoices_number_trgm;`);
     await queryRunner.query(`DROP INDEX IF EXISTS idx_invoices_due_date;`);
@@ -116,4 +128,3 @@ export class AddMissingIndexes1758000001000 implements MigrationInterface {
     await queryRunner.query(`DROP INDEX IF EXISTS idx_invoices_status;`);
   }
 }
-

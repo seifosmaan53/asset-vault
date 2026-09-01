@@ -23,7 +23,18 @@ async function runSeed() {
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.DB_DATABASE || 'invoiceme',
-    entities: [User, Client, InventoryItem, Invoice, InvoiceItem, StockMovement, Store, StoreItemSettings, Organization, UserOrganization], // RecurringInvoice removed
+    entities: [
+      User,
+      Client,
+      InventoryItem,
+      Invoice,
+      InvoiceItem,
+      StockMovement,
+      Store,
+      StoreItemSettings,
+      Organization,
+      UserOrganization,
+    ], // RecurringInvoice removed
     synchronize: false,
     logging: false,
   });
@@ -42,4 +53,3 @@ async function runSeed() {
 }
 
 runSeed();
-

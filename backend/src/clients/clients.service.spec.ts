@@ -1,4 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { NotFoundException } from '@nestjs/common';
@@ -32,10 +33,31 @@ describe('ClientsService', () => {
   const makeQueryBuilder = () => {
     const qb: Record<string, jest.Mock> = {};
     for (const m of [
-      'select', 'addSelect', 'from', 'leftJoin', 'leftJoinAndSelect', 'innerJoin',
-      'where', 'andWhere', 'orWhere', 'orderBy', 'addOrderBy', 'groupBy', 'having',
-      'skip', 'take', 'limit', 'offset', 'withDeleted', 'update', 'set', 'delete',
-      'softDelete', 'setLock', 'relation', 'of',
+      'select',
+      'addSelect',
+      'from',
+      'leftJoin',
+      'leftJoinAndSelect',
+      'innerJoin',
+      'where',
+      'andWhere',
+      'orWhere',
+      'orderBy',
+      'addOrderBy',
+      'groupBy',
+      'having',
+      'skip',
+      'take',
+      'limit',
+      'offset',
+      'withDeleted',
+      'update',
+      'set',
+      'delete',
+      'softDelete',
+      'setLock',
+      'relation',
+      'of',
     ]) {
       qb[m] = jest.fn(() => qb);
     }
@@ -93,7 +115,10 @@ describe('ClientsService', () => {
         ClientsService,
         { provide: getRepositoryToken(Client), useValue: repo },
         { provide: DataSource, useValue: dataSource },
-        { provide: ImportService, useValue: { parseCsv: jest.fn(), importRows: jest.fn() } },
+        {
+          provide: ImportService,
+          useValue: { parseCsv: jest.fn(), importRows: jest.fn() },
+        },
       ],
     }).compile();
 
@@ -117,26 +142,34 @@ describe('ClientsService', () => {
       // The lookup is by id alone, so ownership is enforced here and nowhere else.
       qb.getOne.mockResolvedValue(makeClient({ userId: 'someone-else' }));
 
-      await expect(service.findOne('client-1', 'user-1')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('client-1', 'user-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('does not reveal that a client exists when it belongs to someone else', async () => {
       // "Not found" rather than "forbidden": a 403 would confirm the id is real.
       qb.getOne.mockResolvedValue(makeClient({ userId: 'someone-else' }));
 
-      await expect(service.findOne('client-1', 'user-1')).rejects.toThrow(/not found/i);
+      await expect(service.findOne('client-1', 'user-1')).rejects.toThrow(
+        /not found/i,
+      );
     });
 
     it('refuses a client that does not exist', async () => {
       qb.getOne.mockResolvedValue(null);
 
-      await expect(service.findOne('missing', 'user-1')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('missing', 'user-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('refuses a soft-deleted client even though the row is still there', async () => {
       qb.getOne.mockResolvedValue(makeClient({ deletedAt: new Date() }));
 
-      await expect(service.findOne('client-1', 'user-1')).rejects.toThrow(/deleted/i);
+      await expect(service.findOne('client-1', 'user-1')).rejects.toThrow(
+        /deleted/i,
+      );
     });
 
     it('includes soft-deleted rows in the lookup so it can tell them apart from missing ones', async () => {
@@ -150,14 +183,19 @@ describe('ClientsService', () => {
 
   describe('create', () => {
     it('sanitises the name before persisting', async () => {
-      await service.create('user-1', { name: '  <script>alert(1)</script>Acme  ' } as Partial<Client>);
+      await service.create('user-1', {
+        name: '  <script>alert(1)</script>Acme  ',
+      } as Partial<Client>);
 
       const [saved] = repo.save.mock.calls[0];
       expect(saved.name).not.toContain('<script>');
     });
 
     it('normalises a null email to undefined so the column is left unset', async () => {
-      await service.create('user-1', { name: 'Acme', email: null } as unknown as Partial<Client>);
+      await service.create('user-1', {
+        name: 'Acme',
+        email: null,
+      } as unknown as Partial<Client>);
 
       const [saved] = repo.save.mock.calls[0];
       expect(saved.email).toBeUndefined();
@@ -173,12 +211,16 @@ describe('ClientsService', () => {
 
   describe('remove', () => {
     it('rejects an empty id without opening a transaction', async () => {
-      await expect(service.remove('', 'user-1')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('', 'user-1')).rejects.toThrow(
+        NotFoundException,
+      );
       expect(dataSource.createQueryRunner).not.toHaveBeenCalled();
     });
 
     it('rejects a whitespace-only id', async () => {
-      await expect(service.remove('   ', 'user-1')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('   ', 'user-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

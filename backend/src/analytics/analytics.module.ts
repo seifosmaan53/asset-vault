@@ -30,4 +30,3 @@ import { OrganizationsModule } from '../organizations/organizations.module';
   exports: [AnalyticsService, StoreReportPdfService],
 })
 export class AnalyticsModule {}
-

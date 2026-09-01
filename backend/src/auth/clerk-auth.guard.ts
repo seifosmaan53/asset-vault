@@ -1,6 +1,12 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  UnauthorizedException,
+  Logger,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { createClerkClient } from '@clerk/backend';
@@ -24,7 +30,9 @@ export class ClerkAuthGuard implements CanActivate {
     // Initialize Clerk with secret key
     const secretKey = this.configService.get<string>('CLERK_SECRET_KEY');
     if (!secretKey) {
-      throw new Error('CLERK_SECRET_KEY is not defined in environment variables');
+      throw new Error(
+        'CLERK_SECRET_KEY is not defined in environment variables',
+      );
     }
     this.clerkClient = createClerkClient({ secretKey });
   }
@@ -34,7 +42,7 @@ export class ClerkAuthGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    
+
     if (isPublic) {
       return true;
     }
@@ -43,7 +51,9 @@ export class ClerkAuthGuard implements CanActivate {
     const authHeader = request.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Missing or invalid authorization header');
+      throw new UnauthorizedException(
+        'Missing or invalid authorization header',
+      );
     }
 
     const token = authHeader.substring(7);
@@ -52,7 +62,7 @@ export class ClerkAuthGuard implements CanActivate {
       // FIX Issue #169: Validate token on every request - no caching
       // Decode token to extract claims (safe operation, doesn't verify signature)
       const decoded = jwt.decode(token, { complete: false }) as any;
-      
+
       if (!decoded || !decoded.sub) {
         throw new UnauthorizedException('Invalid token format');
       }
@@ -62,7 +72,9 @@ export class ClerkAuthGuard implements CanActivate {
         const expirationTime = decoded.exp * 1000; // Convert to milliseconds
         const now = Date.now();
         if (now >= expirationTime) {
-          this.logger.warn(`Token expired for user ${decoded.sub}. Expired at: ${new Date(expirationTime).toISOString()}`);
+          this.logger.warn(
+            `Token expired for user ${decoded.sub}. Expired at: ${new Date(expirationTime).toISOString()}`,
+          );
           throw new UnauthorizedException('Token has expired');
         }
       }
@@ -76,7 +88,7 @@ export class ClerkAuthGuard implements CanActivate {
       // Note: Clerk's backend SDK uses the secret key for API authentication
       // The JWT token itself is verified by calling Clerk's API, which validates the token
       const clerkUser = await this.clerkClient.users.getUser(decoded.sub);
-      
+
       if (!clerkUser) {
         this.logger.warn(`User ${decoded.sub} not found in Clerk`);
         throw new UnauthorizedException('Invalid token - user not found');
@@ -90,23 +102,30 @@ export class ClerkAuthGuard implements CanActivate {
 
       // Find or create user in our database
       let user = await this.usersService.findByClerkId(clerkUser.id);
-      
+
       if (!user) {
         // User doesn't exist in our DB yet - check by email first
         // This can happen if webhook hasn't fired yet or user was created directly in Clerk
-        const primaryEmail = clerkUser.emailAddresses.find(e => e.id === clerkUser.primaryEmailAddressId);
+        const primaryEmail = clerkUser.emailAddresses.find(
+          (e) => e.id === clerkUser.primaryEmailAddressId,
+        );
         const email = primaryEmail?.emailAddress || '';
-        
+
         if (email) {
           // Check if user with this email already exists
           const existingUser = await this.usersService.findByEmail(email);
           if (existingUser) {
             // Link existing user to Clerk if not already linked
             if (!existingUser.clerkUserId) {
-              user = await this.usersService.linkToClerk(existingUser.id, clerkUser.id);
+              user = await this.usersService.linkToClerk(
+                existingUser.id,
+                clerkUser.id,
+              );
             } else if (existingUser.clerkUserId !== clerkUser.id) {
               // User exists with different Clerk ID - this is an error
-              throw new UnauthorizedException('User email already associated with different account');
+              throw new UnauthorizedException(
+                'User email already associated with different account',
+              );
             } else {
               // User already linked, use it
               user = existingUser;
@@ -116,7 +135,10 @@ export class ClerkAuthGuard implements CanActivate {
             user = await this.usersService.createFromClerk({
               clerkUserId: clerkUser.id,
               email,
-              name: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || clerkUser.username || 'User',
+              name:
+                `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() ||
+                clerkUser.username ||
+                'User',
             });
           }
         } else {
@@ -126,11 +148,20 @@ export class ClerkAuthGuard implements CanActivate {
 
       // Ensure user has an organization (create if missing)
       // This handles cases where user was created before webhook fired or webhook failed
-      const userOrganizations = await this.organizationsService.findAll(user.id);
+      const userOrganizations = await this.organizationsService.findAll(
+        user.id,
+      );
       if (!userOrganizations || userOrganizations.length === 0) {
-        this.logger.log(`No organization found for user ${user.id}, creating one...`);
-        const orgName = user.companyName || user.name || user.email.split('@')[0];
-        await this.organizationsService.create(orgName, user.id, user.companyName);
+        this.logger.log(
+          `No organization found for user ${user.id}, creating one...`,
+        );
+        const orgName =
+          user.companyName || user.name || user.email.split('@')[0];
+        await this.organizationsService.create(
+          orgName,
+          user.id,
+          user.companyName,
+        );
         this.logger.log(`Organization created for user ${user.id}`);
       }
 
@@ -140,10 +171,12 @@ export class ClerkAuthGuard implements CanActivate {
         email: user.email,
         role: user.role,
       };
-      
+
       // DIAGNOSTIC: Log the user being attached to request
-      this.logger.log(`[DIAGNOSTIC] ClerkAuthGuard - Attaching user to request: userId=${user.id}, email=${user.email}, clerkUserId=${clerkUser.id}`);
-      
+      this.logger.log(
+        `[DIAGNOSTIC] ClerkAuthGuard - Attaching user to request: userId=${user.id}, email=${user.email}, clerkUserId=${clerkUser.id}`,
+      );
+
       request.user = requestUser;
       request.clerkUserId = clerkUser.id;
 
@@ -153,4 +186,3 @@ export class ClerkAuthGuard implements CanActivate {
     }
   }
 }
-

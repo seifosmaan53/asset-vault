@@ -3,11 +3,14 @@
 /**
  * Query Memoization Utility
  * Fixes Issue #80: Missing Database Query Result Memoization
- * 
+ *
  * Provides memoization for expensive queries
  */
 export class QueryMemoization {
-  private static cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
+  private static cache = new Map<
+    string,
+    { data: any; timestamp: number; ttl: number }
+  >();
 
   /**
    * Memoize a query result
@@ -21,7 +24,7 @@ export class QueryMemoization {
     const now = Date.now();
 
     // Return cached result if still valid
-    if (cached && (now - cached.timestamp) < cached.ttl) {
+    if (cached && now - cached.timestamp < cached.ttl) {
       return Promise.resolve(cached.data as T);
     }
 
@@ -56,7 +59,7 @@ export class QueryMemoization {
   static clearExpired(): void {
     const now = Date.now();
     for (const [key, value] of this.cache.entries()) {
-      if ((now - value.timestamp) >= value.ttl) {
+      if (now - value.timestamp >= value.ttl) {
         this.cache.delete(key);
       }
     }
@@ -75,4 +78,3 @@ export class QueryMemoization {
     };
   }
 }
-

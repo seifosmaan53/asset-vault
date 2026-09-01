@@ -26,13 +26,18 @@ export class TwoFactorService {
   /**
    * Generate a QR code data URL for the TOTP secret
    */
-  async generateQRCode(secret: string, email: string, serviceName: string = 'Asset Vault'): Promise<string> {
+  async generateQRCode(
+    secret: string,
+    email: string,
+    serviceName: string = 'Asset Vault',
+  ): Promise<string> {
     try {
       const otpAuthUrl = authenticator.keyuri(email, serviceName, secret);
       const qrCodeDataUrl = await QRCode.toDataURL(otpAuthUrl);
       return qrCodeDataUrl;
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to generate QR code: ${errorMessage}`, error);
       throw new BadRequestException('Failed to generate QR code');
     }
@@ -50,7 +55,8 @@ export class TwoFactorService {
       const cleanToken = token.replace(/\s/g, '');
       return authenticator.verify({ token: cleanToken, secret });
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to verify TOTP token: ${errorMessage}`, error);
       return false;
     }
@@ -63,10 +69,13 @@ export class TwoFactorService {
     try {
       return authenticator.generate(secret);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to generate TOTP token: ${errorMessage}`, error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `Failed to generate TOTP token: ${errorMessage}`,
+        error,
+      );
       throw new BadRequestException('Failed to generate TOTP token');
     }
   }
 }
-

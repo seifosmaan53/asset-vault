@@ -4,4 +4,3 @@ export enum OrganizationRole {
   MANAGER = 'manager',
   STAFF = 'staff',
 }
-

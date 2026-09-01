@@ -9,7 +9,10 @@ export class BulkDeleteInventoryDto {
   })
   @IsArray()
   @ArrayMinSize(1, { message: 'At least one inventory item ID is required' })
-  @IsUUID('4', { each: true, message: 'Each inventory item ID must be a valid UUID' })
+  @IsUUID('4', {
+    each: true,
+    message: 'Each inventory item ID must be a valid UUID',
+  })
   @IsNotEmpty({ message: 'Inventory item IDs array cannot be empty' })
   ids: string[];
 }

@@ -16,13 +16,18 @@ export class CurrencyService {
   private readonly baseUrl = 'https://api.exchangerate-api.com/v4';
 
   constructor(private configService: ConfigService) {
-    this.apiKey = this.configService.get<string>('EXCHANGE_RATE_API_KEY') || null;
+    this.apiKey =
+      this.configService.get<string>('EXCHANGE_RATE_API_KEY') || null;
   }
 
   /**
    * Get exchange rate between two currencies
    */
-  async getExchangeRate(from: string, to: string, date?: Date): Promise<number> {
+  async getExchangeRate(
+    from: string,
+    to: string,
+    date?: Date,
+  ): Promise<number> {
     if (from === to) return 1;
 
     try {
@@ -63,7 +68,10 @@ export class CurrencyService {
   /**
    * Get multiple exchange rates at once
    */
-  async getExchangeRates(baseCurrency: string, targetCurrencies: string[]): Promise<Record<string, number>> {
+  async getExchangeRates(
+    baseCurrency: string,
+    targetCurrencies: string[],
+  ): Promise<Record<string, number>> {
     const rates: Record<string, number> = {};
 
     for (const currency of targetCurrencies) {
@@ -82,9 +90,36 @@ export class CurrencyService {
    */
   getSupportedCurrencies(): string[] {
     return [
-      'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'INR', 'NZD',
-      'SGD', 'HKD', 'SEK', 'NOK', 'DKK', 'PLN', 'MXN', 'BRL', 'ZAR', 'KRW',
-      'TRY', 'RUB', 'AED', 'SAR', 'THB', 'MYR', 'IDR', 'PHP', 'VND', 'ILS',
+      'USD',
+      'EUR',
+      'GBP',
+      'JPY',
+      'AUD',
+      'CAD',
+      'CHF',
+      'CNY',
+      'INR',
+      'NZD',
+      'SGD',
+      'HKD',
+      'SEK',
+      'NOK',
+      'DKK',
+      'PLN',
+      'MXN',
+      'BRL',
+      'ZAR',
+      'KRW',
+      'TRY',
+      'RUB',
+      'AED',
+      'SAR',
+      'THB',
+      'MYR',
+      'IDR',
+      'PHP',
+      'VND',
+      'ILS',
     ];
   }
 }
