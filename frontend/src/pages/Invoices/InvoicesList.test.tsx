@@ -8,11 +8,14 @@ import { theme } from '../../theme';
 import { ToastProvider } from '../../contexts/ToastContext';
 
 // Mock hooks
+/* The page gained useUpdateInvoice; a factory mock must declare every export the module
+   under test imports, or Vitest throws before a single test runs. */
 vi.mock('../../hooks/useInvoices', () => ({
   useInvoices: vi.fn(),
   useInvoicesPaged: vi.fn(),
   useDeleteInvoice: vi.fn(),
   useCreateInvoice: vi.fn(),
+  useUpdateInvoice: vi.fn(() => ({ mutateAsync: vi.fn().mockResolvedValue({}) })),
 }));
 
 vi.mock('../../contexts/ToastContext', () => ({
@@ -24,6 +27,8 @@ vi.mock('../../contexts/ToastContext', () => ({
 
 // Import hooks at module level (not top-level await)
 import { useInvoicesPaged, useDeleteInvoice, useCreateInvoice } from '../../hooks/useInvoices';
+import { UndoProvider } from '../../contexts/UndoContext';
+import { SearchProvider } from '../../contexts/SearchContext';
 
 const TestWrapper = ({ children }: { children: React.ReactNode }) => {
   const queryClient = new QueryClient({
@@ -36,7 +41,14 @@ const TestWrapper = ({ children }: { children: React.ReactNode }) => {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
         <ToastProvider>
-          <BrowserRouter>{children}</BrowserRouter>
+          {/* The page gained useUndo (undoable delete), which throws outside its
+              provider. Wrapping with the real UndoProvider rather than stubbing the
+              hook keeps the tree the same shape as production. */}
+          <SearchProvider>
+              <UndoProvider>
+            <BrowserRouter>{children}</BrowserRouter>
+          </UndoProvider>
+            </SearchProvider>
         </ToastProvider>
       </ThemeProvider>
     </QueryClientProvider>
@@ -99,6 +111,10 @@ describe('InvoicesList', () => {
       },
       isLoading: false,
       isRefetching: false,
+      /* The component calls refetch() from an effect when filters change, so a mock
+         without it throws "refetch is not a function" before anything renders — which
+         is why every test in this file failed identically. */
+      refetch: vi.fn().mockResolvedValue({}),
     } as any);
     vi.mocked(useDeleteInvoice).mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue({}),
@@ -115,7 +131,9 @@ describe('InvoicesList', () => {
       </TestWrapper>,
     );
 
-    expect(screen.getByText(/invoices/i)).toBeInTheDocument();
+    // The page now also renders a "3 invoices" count line, so a bare text match is
+    // ambiguous. Target the heading itself — that is what this test means.
+    expect(screen.getByRole('heading', { name: /^invoices$/i })).toBeInTheDocument();
     expect(screen.getByText(/INV-2024-0001/i)).toBeInTheDocument();
   });
 
@@ -151,7 +169,9 @@ describe('InvoicesList', () => {
         </TestWrapper>,
       );
 
-      expect(screen.getByText(/store/i)).toBeInTheDocument();
+      /* The test is about the COLUMN HEADER, but /store/i also matches the store
+         names in the rows, so a bare text query is ambiguous. Ask for the header. */
+      expect(screen.getByRole('columnheader', { name: /store/i })).toBeInTheDocument();
     });
   });
 
@@ -162,12 +182,13 @@ describe('InvoicesList', () => {
       </TestWrapper>,
     );
 
-    expect(screen.getByText(/number/i)).toBeInTheDocument();
-    expect(screen.getByText(/client/i)).toBeInTheDocument();
-    expect(screen.getByText(/status/i)).toBeInTheDocument();
-    expect(screen.getByText(/total/i)).toBeInTheDocument();
-    expect(screen.getByText(/issue date/i)).toBeInTheDocument();
-    expect(screen.getByText(/due date/i)).toBeInTheDocument();
+    /* These are COLUMN HEADERS, but each word also appears in the rows beneath them
+       (client names, statuses, totals), so bare text queries became ambiguous the
+       moment the table had data in it. The columnheader role says what the test
+       actually means and stops matching the cells. */
+    for (const header of [/number/i, /client/i, /status/i, /total/i, /issue date/i, /due date/i]) {
+      expect(screen.getByRole('columnheader', { name: header })).toBeInTheDocument();
+    }
   });
 });
 

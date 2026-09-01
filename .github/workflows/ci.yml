@@ -66,19 +66,12 @@ jobs:
         # `prebuild` runs lint with --fix, which would mask failures in CI.
         run: npx nest build
 
-      # Reported, not gating — for now. 30 of 72 backend tests fail because the specs
-      # drifted from an API that moved on (mocks stubbing findOne() where the service
-      # now builds a QueryBuilder; assertions for methods that no longer exist). Those
-      # are being repaired suite by suite. Gating on them today would leave the badge
-      # permanently red, which is the state in which nobody reads it. The counts are
-      # printed on every run so the number has to go down, not sideways.
-      - name: Unit tests (30 known failures being worked down)
+      # Now GATING. These were reported-not-gating while 30 specs were being repaired
+      # from API drift; all 147 pass across 12 suites, so the pipeline enforces it and
+      # a regression fails the build instead of printing a number nobody reads.
+      - name: Unit tests
         working-directory: ./backend
-        run: |
-          set +e
-          npm test -- --ci --runInBand --passWithNoTests 2>&1 | tee jest.log
-          echo "----- summary -----"
-          grep -E '^(Tests|Test Suites):' jest.log || true
+        run: npm test -- --ci --runInBand --passWithNoTests
 
   frontend:
     name: Frontend (build + tests)
@@ -116,14 +109,10 @@ jobs:
           echo "type errors: $(grep -cE 'error TS' tsc.log || echo 0)"
           tail -30 tsc.log
 
-      # Same policy as the backend: reported, with the count visible.
-      - name: Tests (9 known failures being worked down)
+      # Now GATING, same as the backend: all 58 pass across 7 files.
+      - name: Tests
         working-directory: ./frontend
-        run: |
-          set +e
-          npx vitest run --passWithNoTests 2>&1 | tee vitest.log
-          echo "----- summary -----"
-          grep -E 'Tests +' vitest.log || true
+        run: npx vitest run --passWithNoTests
 
   audit:
     name: Dependency audit

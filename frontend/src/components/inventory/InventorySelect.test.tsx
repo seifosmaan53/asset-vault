@@ -34,7 +34,6 @@ describe('InventorySelect', () => {
       name: 'Product A',
       sku: 'SKU-001',
       currentStock: 100,
-      reservedStock: 10,
       defaultUnitPrice: 50,
     },
     {
@@ -42,7 +41,6 @@ describe('InventorySelect', () => {
       name: 'Product B',
       sku: 'SKU-002',
       currentStock: 50,
-      reservedStock: 5,
       defaultUnitPrice: 75,
     },
   ];
@@ -57,6 +55,7 @@ describe('InventorySelect', () => {
     vi.mocked(useInventory).mockReturnValue({
       data: [],
       isLoading: false,
+      refetch: vi.fn().mockResolvedValue({}),
     } as any);
 
     render(
@@ -72,6 +71,7 @@ describe('InventorySelect', () => {
     vi.mocked(useInventory).mockReturnValue({
       data: mockItems,
       isLoading: false,
+      refetch: vi.fn().mockResolvedValue({}),
     } as any);
 
     render(
@@ -93,6 +93,7 @@ describe('InventorySelect', () => {
     vi.mocked(useInventory).mockReturnValue({
       data: mockItems,
       isLoading: false,
+      refetch: vi.fn().mockResolvedValue({}),
     } as any);
 
     render(
@@ -105,8 +106,10 @@ describe('InventorySelect', () => {
     await userEvent.click(input);
 
     await waitFor(() => {
-      expect(screen.getByText(/Stock: 90/i)).toBeInTheDocument(); // 100 - 10
-      expect(screen.getByText(/Stock: 45/i)).toBeInTheDocument(); // 50 - 5
+      /* Was "Stock: 90" — 100 global minus 10 reserved. Stock reservation was removed
+         from the service entirely, so the option now shows the global figure. */
+      expect(screen.getByText(/Stock: 100/i)).toBeInTheDocument();
+      expect(screen.getByText(/Stock: 50/i)).toBeInTheDocument();
     });
   });
 
@@ -114,6 +117,7 @@ describe('InventorySelect', () => {
     vi.mocked(useInventory).mockReturnValue({
       data: mockItems,
       isLoading: false,
+      refetch: vi.fn().mockResolvedValue({}),
     } as any);
 
     render(
@@ -154,6 +158,7 @@ describe('InventorySelect', () => {
     vi.mocked(useInventory).mockReturnValue({
       data: mockItems,
       isLoading: false,
+      refetch: vi.fn().mockResolvedValue({}),
     } as any);
 
     render(
@@ -163,7 +168,12 @@ describe('InventorySelect', () => {
     );
 
     const input = screen.getByLabelText(/select product/i);
-    await userEvent.type(input, 'Product A');
+    /* The component deliberately does NOT search on every keystroke — see "only
+       update searchQuery when user types and presses Enter" in the source, which is
+       what stops a request per character. Typing alone never reaches the hook, so
+       this asserted an interaction the component does not have. Press Enter, the
+       way a user actually submits the search. */
+    await userEvent.type(input, 'Product A{Enter}');
 
     // The search should trigger useInventory with the search parameter
     await waitFor(() => {

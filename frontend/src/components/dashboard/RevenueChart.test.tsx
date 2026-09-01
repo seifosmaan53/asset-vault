@@ -56,9 +56,21 @@ describe('RevenueChart', () => {
     expect(screen.getByText(/line/i)).toBeInTheDocument();
   });
 
-  it('should display area chart when toggled', () => {
+  it('offers the area/line toggle once there is revenue to chart', () => {
+    /* This passed `data: []` and then looked for the Area toggle. With no revenue the
+       component deliberately renders an empty state instead of an empty chart, so the
+       toggle genuinely is not there — the test was asserting against its own setup.
+       Give it revenue, which is the situation the toggle exists for. */
     vi.mocked(useInvoices).mockReturnValue({
-      data: [],
+      data: [
+        {
+          id: '1',
+          status: 'paid',
+          total: 1000,
+          paidAt: new Date().toISOString(),
+          issueDate: new Date().toISOString(),
+        },
+      ],
       isLoading: false,
     } as any);
 
@@ -68,15 +80,14 @@ describe('RevenueChart', () => {
       </TestWrapper>,
     );
 
-    const areaButton = screen.getByText(/area/i);
-    expect(areaButton).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /area/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /line/i })).toBeInTheDocument();
   });
 
-  it('should handle empty invoice data', () => {
-    vi.mocked(useInvoices).mockReturnValue({
-      data: [],
-      isLoading: false,
-    } as any);
+  it('shows an empty state rather than an empty chart when there is no revenue', () => {
+    /* This expected the Line toggle with no data. Rendering an axis-only chart for
+       nothing is worse than saying so plainly, and the component now says so. */
+    vi.mocked(useInvoices).mockReturnValue({ data: [], isLoading: false } as any);
 
     render(
       <TestWrapper>
@@ -84,8 +95,8 @@ describe('RevenueChart', () => {
       </TestWrapper>,
     );
 
-    // Chart should still render even with no data
-    expect(screen.getByText(/line/i)).toBeInTheDocument();
+    expect(screen.getByText(/no revenue data available/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /area/i })).not.toBeInTheDocument();
   });
 });
 

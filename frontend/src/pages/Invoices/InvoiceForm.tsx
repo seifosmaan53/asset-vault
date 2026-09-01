@@ -843,7 +843,7 @@ const InvoiceForm = () => {
                       },
                     }}
                   >
-                    <InputLabel>Client *</InputLabel>
+                    <InputLabel id="client-label">Client *</InputLabel>
                     <Controller
                       name="clientId"
                       control={control}
@@ -855,6 +855,7 @@ const InvoiceForm = () => {
                           : '';
                         return (
                           <Select
+                            labelId="client-label"
                             value={validValue}
                             label="Client *"
                             onChange={field.onChange}
@@ -926,7 +927,7 @@ const InvoiceForm = () => {
                       },
                     }}
                   >
-                    <InputLabel>Store</InputLabel>
+                    <InputLabel id="store-label">Store</InputLabel>
                     <Controller
                       name="storeId"
                       control={control}
@@ -937,6 +938,7 @@ const InvoiceForm = () => {
                           : '';
                         return (
                           <Select
+                            labelId="store-label"
                             value={validValue}
                             label="Store"
                             onChange={(e) => {
@@ -984,13 +986,14 @@ const InvoiceForm = () => {
                 {/* Type field removed - all invoices are now just invoices (no estimates) */}
                 <Grid item xs={12} md={3}>
                   <FormControl fullWidth variant="outlined" size="medium">
-                    <InputLabel>Currency *</InputLabel>
+                    <InputLabel id="currency-label">Currency *</InputLabel>
                     <Controller
                       name="currency"
                       control={control}
                       rules={{ required: true }}
                       render={({ field }) => (
                     <Select
+                      labelId="currency-label"
                           value={field.value || defaultCurrency}
                       label="Currency *"
                           onChange={field.onChange}
@@ -1018,8 +1021,9 @@ const InvoiceForm = () => {
                 </Grid>
                 <Grid item xs={12} md={3}>
                   <FormControl fullWidth variant="outlined" size="medium">
-                    <InputLabel>Payment Terms</InputLabel>
+                    <InputLabel id="payment-terms-label">Payment Terms</InputLabel>
                     <Select
+                      labelId="payment-terms-label"
                       value={paymentTermsDays}
                       label="Payment Terms"
                       renderValue={(value) => {
@@ -1727,8 +1731,9 @@ const InvoiceForm = () => {
               }}
             />
             <FormControl size="small" sx={{ minWidth: 140 }}>
-              <InputLabel>Sort by</InputLabel>
+              <InputLabel id="sort-by-label">Sort by</InputLabel>
               <Select
+                labelId="sort-by-label"
                 value={copyInvoiceSortBy}
                 label="Sort by"
                 onChange={(e) => {
