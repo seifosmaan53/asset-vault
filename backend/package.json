@@ -4,7 +4,7 @@
   "description": "Asset Vault API \u2014 NestJS-powered backend for invoice & inventory management",
   "author": "Seif Osman <seifamr5577@gmail.com>",
   "private": true,
-  "license": "PROPRIETARY",
+  "license": "MIT",
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
