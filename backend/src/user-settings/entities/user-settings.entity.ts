@@ -191,6 +191,78 @@ export class UserSettings {
   @Column({ nullable: true })
   secondaryColor: string;
 
+  /* The columns below were added by the AddEnhancedSettingsFields migration but were
+     never declared here. TypeORM only reads and writes the columns an entity declares,
+     so for every one of them the API returned nothing and silently discarded whatever
+     the Settings page submitted — the fields existed in the database and in the UI, with
+     no binding in between. Types mirror the migration exactly. */
+
+  // Invoice presentation
+  @Column({ type: 'text', nullable: true })
+  invoiceHeaderText: string;
+
+  @Column({ default: false })
+  showInvoiceWatermark: boolean;
+
+  @Column({ nullable: true })
+  invoiceWatermarkText: string;
+
+  // Tax
+  @Column({ type: 'text', nullable: true })
+  additionalTaxRates: string;
+
+  // Client defaults
+  @Column({ nullable: true })
+  defaultClientPaymentMethod: string;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  defaultClientCreditLimit: number;
+
+  @Column({ nullable: true })
+  defaultClientCurrency: string;
+
+  // Inventory
+  @Column({ nullable: true })
+  inventoryUnitConversion: string;
+
+  // Notifications
+  @Column({ nullable: true })
+  notificationFrequency: string;
+
+  @Column({ nullable: true })
+  quietHoursStart: string;
+
+  @Column({ nullable: true })
+  quietHoursEnd: string;
+
+  // UI/Display
+  @Column({ default: 'medium' })
+  fontSize: string;
+
+  @Column({ default: false })
+  compactMode: boolean;
+
+  // Backup and export
+  @Column({ nullable: true })
+  backupSchedule: string;
+
+  @Column({ nullable: true })
+  backupTime: string;
+
+  @Column({ type: 'text', nullable: true })
+  exportFormats: string;
+
+  // Security
+  @Column({ default: false })
+  enableTwoFactorAuth: boolean;
+
+  /* `select: false` so the secret is not loaded — and therefore cannot be serialised
+     into a settings response — unless a query asks for it explicitly. smtpPassword above
+     predates this and is not protected; that is worth fixing separately rather than
+     copying here. */
+  @Column({ nullable: true, select: false })
+  twoFactorSecret: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

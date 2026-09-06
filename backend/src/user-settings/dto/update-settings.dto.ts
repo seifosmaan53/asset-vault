@@ -775,4 +775,104 @@ export class UpdateSettingsDto {
       'Secondary color must be a valid hex color (e.g., #FF5733 or #F53)',
   })
   secondaryColor?: string;
+
+  /* The fields below exist as database columns and are edited by the Settings page, but
+     were absent here. The global pipe runs with `forbidNonWhitelisted: true`, so this was
+     not a silent drop — saving any of them made the whole request fail validation, taking
+     the rest of the form down with it.
+
+     `twoFactorSecret` is deliberately NOT accepted. It is a server-generated credential
+     that belongs to an enrolment flow, not something a settings form may set. */
+
+  @IsOptional()
+  @IsString()
+  @Length(0, 2000)
+  invoiceHeaderText?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  showInvoiceWatermark?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @Length(0, 100)
+  invoiceWatermarkText?: string;
+
+  @IsOptional()
+  @IsString()
+  additionalTaxRates?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(0, 50)
+  defaultClientPaymentMethod?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  defaultClientCreditLimit?: number;
+
+  @IsOptional()
+  @IsString()
+  @Length(3, 3, { message: 'Currency must be a 3-letter ISO code' })
+  defaultClientCurrency?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(0, 100)
+  inventoryUnitConversion?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['immediate', 'hourly', 'daily', 'weekly'], {
+    message: 'Notification frequency must be immediate, hourly, daily or weekly',
+  })
+  notificationFrequency?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, {
+    message: 'Quiet hours start must be a 24-hour time such as 22:00',
+  })
+  quietHoursStart?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, {
+    message: 'Quiet hours end must be a 24-hour time such as 07:30',
+  })
+  quietHoursEnd?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['small', 'medium', 'large'], {
+    message: 'Font size must be small, medium or large',
+  })
+  fontSize?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  compactMode?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['none', 'daily', 'weekly', 'monthly'], {
+    message: 'Backup schedule must be none, daily, weekly or monthly',
+  })
+  backupSchedule?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, {
+    message: 'Backup time must be a 24-hour time such as 02:00',
+  })
+  backupTime?: string;
+
+  @IsOptional()
+  @IsString()
+  exportFormats?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  enableTwoFactorAuth?: boolean;
 }

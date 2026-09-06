@@ -72,6 +72,44 @@ export interface UserSettings {
   language?: string;
   primaryColor?: string;
   secondaryColor?: string;
+
+  /* These are real columns that the Settings page already edits; the type simply had not
+     caught up, which is why reading them produced "property does not exist" everywhere.
+     `twoFactorSecret` is intentionally absent: the server never sends it and the client
+     has no business holding it. */
+
+  // Invoice presentation
+  invoiceHeaderText?: string;
+  showInvoiceWatermark?: boolean;
+  invoiceWatermarkText?: string;
+
+  // Tax
+  additionalTaxRates?: string;
+
+  // Client defaults
+  defaultClientPaymentMethod?: string;
+  defaultClientCreditLimit?: number;
+  defaultClientCurrency?: string;
+
+  // Inventory
+  inventoryUnitConversion?: string;
+
+  // Notifications
+  notificationFrequency?: string;
+  quietHoursStart?: string;
+  quietHoursEnd?: string;
+
+  // UI/Display
+  fontSize?: string;
+  compactMode?: boolean;
+
+  // Backup and export
+  backupSchedule?: string;
+  backupTime?: string;
+  exportFormats?: string;
+
+  // Security
+  enableTwoFactorAuth?: boolean;
 }
 
 export interface BackupResponse {
