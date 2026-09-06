@@ -17,6 +17,23 @@ import PrintIcon from '@mui/icons-material/Print';
 import { useStoreStockReport } from '../../hooks/useStoreItemSettings';
 import { useStore } from '../../hooks/useStore';
 
+/** One row of the store stock report.
+ *
+ *  The inline annotation this replaces named only `item.name`, `currentStock` and
+ *  `minQty`, while the table also renders bundle size, bundle unit, target quantity and
+ *  weekly usage — four reads the compiler had no basis to allow. */
+interface StoreStockReportRow {
+  item?: {
+    name?: string;
+    bundleSize?: number;
+    bundleUnit?: string;
+  };
+  currentStock: number;
+  minQty: number;
+  targetQty?: number;
+  weeklyUsage?: number;
+}
+
 const StoreStockReport = () => {
   const { id: storeId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -82,7 +99,7 @@ const StoreStockReport = () => {
             </TableHead>
             <TableBody>
               {report.items && report.items.length > 0 ? (
-                report.items.map((item: { item?: { name?: string }; currentStock: number; minQty: number }, index: number) => (
+                report.items.map((item: StoreStockReportRow, index: number) => (
                   <TableRow key={index}>
                     <TableCell>{item.item?.name || '-'}</TableCell>
                     <TableCell>
@@ -96,7 +113,10 @@ const StoreStockReport = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                  {/* Six columns, not eight — the count was left behind when the Size and
+                      Material columns were removed, so the empty-state cell was spanning
+                      two columns that no longer exist. */}
+                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
                     <Typography color="text.secondary">
                       No items found for this store.
                     </Typography>

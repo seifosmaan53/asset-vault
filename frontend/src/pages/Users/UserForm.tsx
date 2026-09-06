@@ -24,7 +24,7 @@ import LockIcon from '@mui/icons-material/Lock';
 import BusinessIcon from '@mui/icons-material/Business';
 import { useUser, useCreateUser, useUpdateUser } from '../../hooks/useUsers';
 import { useEffect } from 'react';
-import { createUserSchema, updateUserSchema } from '../../utils/validationSchemas';
+import { makeUserSchema, type UserFormData } from '../../utils/validationSchemas';
 import { useToast } from '../../contexts/ToastContext';
 import type { CreateUserDto, UpdateUserDto } from '../../api/users';
 import Grid from '../../components/common/Grid';
@@ -35,19 +35,10 @@ interface UserFormProps {
   onCancel: () => void;
 }
 
-interface CreateUserFormData {
-  name: string;
-  email: string;
-  role: 'owner' | 'admin';
-  password: string;
-  companyName?: string;
-}
-
-interface UpdateUserFormData {
-  name: string;
-  role: 'owner' | 'admin';
-  password: string;
-}
+/* One form shape for both modes. These used to be two interfaces combined with a union,
+   which only exposed the fields they shared — so errors.email and errors.companyName were
+   unreachable even though the form renders both (in create mode only). Which fields are
+   REQUIRED still differs by mode; that now lives in the schema rather than in the type. */
 
 const UserForm = ({ userId, onSuccess, onCancel }: UserFormProps) => {
   const isEdit = !!userId;
@@ -62,8 +53,8 @@ const UserForm = ({ userId, onSuccess, onCancel }: UserFormProps) => {
     formState: { errors },
     reset,
     control,
-  } = useForm<CreateUserFormData | UpdateUserFormData>({
-    resolver: zodResolver(isEdit ? updateUserSchema : createUserSchema),
+  } = useForm<UserFormData>({
+    resolver: zodResolver(makeUserSchema(isEdit)),
     defaultValues: {
       role: isEdit ? (user?.role as 'owner' | 'admin' || 'admin') : 'admin',
     },
@@ -87,7 +78,7 @@ const UserForm = ({ userId, onSuccess, onCancel }: UserFormProps) => {
     }
   }, [user, isEdit, reset]);
 
-  const onSubmit = async (data: CreateUserFormData | UpdateUserFormData) => {
+  const onSubmit = async (data: UserFormData) => {
     try {
       if (isEdit && userId) {
         const updateData: UpdateUserDto = {
@@ -101,12 +92,19 @@ const UserForm = ({ userId, onSuccess, onCancel }: UserFormProps) => {
         await updateUser.mutateAsync({ id: userId, data: updateData });
         showToast('User updated successfully', 'success');
       } else {
+        /* The schema makes these required when creating, so by the time a submit reaches
+           here they are present. Checked rather than asserted: if the two ever drift
+           apart, this reports it instead of sending a half-built user to the API. */
+        if (!data.name || !data.email || !data.role || !data.password) {
+          showToast('Please complete all required fields', 'error');
+          return;
+        }
         const createData: CreateUserDto = {
           name: data.name,
-          email: (data as CreateUserFormData).email,
+          email: data.email,
           role: data.role,
           password: data.password,
-          companyName: (data as CreateUserFormData).companyName,
+          companyName: data.companyName,
         };
         await createUser.mutateAsync(createData);
         showToast('User created successfully', 'success');

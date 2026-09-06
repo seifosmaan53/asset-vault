@@ -262,25 +262,54 @@ export const stockMovementSchema = z.object({
   note: z.string().optional(),
 });
 
-// User schemas
-export const createUserSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  email: z.string().email('Invalid email address'),
-  role: z.enum(['owner', 'admin'], {
-    message: 'Role is required',
-  }),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  companyName: z.string().optional(),
-});
-
-export const updateUserSchema = z.object({
+/* User schemas.
+ *
+ * Create and update used to be two separate object schemas, which forced the form to type
+ * itself as `CreateUserFormData | UpdateUserFormData`. A union of two shapes only exposes
+ * the fields they have in common, so `errors.email` and `errors.companyName` were errors
+ * even though the form renders both — just never in edit mode.
+ *
+ * One schema with a shared shape and mode-dependent rules removes that split. The
+ * required-ness that used to be expressed by having two schemas is now expressed by a
+ * refinement, so the validation behaviour is the same in both modes:
+ *
+ *   create — name, email and a 6+ character password are all required
+ *   edit   — everything optional; an empty password means "leave it unchanged"
+ */
+const userFormShape = z.object({
   name: z.string().min(1, 'Name is required').optional(),
+  email: z.string().email('Invalid email address').optional(),
   role: z.enum(['owner', 'admin']).optional(),
+  /* No `.transform()` here on purpose. Transforming '' to undefined makes the schema's
+     input and output types differ, which react-hook-form then cannot reconcile with a
+     single form type. The empty string means "leave the password unchanged", and the
+     submit handler already treats it that way. */
   password: z
     .string()
     .min(6, 'Password must be at least 6 characters')
-    .optional()
     .or(z.literal(''))
-    .transform((val) => (val === '' ? undefined : val)),
+    .optional(),
+  companyName: z.string().optional(),
 });
+
+export const makeUserSchema = (isEdit: boolean) =>
+  userFormShape.superRefine((value, ctx) => {
+    if (!value.name) {
+      ctx.addIssue({ code: 'custom', path: ['name'], message: 'Name is required' });
+    }
+    if (!value.role) {
+      ctx.addIssue({ code: 'custom', path: ['role'], message: 'Role is required' });
+    }
+    if (isEdit) return;
+
+    // Creating a user: an email to sign in with and a password to sign in are both needed.
+    if (!value.email) {
+      ctx.addIssue({ code: 'custom', path: ['email'], message: 'Email is required' });
+    }
+    if (!value.password) {
+      ctx.addIssue({ code: 'custom', path: ['password'], message: 'Password is required' });
+    }
+  });
+
+export type UserFormData = z.infer<typeof userFormShape>;
 
