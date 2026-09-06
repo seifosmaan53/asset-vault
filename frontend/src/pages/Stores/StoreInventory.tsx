@@ -679,7 +679,7 @@ const StoreInventory = () => {
       {/* Summary Cards - Always show totals for ALL items, not filtered */}
       {settings && settings.length > 0 && (
         <Grid container spacing={2.5} sx={{ width: '100%', mb: 3 }}>
-          <Grid size={{ xs: 6, sm: 3 }} sx={{ display: 'flex' }}>
+          <Grid item xs={6} sm={3} sx={{ display: 'flex' }}>
             <Paper 
               sx={{ 
                 p: 2.5, 
@@ -722,7 +722,7 @@ const StoreInventory = () => {
               </Box>
             </Paper>
           </Grid>
-          <Grid size={{ xs: 6, sm: 3 }} sx={{ display: 'flex' }}>
+          <Grid item xs={6} sm={3} sx={{ display: 'flex' }}>
             <Paper 
               sx={{ 
                 p: 2.5, 
@@ -765,7 +765,7 @@ const StoreInventory = () => {
               </Box>
             </Paper>
           </Grid>
-          <Grid size={{ xs: 6, sm: 3 }} sx={{ display: 'flex' }}>
+          <Grid item xs={6} sm={3} sx={{ display: 'flex' }}>
             <Paper 
               sx={{ 
                 p: 2.5, 
@@ -816,7 +816,7 @@ const StoreInventory = () => {
               </Box>
             </Paper>
           </Grid>
-          <Grid size={{ xs: 6, sm: 3 }} sx={{ display: 'flex' }}>
+          <Grid item xs={6} sm={3} sx={{ display: 'flex' }}>
             <Paper 
               sx={{ 
                 p: 2.5, 
@@ -2030,7 +2030,7 @@ const StoreInventory = () => {
                       </Typography>
                     </Box>
                     <Grid container spacing={4} sx={{ width: '100%', margin: 0 }}>
-                      <Grid size={{ xs: 12, sm: 4 }}>
+                      <Grid item xs={12} sm={4}>
                         <Box sx={{ pr: { sm: 2 } }}>
                           <Typography 
                             variant="caption" 
@@ -2059,7 +2059,7 @@ const StoreInventory = () => {
                           </Typography>
                         </Box>
                       </Grid>
-                      <Grid size={{ xs: 12, sm: 4 }}>
+                      <Grid item xs={12} sm={4}>
                         <Box sx={{ px: { sm: 2 } }}>
                           <Typography 
                             variant="caption" 
@@ -2089,7 +2089,7 @@ const StoreInventory = () => {
                         </Box>
                       </Grid>
                       {selectedItemToAdd.defaultUnitPrice && (
-                        <Grid size={{ xs: 12, sm: 4 }}>
+                        <Grid item xs={12} sm={4}>
                           <Box sx={{ pl: { sm: 2 } }}>
                             <Typography 
                               variant="caption" 
@@ -2140,7 +2140,7 @@ const StoreInventory = () => {
                     />
                   </Box>
                   <Grid container spacing={3.5} sx={{ width: '100%', margin: 0 }}>
-                    <Grid size={{ xs: 12, sm: 6 }}>
+                    <Grid item xs={12} sm={6}>
                       <Box sx={{ pr: { sm: 1.5 } }}>
                         <TextField
                           fullWidth
@@ -2211,7 +2211,7 @@ const StoreInventory = () => {
                         />
                       </Box>
                     </Grid>
-                    <Grid size={{ xs: 12, sm: 6 }}>
+                    <Grid item xs={12} sm={6}>
                       <Box sx={{ pl: { sm: 1.5 } }}>
                         <TextField
                           fullWidth
