@@ -73,8 +73,6 @@ const StoreStockReport = () => {
             <TableHead>
               <TableRow>
                 <TableCell>Item</TableCell>
-                <TableCell>Size</TableCell>
-                <TableCell>Material</TableCell>
                 <TableCell>Bundle Size</TableCell>
                 <TableCell>Current Stock</TableCell>
                 <TableCell>Min Qty</TableCell>
@@ -87,8 +85,6 @@ const StoreStockReport = () => {
                 report.items.map((item: { item?: { name?: string }; currentStock: number; minQty: number }, index: number) => (
                   <TableRow key={index}>
                     <TableCell>{item.item?.name || '-'}</TableCell>
-                    <TableCell>{item.item?.sizeInches || '-'}</TableCell>
-                    <TableCell>{item.item?.material || '-'}</TableCell>
                     <TableCell>
                       {item.item?.bundleSize ? `${item.item.bundleSize} ${item.item.bundleUnit || ''}` : '-'}
                     </TableCell>

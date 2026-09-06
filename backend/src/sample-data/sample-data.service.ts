@@ -417,15 +417,6 @@ export class SampleDataService {
       'Bronze',
       'Silicon',
     ];
-    const shapes = [
-      'rectangular',
-      'square',
-      'round',
-      'oval',
-      'cylindrical',
-      'custom',
-      'die-cut',
-    ];
     const printTypes = [
       'Roma',
       'Milano',
@@ -435,15 +426,6 @@ export class SampleDataService {
       'Custom',
       'Full Color',
       'Spot Color',
-    ];
-    const fluteTypes = [
-      'A-Flute',
-      'B-Flute',
-      'C-Flute',
-      'E-Flute',
-      'F-Flute',
-      'BC-Flute',
-      'EB-Flute',
     ];
     const containerTypes = [
       'box',
@@ -471,9 +453,7 @@ export class SampleDataService {
       const category = categories[i % categories.length];
       const unit = units[i % units.length];
       const material = materials[i % materials.length];
-      const shape = shapes[i % shapes.length];
       const printType = printTypes[i % printTypes.length];
-      const fluteType = fluteTypes[i % fluteTypes.length];
       const containerType = containerTypes[i % containerTypes.length];
       const bundleUnit = bundleUnits[i % bundleUnits.length];
       const status = statuses[i % statuses.length];
@@ -485,7 +465,6 @@ export class SampleDataService {
       const currentStock = Math.floor(Math.random() * 1000 + 10);
       const reorderLevel = Math.floor(currentStock * 0.2);
       const maxStockLevel = Math.floor(currentStock * 1.5);
-      const sizeInches = `${Math.floor(Math.random() * 20 + 5)}" x ${Math.floor(Math.random() * 20 + 5)}"`;
       const bundleSize = Math.floor(Math.random() * 50 + 5);
       const packSize = Math.floor(Math.random() * 100 + 10);
       const unitsPerContainer = Math.floor(Math.random() * 5000 + 100);
@@ -500,8 +479,9 @@ export class SampleDataService {
 
       items.push({
         sku: `ITEM-${itemNum}`,
-        name: `${category} ${itemNum} - ${material} ${shape}`,
-        description: `High-quality ${material.toLowerCase()} ${category.toLowerCase()} in ${shape} shape. Perfect for professional use. Features ${printType} print type and ${fluteType} construction.`,
+        name: `${category} ${itemNum} - ${material}`,
+        description: `${material} ${category.toLowerCase()} for professional use.`,
+        category: category,
         unit: unit,
         barcode: barcode,
         costPrice: costPrice,
@@ -1101,7 +1081,7 @@ export class SampleDataService {
       if (!i.sku) return false;
       // Check SKU pattern - must match exactly ITEM-#### (primary pattern for sample data)
       const skuMatches = sampleInventoryPattern.test(i.sku);
-      // Also check if name matches sample pattern (category + number + material + shape)
+      // Also check if name matches sample pattern (category + number + material)
       // Pattern: "Category 0001 - Material Shape"
       const nameMatches = i.name
         ? /^(Widgets|Products|Components|Accessories|Tools|Materials|Supplies|Equipment|Parts|Services|Electronics|Hardware|Software|Furniture|Appliances)\s+\d{1,4}\s*-\s*(Steel|Aluminum|Plastic|Wood|Glass|Ceramic|Fabric|Leather|Rubber|Carbon Fiber|Titanium|Copper|Brass|Bronze|Silicon)\s+(rectangular|square|round|oval|cylindrical|custom|die-cut)/i.test(

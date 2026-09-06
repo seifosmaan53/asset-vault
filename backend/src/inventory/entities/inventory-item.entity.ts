@@ -34,6 +34,12 @@ export class InventoryItem {
   @Column({ type: 'text', nullable: true })
   description: string;
 
+  /* A general-purpose asset category. The column has existed since InitialSchema, but the
+     entity never declared it, so TypeORM neither returned nor saved it — which is why the
+     UI's category chips and the Sales-by-Category grouping had nothing to show. */
+  @Column({ nullable: true })
+  category: string;
+
   @Column()
   unit: string;
 

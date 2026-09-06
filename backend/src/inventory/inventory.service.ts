@@ -154,9 +154,9 @@ export class InventoryService {
         error.message &&
         (error.message.includes('column') ||
           error.message.includes('does not exist')) &&
-        (error.message.includes('sizeInches') ||
-          error.message.includes('material') ||
-          error.message.includes('printType'))
+        (error.message.includes('printType') ||
+          error.message.includes('containerType') ||
+          error.message.includes('category'))
       ) {
         this.logger.warn(
           'Database missing new columns. Please run migration: npm run migration:run. Using fallback query.',

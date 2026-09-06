@@ -145,9 +145,6 @@ export const inventoryItemSchema = z.object({
   // Optional fields
   maxStockLevel: optionalPositiveInt,
   status: z.enum(['active', 'inactive']),
-  // Size & Material
-  sizeInches: z.string().optional().or(z.literal('')),
-  material: z.string().optional().or(z.literal('')),
   // Bundle / Pack Information
   bundleSize: optionalPositiveInt,
   bundleUnit: z.string().optional().or(z.literal('')),
@@ -157,8 +154,6 @@ export const inventoryItemSchema = z.object({
   targetBundles: optionalPositiveInt,
   // Print Type
   printType: z.string().optional().or(z.literal('')),
-  // Flute Type
-  fluteType: z.string().optional().or(z.literal('')),
   // Pack Size
   packSize: optionalPositiveInt,
   // Container Planning

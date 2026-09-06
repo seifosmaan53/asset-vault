@@ -41,6 +41,15 @@ export class CreateInventoryItemDto {
   @IsString()
   description?: string;
 
+  @ApiPropertyOptional({
+    example: 'Laptops',
+    description: 'General-purpose asset category used for grouping and reporting',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100, { message: 'Category must not exceed 100 characters' })
+  category?: string;
+
   @ApiProperty({
     example: 'pcs',
     description: 'Unit of measurement (e.g., pcs, kg, m)',

@@ -66,10 +66,15 @@ interface BulkAddInventoryDialogProps {
 
 const STEPS = ['Upload or Add Items', 'Review & Validate', 'Import Results'];
 
+/* 'Category' belongs here and was missing. The sample rows below always carried a
+   category in the fourth position, so the downloadable template was off by one from the
+   row after Description onward: a user filling it in had their unit imported as a
+   barcode, their barcode as a cost price, and so on down the row. */
 const CSV_TEMPLATE_HEADERS = [
   'SKU',
   'Name',
   'Description',
+  'Category',
   'Unit',
   'Barcode',
   'Cost Price',
@@ -79,10 +84,7 @@ const CSV_TEMPLATE_HEADERS = [
   'Reorder Level',
   'Max Stock Level',
   'Status',
-  'Size (inches)',
-  'Material',
   'Print Type',
-  'Flute Type',
   'Container Type',
 ];
 
@@ -318,6 +320,9 @@ export default function BulkAddInventoryDialog({ open, onClose }: BulkAddInvento
               case 'description':
                 item.description = value || undefined;
                 break;
+              case 'category':
+                item.category = value || undefined;
+                break;
               case 'unit':
                 item.unit = value;
                 break;
@@ -370,20 +375,11 @@ export default function BulkAddInventoryDialog({ open, onClose }: BulkAddInvento
               case 'status':
                 item.status = (String(value).toLowerCase() === 'inactive' ? 'inactive' : 'active') as 'active' | 'inactive';
                 break;
-              case 'sizeinches':
-              case 'size':
-                item.sizeInches = value || undefined;
-                break;
-              case 'material':
-                item.material = value || undefined;
-                break;
-              // Note: 'shape' field is not supported in CreateInventoryItemDto, so we skip it
-              // case 'shape': - removed as it's not in the DTO
+              // size, material, shape and flute type were mapped here. They are corrugated
+              // -cardboard attributes with no column behind them, so importing a
+              // spreadsheet that filled those columns quietly discarded them.
               case 'printtype':
                 item.printType = value || undefined;
-                break;
-              case 'flutetype':
-                item.fluteType = value || undefined;
                 break;
               case 'containertype':
                 item.containerType = value || undefined;
@@ -433,15 +429,15 @@ export default function BulkAddInventoryDialog({ open, onClose }: BulkAddInvento
     // Add comprehensive example rows showing different scenarios
     const exampleRows = [
       // Example 1: Complete product with all fields
-      'PROD-001,Widget A,"High quality widget for industrial use, durable and reliable",Widgets,piece,1234567890123,5.00,10.00,10,100,50,200,active,"12x8x4",Cardboard,Color Print,B-Flute,Carton',
+      'PROD-001,Widget A,"High quality widget for industrial use, durable and reliable",Widgets,piece,1234567890123,5.00,10.00,10,100,50,200,active,Color Print,Carton',
       // Example 2: Minimal required fields only
-      'PROD-002,Widget B,,Widgets,piece,,,,10.50,75,30,,active,,,',
+      'PROD-002,Widget B,,Widgets,piece,,,,10.50,75,30,,active,,',
       // Example 3: Product with custom print and packaging details
-      'PROD-003,Widget C,"Premium widget with custom branding",Electronics,box,9876543210987,12.50,25.00,8,50,20,100,active,"10x6x3",Plastic,Full Color,A-Flute,Box',
+      'PROD-003,Widget C,"Premium widget with custom branding",Electronics,box,9876543210987,12.50,25.00,8,50,20,100,active,Full Color,Box',
       // Example 4: Bulk item with bundle information
-      'PROD-004,Widget D,"Economy pack of 12 units",Bulk Items,pack,5551234567890,8.00,15.00,5,200,100,500,active,"24x18x12",Cardboard,Black & White,C-Flute,Pallet',
+      'PROD-004,Widget D,"Economy pack of 12 units",Bulk Items,pack,5551234567890,8.00,15.00,5,200,100,500,active,Black & White,Pallet',
       // Example 5: Inactive product example
-      'PROD-005,Widget E,"Discontinued model, last stock",Legacy,piece,1112223334444,3.00,6.00,0,5,0,10,inactive,"8x5x2",Metal,None,,Box',
+      'PROD-005,Widget E,"Discontinued model, last stock",Legacy,piece,1112223334444,3.00,6.00,0,5,0,10,inactive,None,Box',
     ];
     
     // Create CSV content with BOM for Excel compatibility
@@ -589,15 +585,12 @@ export default function BulkAddInventoryDialog({ open, onClose }: BulkAddInvento
           costPrice: item.costPrice ?? undefined,
           defaultTaxRate: item.defaultTaxRate ?? undefined,
           maxStockLevel: item.maxStockLevel ?? undefined,
-          sizeInches: item.sizeInches || undefined,
-          material: item.material || undefined,
           bundleSize: item.bundleSize ?? undefined,
           bundleUnit: item.bundleUnit || undefined,
           spacePerBundle: item.spacePerBundle ?? undefined,
           bundlesPerContainer: item.bundlesPerContainer ?? undefined,
           targetBundles: item.targetBundles ?? undefined,
           printType: item.printType || undefined,
-          fluteType: item.fluteType || undefined,
           packSize: item.packSize ?? undefined,
           unitsPerContainer: item.unitsPerContainer ?? undefined,
           containerType: item.containerType || undefined,

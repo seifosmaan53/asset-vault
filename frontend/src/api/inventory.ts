@@ -15,9 +15,10 @@ export interface CreateInventoryItemDto {
   reorderLevel: number;
   maxStockLevel?: number;
   status: 'active' | 'inactive';
-  // Size & Material
-  sizeInches?: string;
-  material?: string;
+  /* sizeInches, material, fluteType and shape used to sit here. They describe corrugated
+     cardboard, not IT assets — leftovers from the pizza-box system this was converted
+     from — and nothing ever stored them: the columns exist from an old migration, but the
+     entity never declared them, so the API neither returned nor saved a single one. */
   // Bundle / Pack Information
   bundleSize?: number;
   bundleUnit?: string;
@@ -27,8 +28,6 @@ export interface CreateInventoryItemDto {
   targetBundles?: number;
   // Print Type
   printType?: string;
-  // Flute Type
-  fluteType?: string;
   // Pack Size
   packSize?: number;
   // Container Planning

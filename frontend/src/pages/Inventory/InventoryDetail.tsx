@@ -285,56 +285,10 @@ const InventoryDetail = () => {
                 </Typography>
               </>
             )}
-            {(item.sizeInches || item.material || item.shape || item.fluteType) && (
-              <>
-                {item.description && <Divider sx={{ my: 2 }} />}
-                <Typography variant="overline" color="text.secondary" sx={{ fontSize: '0.7rem', fontWeight: 600, display: 'block', mb: 1 }}>
-                  Physical Attributes
-                </Typography>
-                <Grid container spacing={2.5}>
-                  {item.sizeInches && (
-                    <Grid item xs={6} sm={3}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.7rem' }}>
-                        Size
-                      </Typography>
-                      <Typography variant="body2" fontWeight="medium" sx={{ mt: 0.5 }}>
-                        {item.sizeInches}
-                      </Typography>
-                    </Grid>
-                  )}
-                  {item.material && (
-                    <Grid item xs={6} sm={3}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.7rem' }}>
-                        Material
-                      </Typography>
-                      <Typography variant="body2" fontWeight="medium" sx={{ mt: 0.5 }}>
-                        {item.material}
-                      </Typography>
-                    </Grid>
-                  )}
-                  {item.shape && (
-                    <Grid item xs={6} sm={3}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.7rem' }}>
-                        Shape
-                      </Typography>
-                      <Typography variant="body2" fontWeight="medium" sx={{ mt: 0.5 }}>
-                        {item.shape}
-                      </Typography>
-                    </Grid>
-                  )}
-                  {item.fluteType && (
-                    <Grid item xs={6} sm={3}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.7rem' }}>
-                        Flute Type
-                      </Typography>
-                      <Typography variant="body2" fontWeight="medium" sx={{ mt: 0.5 }}>
-                        {item.fluteType}
-                      </Typography>
-                    </Grid>
-                  )}
-                </Grid>
-              </>
-            )}
+            {/* A "Physical Attributes" panel stood here showing size, material, shape and
+                flute type. Those describe corrugated cardboard rather than IT assets, and
+                none of them was ever populated — the API does not return them — so the
+                panel's guard was always false and it never rendered for anyone. */}
           </Paper>
         )}
 
