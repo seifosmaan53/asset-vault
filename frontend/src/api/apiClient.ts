@@ -68,7 +68,7 @@ class ApiClient {
   // FIX #119: Request deduplication - track pending requests
   private pendingRequests = new Map<string, Promise<AxiosResponse>>();
   // Track cleanup timeouts for pending requests
-  private cleanupTimeouts = new Map<string, NodeJS.Timeout>();
+  private cleanupTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
   constructor() {
     this.client = axios.create({
@@ -188,7 +188,7 @@ class ApiClient {
     // Response interceptor to handle token refresh and network errors
     this.client.interceptors.response.use(
       (response) => {
-        const config = response.config as InternalAxiosRequestConfig & { __requestKey?: string; __isDedupe?: boolean };
+        const config = response.config as InternalAxiosRequestConfig & { __requestKey?: string; __isDedupe?: boolean; __dedupePromise?: Promise<AxiosResponse> };
         
         // Handle request deduplication - if this was a deduplicated request, it was cancelled
         // so we shouldn't reach here. But if we do, return the original promise result

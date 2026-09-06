@@ -97,19 +97,8 @@ const InventoryList = () => {
   
   // Column visibility management
   const defaultColumns = ['checkbox', 'sku', 'name', 'attributes', 'stock', 'storeStock', 'actions'];
-  const {
-    preferences,
-    toggleColumnVisibility,
-    resetPreferences,
-  } = useTableColumns('inventory-list', defaultColumns);
+  const { preferences } = useTableColumns('inventory-list', defaultColumns);
   
-  const columnControls = useMemo(() => [
-    { id: 'sku', label: 'SKU', visible: preferences.sku?.visible !== false },
-    { id: 'name', label: 'Name', visible: preferences.name?.visible !== false },
-    { id: 'attributes', label: 'Description', visible: preferences.attributes?.visible !== false },
-    { id: 'stock', label: 'Total Inventory', visible: preferences.stock?.visible !== false },
-    { id: 'storeStock', label: 'Store Stock', visible: preferences.storeStock?.visible !== false },
-  ], [preferences]);
   const queryClient = useQueryClient();
   
   // Debounced search for real-time filtering
@@ -364,8 +353,8 @@ const InventoryList = () => {
                 name: item.name,
                 description: item.description,
                 unit: item.unit,
-                defaultUnitPrice: item.unitPrice || 0,
-                currentStock: item.stock || 0,
+                defaultUnitPrice: item.defaultUnitPrice || 0,
+                currentStock: item.currentStock || 0,
                 reorderLevel: item.reorderLevel || 0,
                 status: item.status || 'active',
                 bundleSize: item.bundleSize,
@@ -433,14 +422,6 @@ const InventoryList = () => {
       setSelectedItems(new Set(filteredItems.map(item => item.id)));
     }
   }, [filteredItems, selectedItems]);
-
-  const handleClearSelection = useCallback(() => {
-    setSelectedItems(new Set());
-  }, []);
-
-  const handleBulkDelete = useCallback(() => {
-    setBulkDeleteConfirmOpen(true);
-  }, []);
 
   const handleBulkDeleteConfirm = useCallback(async () => {
     if (selectedItems.size === 0) return;
@@ -808,7 +789,7 @@ const InventoryList = () => {
         <Box mb={3.5} sx={{ width: '100%' }}>
           <Grid container spacing={2.5} sx={{ width: '100%', margin: 0 }}>
           {/* Total Items Card */}
-          <Grid item xs={{ xs: 6, sm: 6, md: 2.4 }} sx={{ display: 'flex' }}>
+          <Grid item xs={6} sm={6} md={2.4} sx={{ display: 'flex' }}>
             <Paper 
               elevation={0}
               sx={{ 
@@ -904,7 +885,7 @@ const InventoryList = () => {
           </Grid>
 
           {/* Total Store Stock Card */}
-          <Grid item xs={{ xs: 6, sm: 6, md: 2.4 }} sx={{ display: 'flex' }}>
+          <Grid item xs={6} sm={6} md={2.4} sx={{ display: 'flex' }}>
             <Paper 
               elevation={0}
               sx={{ 
@@ -1000,7 +981,7 @@ const InventoryList = () => {
           </Grid>
 
           {/* Low Stock Items Card */}
-          <Grid item xs={{ xs: 6, sm: 6, md: 2.4 }} sx={{ display: 'flex' }}>
+          <Grid item xs={6} sm={6} md={2.4} sx={{ display: 'flex' }}>
             <Paper 
               elevation={0}
               sx={{ 
@@ -1110,7 +1091,7 @@ const InventoryList = () => {
           </Grid>
 
           {/* Out of Stock Items Card */}
-          <Grid item xs={{ xs: 6, sm: 6, md: 2.4 }} sx={{ display: 'flex' }}>
+          <Grid item xs={6} sm={6} md={2.4} sx={{ display: 'flex' }}>
             <Paper 
               elevation={0}
               sx={{ 
@@ -1220,7 +1201,7 @@ const InventoryList = () => {
           </Grid>
 
           {/* Total Inventory Value Card */}
-          <Grid item xs={{ xs: 12, sm: 6, md: 2.4 }} sx={{ display: 'flex' }}>
+          <Grid item xs={12} sm={6} md={2.4} sx={{ display: 'flex' }}>
             <Paper 
               elevation={0}
               sx={{ 
@@ -1405,7 +1386,7 @@ const InventoryList = () => {
         </FormControl>
         <Button
           variant={inStoresOnly ? 'contained' : 'outlined'}
-          color={inStoresOnly ? 'primary' : 'default'}
+          color={inStoresOnly ? 'primary' : 'inherit'}
           startIcon={<StoreIcon />}
           onClick={() => setInStoresOnly(!inStoresOnly)}
           sx={{

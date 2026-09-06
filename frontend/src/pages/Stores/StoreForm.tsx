@@ -240,8 +240,8 @@ const StoreForm = () => {
       };
 
       // Remove undefined values to avoid sending them
-      Object.keys(payload).forEach((key) => {
-        if (payload[key] === undefined) {
+      (Object.keys(payload) as Array<keyof CreateStoreDto>).forEach((key) => {
+        if (key !== 'clientId' && key !== 'name' && key !== 'code' && payload[key] === undefined) {
           delete payload[key];
         }
       });
@@ -249,7 +249,7 @@ const StoreForm = () => {
       if (isEdit && id) {
         // Get previous data for undo
         const previousStore = store;
-        const updatedStore = await updateStore.mutateAsync({ id, data: payload });
+        await updateStore.mutateAsync({ id, data: payload });
         showToast('Store updated successfully', 'success');
         
         // Add undo operation for update

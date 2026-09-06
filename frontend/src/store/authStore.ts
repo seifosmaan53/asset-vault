@@ -1,5 +1,6 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
+import axios from 'axios';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { User } from '../types/user';
@@ -66,15 +67,17 @@ export const useAuthStore = create<AuthState>()(
           }
           // Ignore CanceledError - this is expected in React Strict Mode (development)
           // when effects are double-invoked and requests get cancelled
-          if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') {
+          const axiosError = axios.isAxiosError(error) ? error : null;
+          if (axiosError?.name === 'CanceledError' || axiosError?.code === 'ERR_CANCELED') {
             return null;
           }
+          const status = axiosError?.response?.status;
           // Log other errors but don't clear auth state for network errors
-          if (error?.response?.status !== 401) {
+          if (status !== 401) {
             logger.error('Failed to sync user:', error);
           }
           // Only clear auth state on 401 (unauthorized)
-          if (error?.response?.status === 401) {
+          if (status === 401) {
             set({ user: null, isAuthenticated: false });
           }
           return null;

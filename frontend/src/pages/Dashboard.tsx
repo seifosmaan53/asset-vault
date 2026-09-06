@@ -51,7 +51,7 @@ const Dashboard = () => {
     const unsubscribe = queryClient.getMutationCache().subscribe((event) => {
       // When an invoice update mutation succeeds, invalidate queries
       // React Query will automatically refetch when components are active
-      if (event?.type === 'success' && event?.mutation?.options?.mutationKey) {
+      if (event.type === 'updated' && event.action.type === 'success' && event.mutation.options.mutationKey) {
         const mutationKey = event.mutation.options.mutationKey;
         if (Array.isArray(mutationKey) && mutationKey[0] === 'invoices' && mutationKey[1] === 'update') {
           // Invalidate queries - React Query will refetch automatically for active queries
@@ -68,7 +68,7 @@ const Dashboard = () => {
   // Removed debug logging for production
   const hasBackfilled = useRef(false);
   const [dateRangeWarning, setDateRangeWarning] = useState<string | null>(null);
-  const warningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const warningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Clear old organization-scoped cache on mount (one-time fix)
   useEffect(() => {
@@ -131,11 +131,11 @@ const Dashboard = () => {
   }, [dateRange.start, dateRange.end]);
   
   // Analytics hooks (using validated date range)
-  const { data: topClients, isLoading: clientsLoading } = useTopClients();
-  const { data: topItems, isLoading: itemsLoading } = useTopItems();
-  const { data: salesByCategory, isLoading: categoryLoading } = useSalesByCategory(validatedDateRange.start, validatedDateRange.end);
-  const { data: revenueByPaymentMethod, isLoading: paymentLoading } = useRevenueByPaymentMethod(validatedDateRange.start, validatedDateRange.end);
-  const { data: invoiceStatus, isLoading: statusLoading } = useInvoicesByStatus();
+  useTopClients();
+  useTopItems();
+  useSalesByCategory(validatedDateRange.start, validatedDateRange.end);
+  useRevenueByPaymentMethod(validatedDateRange.start, validatedDateRange.end);
+  useInvoicesByStatus();
 
   // Helper function to calculate actual revenue (profit) for an invoice
   // Moved outside useMemo for better performance and reusability
@@ -889,14 +889,14 @@ const Dashboard = () => {
                                     ? (Number(invoice.total) || 0)
                                     : 0);
                                 if (isNaN(total) || !isFinite(total) || total < 0) {
-                                  logger.warn('Invalid invoice total:', invoice.total, 'for invoice:', invoice.id);
+                                  logger.warn(`Invalid invoice total for invoice ${invoice.id}:`, invoice.total);
                                   return;
                                 }
                                 monthData.revenue += total;
                               }
                             } catch (error) {
                               // Fix Bug #52: Log error instead of silently ignoring
-                              logger.warn('Failed to parse invoice date for export:', error, 'invoice:', invoice.id);
+                              logger.warn(`Failed to parse invoice date for export (invoice ${invoice.id}):`, error);
                               // Skip invalid dates but log for debugging
                             }
                           }

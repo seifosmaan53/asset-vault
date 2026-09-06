@@ -17,7 +17,6 @@ import {
   Chip,
   Skeleton,
   Alert,
-  Link as MuiLink,
   Divider,
   LinearProgress,
   IconButton,
@@ -74,7 +73,7 @@ const StoreReportModal = ({ open, onClose, reportType }: StoreReportModalProps) 
             description: 'No stores with active alerts',
           };
         }
-        const storesWithAlerts = new Map<string, typeof allStores[0]>();
+        const storesWithAlerts = new Map<string, { id: string; name: string; code: string }>();
         const alertsByStore = new Map<string, typeof alerts>();
         alerts.forEach((alert) => {
           if (!alert.resolved) {
@@ -183,7 +182,7 @@ const StoreReportModal = ({ open, onClose, reportType }: StoreReportModalProps) 
             ))}
           </Box>
         ) : reportType === 'lowStock' ? (
-          <LowStockReport items={reportData.items} onItemClick={handleItemClick} />
+          <LowStockReport items={reportData.items ?? []} onItemClick={handleItemClick} />
         ) : reportType === 'alerts' && reportData.alerts ? (
           <AlertsReport
             stores={reportData.stores}
@@ -192,7 +191,7 @@ const StoreReportModal = ({ open, onClose, reportType }: StoreReportModalProps) 
             onItemClick={handleItemClick}
           />
         ) : (
-          <StoresReport stores={reportData.stores} onStoreClick={handleStoreClick} />
+          <StoresReport stores={reportData.stores ?? []} onStoreClick={handleStoreClick} />
         )}
       </DialogContent>
       <DialogActions sx={{ p: 2, pt: 1 }}>
@@ -220,7 +219,7 @@ const StoresReport = ({
     zip?: string;
     country?: string;
     // active removed - all stores are always active
-    createdAt: string;
+    createdAt?: string;
   }>;
   onStoreClick: (storeId: string) => void;
 }) => {

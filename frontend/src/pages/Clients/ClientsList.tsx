@@ -95,17 +95,7 @@ const ClientsList = () => {
   const defaultColumns = ['checkbox', 'name', 'email', 'phone', 'address', 'created', 'actions'];
   const {
     preferences,
-    toggleColumnVisibility,
-    resetPreferences,
   } = useTableColumns('clients-list', defaultColumns);
-  
-  const columnControls = useMemo(() => [
-    { id: 'name', label: 'Name', visible: preferences.name?.visible !== false },
-    { id: 'email', label: 'Email', visible: preferences.email?.visible !== false },
-    { id: 'phone', label: 'Phone', visible: preferences.phone?.visible !== false },
-    { id: 'address', label: 'Address', visible: preferences.address?.visible !== false },
-    { id: 'created', label: 'Created', visible: preferences.created?.visible !== false },
-  ], [preferences]);
   
   // Debounced search for real-time filtering
   const debouncedSearchInput = useDebounce(searchInput, 300);

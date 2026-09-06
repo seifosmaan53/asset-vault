@@ -71,8 +71,6 @@ export const invoicesApi = {
     totalMax?: number;
     subtotalMin?: number;
     subtotalMax?: number;
-    type?: string;
-    search?: string;
   }): Promise<PagedResult<Invoice>> => {
     const response = await apiClient.get<PagedResult<Invoice>>('/invoices/paged', { params });
     return response.data;

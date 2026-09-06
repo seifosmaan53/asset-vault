@@ -56,12 +56,6 @@ const formatKey = (key: string): string => {
   return key;
 };
 
-const formatShortcut = (keys: string[]): string => {
-  return keys
-    .map(key => formatKey(key))
-    .join(' + ');
-};
-
 export const KeyboardShortcutsDialog = ({ open, onClose, shortcuts }: KeyboardShortcutsDialogProps) => {
   const theme = useTheme();
 

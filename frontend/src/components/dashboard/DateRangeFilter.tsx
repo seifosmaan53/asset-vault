@@ -34,7 +34,6 @@ const DateRangeFilter = ({ startDate, endDate, onRangeChange }: DateRangeFilterP
   const today = endOfDay(now);
   const todayForMaxDate = new Date(); // Use current date/time without time manipulation for maxDate
   const yesterday = endOfDay(subDays(now, 1));
-  const currentQuarter = getQuarter(now);
   const currentYear = now.getFullYear();
   
   // Validate and clamp dates to prevent future dates from being displayed

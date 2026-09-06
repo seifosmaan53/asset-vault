@@ -204,7 +204,7 @@ export const SearchBar = ({
                     <Chip
                       label="Clear"
                       size="small"
-                      onClick={clearHistory}
+                      onClick={() => clearHistory(context)}
                       sx={{ height: 20, fontSize: '0.7rem' }}
                     />
                   )}

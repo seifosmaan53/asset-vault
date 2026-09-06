@@ -57,7 +57,6 @@ export function DataTable<T extends { id: string }>({
   tableId,
   enableColumnResizing = true,
   enableColumnVisibility = true,
-  enableColumnReordering = false,
   enableSorting = true,
   enableFiltering = false,
   enablePagination = false,
@@ -80,8 +79,6 @@ export function DataTable<T extends { id: string }>({
   const {
     preferences,
     toggleColumnVisibility: toggleVisibility,
-    setColumnWidth,
-    getVisibleColumns,
   } = useTableColumns(tableId, columnIds);
 
   // Sync column visibility with preferences
@@ -216,7 +213,7 @@ export function DataTable<T extends { id: string }>({
                           bottom: 0,
                           width: '4px',
                           cursor: 'col-resize',
-                          backgroundColor: header.isResizing
+                          backgroundColor: header.column.getIsResizing()
                             ? theme.palette.primary.main
                             : 'transparent',
                           '&:hover': {

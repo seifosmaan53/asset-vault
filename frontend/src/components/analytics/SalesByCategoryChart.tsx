@@ -17,6 +17,15 @@ const COLORS = [
   '#00796b', // Teal
 ];
 
+interface CategoryChartDatum {
+  name: string;
+  revenue: number;
+  percent: number;
+  quantity: number;
+  invoiceCount: number;
+  color: string;
+}
+
 interface SalesByCategoryChartProps {
   startDate?: Date | null;
   endDate?: Date | null;
@@ -131,8 +140,11 @@ const SalesByCategoryChart = ({ startDate, endDate, storeId }: SalesByCategoryCh
             dx={-5}
           />
           <Tooltip
-            formatter={(value: number, name: string, props: { payload?: Record<string, unknown> }) => {
+            formatter={(_value: number, _name: string, props: { payload?: CategoryChartDatum }) => {
               const payload = props.payload;
+              if (!payload) {
+                return null;
+              }
               return [
                 <>
                   <div style={{ fontWeight: 600, marginBottom: '4px' }}>

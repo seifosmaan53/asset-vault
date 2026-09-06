@@ -24,6 +24,7 @@ import BusinessIcon from '@mui/icons-material/Business';
 import { useUser, useCreateUser, useUpdateUser } from '../../hooks/useUsers';
 import { useEffect } from 'react';
 import { createUserSchema, updateUserSchema } from '../../utils/validationSchemas';
+import type { z } from 'zod';
 import { useToast } from '../../contexts/ToastContext';
 import type { CreateUserDto, UpdateUserDto } from '../../api/users';
 import Grid from '../../components/common/Grid';
@@ -34,19 +35,8 @@ interface UserFormProps {
   onCancel: () => void;
 }
 
-interface CreateUserFormData {
-  name: string;
-  email: string;
-  role: 'owner' | 'admin';
-  password: string;
-  companyName?: string;
-}
-
-interface UpdateUserFormData {
-  name: string;
-  role: 'owner' | 'admin';
-  password: string;
-}
+type CreateUserFormData = z.infer<typeof createUserSchema>;
+type UpdateUserFormData = z.infer<typeof updateUserSchema>;
 
 const UserForm = ({ userId, onSuccess, onCancel }: UserFormProps) => {
   const isEdit = !!userId;
@@ -210,8 +200,8 @@ const UserForm = ({ userId, onSuccess, onCancel }: UserFormProps) => {
                   type="email"
                   required
                   {...register('email')}
-                  error={!!errors.email}
-                  helperText={errors.email?.message || 'User will use this email to log in'}
+                  error={'email' in errors && !!errors.email}
+                  helperText={('email' in errors ? errors.email?.message : undefined) || 'User will use this email to log in'}
                   InputLabelProps={{ required: false }}
                   InputProps={{
                     startAdornment: (
@@ -387,8 +377,8 @@ const UserForm = ({ userId, onSuccess, onCancel }: UserFormProps) => {
                     fullWidth
                     label="Company Name"
                     {...register('companyName')}
-                    error={!!errors.companyName}
-                    helperText={errors.companyName?.message || 'Optional: Associate user with a company'}
+                    error={'companyName' in errors && !!errors.companyName}
+                    helperText={('companyName' in errors ? errors.companyName?.message : undefined) || 'Optional: Associate user with a company'}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">

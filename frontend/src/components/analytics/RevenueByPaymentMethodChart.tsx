@@ -17,6 +17,14 @@ const COLORS = [
   '#00796b', // Teal
 ];
 
+interface PaymentMethodChartDatum {
+  name: string;
+  revenue: number;
+  percent: number;
+  invoiceCount: number;
+  color: string;
+}
+
 interface RevenueByPaymentMethodChartProps {
   startDate?: Date | null;
   endDate?: Date | null;
@@ -130,8 +138,11 @@ const RevenueByPaymentMethodChart = ({ startDate, endDate, storeId }: RevenueByP
             dx={-5}
           />
           <Tooltip
-            formatter={(value: number, name: string, props: { payload?: Record<string, unknown> }) => {
+            formatter={(_value: number, _name: string, props: { payload?: PaymentMethodChartDatum }) => {
               const payload = props.payload;
+              if (!payload) {
+                return null;
+              }
               return [
                 <>
                   <div style={{ fontWeight: 600, marginBottom: '4px' }}>

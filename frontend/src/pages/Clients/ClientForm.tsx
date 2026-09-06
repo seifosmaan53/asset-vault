@@ -25,6 +25,7 @@ import Grid from "../../components/common/Grid";
 import { useClient, useCreateClient, useUpdateClient } from '../../hooks/useClients';
 import type { Client, Address } from '../../types/client';
 import { clientsApi } from '../../api/clients';
+import type { CreateClientDto } from '../../api/clients';
 import { useEffect } from 'react';
 import { clientSchema } from '../../utils/validationSchemas';
 import { useToast } from '../../contexts/ToastContext';
@@ -119,7 +120,6 @@ const ClientForm = () => {
     formState: { errors, touchedFields },
     reset,
     watch,
-    setValue,
     setError,
     control,
   } = useForm<ClientFormData>({
@@ -219,7 +219,7 @@ const ClientForm = () => {
         ? `${data.phoneCountryCode || '+1'} ${data.phone.trim()}`.trim()
         : undefined;
 
-      const clientData: Partial<Client> = {
+      const clientData: CreateClientDto = {
         name: data.name.trim(),
         // Fix Bug #60: Email validation is handled by zod schema, but add extra safety
         email: data.email && typeof data.email === 'string' && data.email.trim() 
@@ -232,16 +232,16 @@ const ClientForm = () => {
       };
 
       // Remove undefined values
-      Object.keys(clientData).forEach((key) => {
-        if (clientData[key as keyof Client] === undefined) {
-          delete clientData[key as keyof Client];
+      (Object.keys(clientData) as Array<keyof CreateClientDto>).forEach((key) => {
+        if (key !== 'name' && clientData[key] === undefined) {
+          delete clientData[key];
         }
       });
 
       if (isEdit && id) {
         // Get previous data for undo
         const previousClient = client;
-        const updatedClient = await updateClient.mutateAsync({ id, data: clientData });
+        await updateClient.mutateAsync({ id, data: clientData });
         showToast('Client updated successfully', 'success');
         
         // Add undo operation for update

@@ -116,8 +116,6 @@ const StoreComparisonDashboard = ({
     avgValue: typeof store.averageInvoiceValue === 'number' ? store.averageInvoiceValue : (store.totalInvoices > 0 && store.totalRevenue > 0 ? store.totalRevenue / store.totalInvoices : 0),
   }));
 
-  const COLORS = ['#1976d2', '#2e7d32', '#ed6c02', '#d32f2f', '#9c27b0', '#0288d1'];
-
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>

@@ -1,6 +1,6 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import { logger } from '../utils/logger';
 
 export type RecentItemType = 'invoice' | 'client' | 'inventory' | 'store';

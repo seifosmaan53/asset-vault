@@ -425,13 +425,6 @@ const StoreTransferModal = ({
                             SKU: {selectedInventoryItem.sku}
                           </Typography>
                         </Box>
-                        {selectedInventoryItem.category && (
-                          <Chip 
-                            label={selectedInventoryItem.category}
-                            size="small"
-                            sx={{ fontWeight: 600 }}
-                          />
-                        )}
                       </Box>
                     </CardContent>
                   </Card>

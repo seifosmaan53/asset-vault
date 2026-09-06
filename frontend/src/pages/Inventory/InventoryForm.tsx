@@ -527,7 +527,7 @@ const InventoryForm = () => {
       if (isEdit && id) {
         // Get previous data for undo
         const previousItem = item;
-        const updatedItem = await updateItem.mutateAsync({ id, data: cleanedData });
+        await updateItem.mutateAsync({ id, data: cleanedData });
         itemId = id;
         showToast('Inventory item updated successfully', 'success');
         

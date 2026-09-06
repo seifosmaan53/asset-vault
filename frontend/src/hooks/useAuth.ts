@@ -2,49 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useClerk } from '@clerk/clerk-react';
 import { authApi } from '../api/auth';
 import { useAuthStore } from '../store/authStore';
-import { organizationsApi } from '../api/organizations';
-import { getSelectedOrganizationIdFromStorage, setSelectedOrganizationIdInStorage } from '../store/organizationStore';
 import { clearSettingsCache } from '../utils/settingsCache';
-
-export const useLogin = () => {
-  const setAuth = useAuthStore((state) => state.setAuth);
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: authApi.login,
-    onSuccess: (data) => {
-      setAuth(data.user, data.accessToken, data.refreshToken);
-      queryClient.setQueryData(['user'], data.user);
-
-      // Initialize org context if missing
-      const currentOrgId = getSelectedOrganizationIdFromStorage();
-      if (!currentOrgId) {
-        organizationsApi
-          .getMyOrganizations()
-          .then((myOrgs) => {
-            const defaultOrgId = myOrgs?.[0]?.organizationId;
-            if (defaultOrgId) setSelectedOrganizationIdInStorage(defaultOrgId);
-          })
-          .catch(() => {
-            // ignore
-          });
-      }
-    },
-  });
-};
-
-export const useRegister = () => {
-  const setAuth = useAuthStore((state) => state.setAuth);
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: authApi.register,
-    onSuccess: (data) => {
-      setAuth(data.user, data.accessToken, data.refreshToken);
-      queryClient.setQueryData(['user'], data.user);
-    },
-  });
-};
 
 export const useProfile = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);

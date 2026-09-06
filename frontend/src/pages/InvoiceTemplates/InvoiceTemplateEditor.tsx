@@ -7,16 +7,16 @@ import {
   TextField,
   Button,
   Paper,
-  Grid,
   Switch,
   FormControlLabel,
   CircularProgress
 } from '@mui/material';
+import Grid from '../../components/common/Grid';
 import SaveIcon from '@mui/icons-material/Save';
 import { useInvoiceTemplate, useCreateInvoiceTemplate, useUpdateInvoiceTemplate } from '../../hooks/useInvoiceTemplates';
 import { useToast } from '../../contexts/ToastContext';
 import { getErrorMessage } from '../../utils/errorHandling';
-import type { CreateInvoiceTemplateDto, UpdateInvoiceTemplateDto, TemplateData } from '../../types/invoiceTemplate';
+import type { CreateInvoiceTemplateDto, UpdateInvoiceTemplateDto } from '../../types/invoiceTemplate';
 
 const InvoiceTemplateEditor = () => {
   const { id } = useParams<{ id: string }>();
@@ -27,7 +27,7 @@ const InvoiceTemplateEditor = () => {
   const updateTemplate = useUpdateInvoiceTemplate();
   const { showToast } = useToast();
 
-  const { control, handleSubmit, reset, watch } = useForm<CreateInvoiceTemplateDto>({
+  const { control, handleSubmit, reset } = useForm<CreateInvoiceTemplateDto>({
     defaultValues: {
       name: '',
       description: '',
@@ -85,8 +85,6 @@ const InvoiceTemplateEditor = () => {
       showToast(getErrorMessage(error, 'Failed to save template'), 'error');
     }
   };
-
-  const templateData = watch('templateData');
 
   if (isLoading) {
     return (

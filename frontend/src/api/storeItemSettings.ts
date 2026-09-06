@@ -1,5 +1,6 @@
 import { apiClient } from './apiClient';
 import type { StoreItemSettings } from '../types/store';
+import type { StockMovement } from '../types/inventory';
 
 export interface CreateStoreItemSettingsDto {
   storeId: string;

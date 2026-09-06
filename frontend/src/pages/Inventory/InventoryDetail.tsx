@@ -18,7 +18,6 @@ import {Box,
   AccordionSummary,
   AccordionDetails,
   LinearProgress,
-  Divider,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import EditIcon from '@mui/icons-material/Edit';
@@ -28,7 +27,7 @@ import { useInventoryItem, useStockMovements, useLinkedInvoices } from '../../ho
 import { useStoreItemSettingsByItem } from '../../hooks/useStoreItemSettings';
 import { useRecentItems } from '../../hooks/useRecentItems';
 import type { Invoice } from '../../types/invoice';
-import type { Store, StoreItemSettings } from '../../types/store';
+import type { Store } from '../../types/store';
 import { formatCurrency } from '../../utils/formatters';
 import { formatDate } from '../../utils/dates';
 import StockAdjustmentModal from '../../components/inventory/StockAdjustmentModal';
@@ -167,7 +166,7 @@ const InventoryDetail = () => {
 
       {/* Key Information Cards - Always Visible */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid item xs={12} sm={6} md={3}>
           <Paper sx={{ p: 2, height: '100%' }}>
             <Typography variant="overline" color="text.secondary" sx={{ fontSize: '0.7rem', fontWeight: 600 }}>
               SKU
@@ -185,7 +184,7 @@ const InventoryDetail = () => {
           </Paper>
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid item xs={12} sm={6} md={3}>
           <Paper sx={{ p: 2, height: '100%' }}>
             <Typography variant="overline" color="text.secondary" sx={{ fontSize: '0.7rem', fontWeight: 600 }}>
               Total Inventory
@@ -225,7 +224,7 @@ const InventoryDetail = () => {
           </Paper>
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid item xs={12} sm={6} md={3}>
           <Paper sx={{ p: 2, height: '100%' }}>
             <Typography variant="overline" color="text.secondary" sx={{ fontSize: '0.7rem', fontWeight: 600 }}>
               Unit Price
@@ -241,7 +240,7 @@ const InventoryDetail = () => {
           </Paper>
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid item xs={12} sm={6} md={3}>
           <Paper sx={{ p: 2, height: '100%' }}>
             <Typography variant="overline" color="text.secondary" sx={{ fontSize: '0.7rem', fontWeight: 600 }}>
               Planning
@@ -272,7 +271,7 @@ const InventoryDetail = () => {
       {/* Expandable Sections */}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
 
-        {/* Description & Physical Attributes */}
+        {/* Description */}
         {item.description && (
           <Paper sx={{ p: 2 }}>
             {item.description && (
@@ -283,56 +282,6 @@ const InventoryDetail = () => {
                 <Typography variant="body1" sx={{ mt: 1 }}>
                   {item.description}
                 </Typography>
-              </>
-            )}
-            {(item.sizeInches || item.material || item.shape || item.fluteType) && (
-              <>
-                {item.description && <Divider sx={{ my: 2 }} />}
-                <Typography variant="overline" color="text.secondary" sx={{ fontSize: '0.7rem', fontWeight: 600, display: 'block', mb: 1 }}>
-                  Physical Attributes
-                </Typography>
-                <Grid container spacing={2.5}>
-                  {item.sizeInches && (
-                    <Grid item xs={6} sm={3}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.7rem' }}>
-                        Size
-                      </Typography>
-                      <Typography variant="body2" fontWeight="medium" sx={{ mt: 0.5 }}>
-                        {item.sizeInches}
-                      </Typography>
-                    </Grid>
-                  )}
-                  {item.material && (
-                    <Grid item xs={6} sm={3}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.7rem' }}>
-                        Material
-                      </Typography>
-                      <Typography variant="body2" fontWeight="medium" sx={{ mt: 0.5 }}>
-                        {item.material}
-                      </Typography>
-                    </Grid>
-                  )}
-                  {item.shape && (
-                    <Grid item xs={6} sm={3}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.7rem' }}>
-                        Shape
-                      </Typography>
-                      <Typography variant="body2" fontWeight="medium" sx={{ mt: 0.5 }}>
-                        {item.shape}
-                      </Typography>
-                    </Grid>
-                  )}
-                  {item.fluteType && (
-                    <Grid item xs={6} sm={3}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.7rem' }}>
-                        Flute Type
-                      </Typography>
-                      <Typography variant="body2" fontWeight="medium" sx={{ mt: 0.5 }}>
-                        {item.fluteType}
-                      </Typography>
-                    </Grid>
-                  )}
-                </Grid>
               </>
             )}
           </Paper>
@@ -347,19 +296,19 @@ const InventoryDetail = () => {
             <AccordionDetails>
               <Grid container spacing={2.5}>
                 {item.packSize && (
-                  <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                  <Grid item xs={12} sm={6} md={4}>
                     <Typography variant="body2" color="text.secondary">Pack Size</Typography>
                     <Typography variant="body1" fontWeight="medium">x{item.packSize}</Typography>
                   </Grid>
                 )}
                 {item.unitsPerContainer && (
-                  <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                  <Grid item xs={12} sm={6} md={4}>
                     <Typography variant="body2" color="text.secondary">Units Per Container</Typography>
                     <Typography variant="body1" fontWeight="medium">{item.unitsPerContainer.toLocaleString()}</Typography>
                   </Grid>
                 )}
                 {item.computed?.containersNeeded !== null && item.computed?.containersNeeded !== undefined && (
-                  <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                  <Grid item xs={12} sm={6} md={4}>
                     <Typography variant="body2" color="text.secondary">Containers Needed</Typography>
                     <Typography variant="body1" fontWeight="bold" color="primary.main">
                       {item.computed.containersNeeded}
@@ -367,7 +316,7 @@ const InventoryDetail = () => {
                   </Grid>
                 )}
                 {item.defaultTaxRate && (
-                  <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                  <Grid item xs={12} sm={6} md={4}>
                     <Typography variant="body2" color="text.secondary">Default Tax Rate</Typography>
                     <Typography variant="body1" fontWeight="medium">{item.defaultTaxRate}%</Typography>
                   </Grid>
@@ -386,7 +335,7 @@ const InventoryDetail = () => {
             <AccordionDetails>
               <Grid container spacing={2.5}>
                 {item.computed?.effectiveWeeksSupplyTarget && (
-                  <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                  <Grid item xs={12} sm={6} md={4}>
                     <Typography variant="body2" color="text.secondary">Weeks Supply Target</Typography>
                     <Typography variant="body1" fontWeight="medium">
                       {item.computed.effectiveWeeksSupplyTarget} week{item.computed.effectiveWeeksSupplyTarget !== 1 ? 's' : ''}
@@ -397,13 +346,13 @@ const InventoryDetail = () => {
                   </Grid>
                 )}
                 {item.averageWeeklyUsage && (
-                  <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                  <Grid item xs={12} sm={6} md={4}>
                     <Typography variant="body2" color="text.secondary">Average Weekly Usage</Typography>
                     <Typography variant="body1" fontWeight="medium">{item.averageWeeklyUsage.toLocaleString()} units/week</Typography>
                   </Grid>
                 )}
                 {item.computed?.weeksOnHand !== null && item.computed?.weeksOnHand !== undefined && (
-                  <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                  <Grid item xs={12} sm={6} md={4}>
                     <Typography variant="body2" color="text.secondary">Weeks On Hand</Typography>
                     <Typography 
                       variant="body1" 
@@ -843,7 +792,7 @@ const InventoryDetail = () => {
                                     </Box>
                                     {movement.storeId && storeById.get(movement.storeId) && (
                                       <Typography variant="caption" color="text.secondary" noWrap>
-                                        {storeById.get(movement.storeId).name} ({storeById.get(movement.storeId).code})
+                                        {storeById.get(movement.storeId)?.name} ({storeById.get(movement.storeId)?.code})
                                       </Typography>
                                     )}
                                   </Box>
@@ -854,7 +803,7 @@ const InventoryDetail = () => {
                                 <Typography variant="body2">{movement.sourceType}</Typography>
                                 {movement.storeId && storeById.get(movement.storeId) && (
                                   <Typography variant="caption" color="text.secondary" noWrap>
-                                    {storeById.get(movement.storeId).name} ({storeById.get(movement.storeId).code})
+                                    {storeById.get(movement.storeId)?.name} ({storeById.get(movement.storeId)?.code})
                                   </Typography>
                                 )}
                               </Box>

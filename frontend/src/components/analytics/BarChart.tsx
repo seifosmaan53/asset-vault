@@ -239,7 +239,7 @@ const BarChart = ({
                 minPointSize={2}
                 fill={isMultiSeries ? color : undefined}
               >
-                {!isMultiSeries && data.map((entry, idx) => (
+                {!isMultiSeries && data.map((_entry, idx) => (
                   <Cell key={`cell-${idx}`} fill={colors[idx % colors.length]} />
                 ))}
               </Bar>

@@ -15,7 +15,6 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { isSignedIn, isLoaded, getToken } = useAuth();
   const location = useLocation();
   const syncUser = useAuthStore((state) => state.syncUser);
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const { loadSubscription, checkAccess } = useSubscriptionStore();
   const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
 
