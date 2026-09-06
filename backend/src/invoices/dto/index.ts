@@ -228,9 +228,13 @@ export class UpdateInvoiceDto {
     example: '2024-01-20T10:00:00Z',
     description: 'Payment date (ISO date string)',
   })
+  /* `null` is a meaningful value here, not an absence: the service reads it as "clear the
+     payment date" when an invoice moves back out of paid. class-validator's @IsOptional()
+     already skips both null and undefined, so this passed at runtime while the type said
+     it could not happen. */
   @IsOptional()
   @IsDateString()
-  paidAt?: string;
+  paidAt?: string | null;
 
   @ApiPropertyOptional({
     example: 'Paid via bank transfer',

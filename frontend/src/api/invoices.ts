@@ -9,12 +9,20 @@ export interface CreateInvoiceDto {
   dueDate?: string;
   currency: string;
   notes?: string;
-  items: Omit<InvoiceItem, 'id' | 'invoiceId' | 'createdAt'>[];
+  /* `lineTotal` is optional here because the server computes it — the backend's own DTO
+     declares it optional and invoices.service derives it from quantity, unit price, tax
+     and discount. Requiring it on the client forced callers that duplicate or restore an
+     invoice to send a figure the server was going to overwrite anyway. */
+  items: (Omit<InvoiceItem, 'id' | 'invoiceId' | 'createdAt' | 'lineTotal'> & {
+    lineTotal?: number;
+  })[];
 }
 
 export interface UpdateInvoiceDto extends Partial<CreateInvoiceDto> {
   status?: Invoice['status'];
-  paidAt?: string;
+  /* null clears the payment date; undefined leaves it untouched. The backend service
+     distinguishes the two deliberately. */
+  paidAt?: string | null;
   paymentMethodNote?: string;
   storeId?: string;
 }

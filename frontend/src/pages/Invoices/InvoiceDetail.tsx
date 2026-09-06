@@ -495,7 +495,10 @@ const InvoiceDetail = () => {
     setInFlight(true);
 
     try {
-      const data: { status: InvoiceStatus } = { status: nextStatus };
+      // paidAt is set below, so it belongs in this type. null means "clear it".
+      const data: { status: InvoiceStatus; paidAt?: string | null } = {
+        status: nextStatus,
+      };
 
       // Backend handles paidAt logic, but we can suggest it for UX
       if (nextStatus === 'paid' && !invoicePaidAt) {

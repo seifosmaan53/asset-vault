@@ -1693,8 +1693,10 @@ export class InvoicesService {
               `Auto-setting paidAt for invoice ${invoice.number}`,
             );
           } else if (data.paidAt !== undefined) {
-            // Use the provided paidAt value
-            updateData.paidAt = data.paidAt;
+            // Use the provided paidAt value. `null` is the caller asking to clear it, and
+            // the stored column expresses "not paid" as undefined — the same conversion
+            // the other paidAt branch in this service already makes.
+            updateData.paidAt = data.paidAt ?? undefined;
           }
         }
 
