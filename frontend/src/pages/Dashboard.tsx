@@ -68,7 +68,7 @@ const Dashboard = () => {
   // Removed debug logging for production
   const hasBackfilled = useRef(false);
   const [dateRangeWarning, setDateRangeWarning] = useState<string | null>(null);
-  const warningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const warningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Clear old organization-scoped cache on mount (one-time fix)
   useEffect(() => {

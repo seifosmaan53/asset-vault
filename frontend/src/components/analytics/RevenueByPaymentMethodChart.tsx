@@ -23,6 +23,16 @@ interface RevenueByPaymentMethodChartProps {
   storeId?: string;
 }
 
+/** One bar in this chart. Named so the tooltip can be typed against the same shape the
+ *  chart builds, instead of both sides guessing. */
+interface PaymentMethodSlice {
+  name: string;
+  revenue: number;
+  percent: number;
+  invoiceCount: number;
+  color: string;
+}
+
 const RevenueByPaymentMethodChart = ({ startDate, endDate, storeId }: RevenueByPaymentMethodChartProps) => {
   const { data, isLoading, error } = useRevenueByPaymentMethod(startDate, endDate, storeId);
 
@@ -86,7 +96,7 @@ const RevenueByPaymentMethodChart = ({ startDate, endDate, storeId }: RevenueByP
   const totalRevenue = data.reduce((sum, item) => sum + item.totalRevenue, 0);
 
   // Prepare chart data - sort by revenue descending
-  const chartData = data
+  const chartData: PaymentMethodSlice[] = data
     .map((item, index) => {
       const method = item.paymentMethod;
       const revenue = item.totalRevenue;
@@ -130,8 +140,13 @@ const RevenueByPaymentMethodChart = ({ startDate, endDate, storeId }: RevenueByP
             dx={-5}
           />
           <Tooltip
-            formatter={(value: number, name: string, props: { payload?: Record<string, unknown> }) => {
+            /* Typed as the slice this chart actually builds, rather than
+               Record<string, unknown> which made every field `unknown` and every read an
+               error. Recharts passes the payload in as optional, so the absent case is
+               handled rather than assumed away. */
+            formatter={(_value: number, _name: string, props: { payload?: PaymentMethodSlice }) => {
               const payload = props.payload;
+              if (!payload) return ['', 'Revenue'];
               return [
                 <>
                   <div style={{ fontWeight: 600, marginBottom: '4px' }}>

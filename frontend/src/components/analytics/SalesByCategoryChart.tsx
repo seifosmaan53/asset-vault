@@ -23,6 +23,16 @@ interface SalesByCategoryChartProps {
   storeId?: string;
 }
 
+/** One bar in this chart, named so the tooltip and the data share one shape. */
+interface CategorySlice {
+  name: string;
+  revenue: number;
+  percent: number;
+  quantity: number;
+  invoiceCount: number;
+  color: string;
+}
+
 const SalesByCategoryChart = ({ startDate, endDate, storeId }: SalesByCategoryChartProps) => {
   const { data, isLoading, error } = useSalesByCategory(startDate, endDate, storeId);
 
@@ -86,7 +96,7 @@ const SalesByCategoryChart = ({ startDate, endDate, storeId }: SalesByCategoryCh
   const totalRevenue = data.reduce((sum, item) => sum + item.totalRevenue, 0);
 
   // Prepare chart data - sort by revenue descending
-  const chartData = data
+  const chartData: CategorySlice[] = data
     .map((item, index) => {
       const category = item.category || 'Uncategorized';
       const revenue = item.totalRevenue;
@@ -131,8 +141,12 @@ const SalesByCategoryChart = ({ startDate, endDate, storeId }: SalesByCategoryCh
             dx={-5}
           />
           <Tooltip
-            formatter={(value: number, name: string, props: { payload?: Record<string, unknown> }) => {
+            /* Typed as the slice this chart builds rather than Record<string, unknown>,
+               which made every field `unknown`. Recharts passes payload in as optional,
+               so the absent case is handled rather than assumed away. */
+            formatter={(_value: number, _name: string, props: { payload?: CategorySlice }) => {
               const payload = props.payload;
+              if (!payload) return ['', 'Revenue'];
               return [
                 <>
                   <div style={{ fontWeight: 600, marginBottom: '4px' }}>

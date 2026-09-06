@@ -1,8 +1,11 @@
 import { Navigate } from 'react-router-dom';
+import type { ReactElement } from 'react';
 import { useAuthStore } from '../../store/authStore';
 
 interface AdminRouteProps {
-  children: JSX.Element;
+  // React 19 no longer publishes a global JSX namespace; ReactElement is the type this
+  // always meant, and it does not depend on an ambient global being in scope.
+  children: ReactElement;
   ownerOnly?: boolean;
 }
 

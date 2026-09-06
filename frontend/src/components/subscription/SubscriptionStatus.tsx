@@ -28,8 +28,8 @@ export function SubscriptionStatus() {
   // Use syncSubscription to actively fetch latest status from Stripe
   // IMPORTANT: Only sync if subscription exists AND status is pending
   // Stop immediately on 400 errors (indicates no subscription or no Stripe ID)
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasErroredRef = useRef(false);
   
   // Get stable status value

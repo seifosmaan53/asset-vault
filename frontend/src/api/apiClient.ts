@@ -68,7 +68,7 @@ class ApiClient {
   // FIX #119: Request deduplication - track pending requests
   private pendingRequests = new Map<string, Promise<AxiosResponse>>();
   // Track cleanup timeouts for pending requests
-  private cleanupTimeouts = new Map<string, NodeJS.Timeout>();
+  private cleanupTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
   constructor() {
     this.client = axios.create({
