@@ -144,7 +144,11 @@ export class UserSettings {
   @Column({ nullable: true })
   smtpUser: string;
 
-  @Column({ nullable: true })
+  /* Not loaded unless a query asks for it by name. serializeSettings() already replaces
+     it with a mask, but that is one function's discipline: any future code path that
+     returns this entity directly would have handed the stored value to the client.
+     `select: false` makes the safe behaviour the default rather than a convention. */
+  @Column({ nullable: true, select: false })
   smtpPassword: string;
 
   @Column({ nullable: true })

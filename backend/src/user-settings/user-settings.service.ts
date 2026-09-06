@@ -120,6 +120,10 @@ export class UserSettingsService {
       .createQueryBuilder('settings')
       .where('settings.userId = :userId', { userId })
       // Organizations removed - filter by userId only (user-scoped data)
+      // smtpPassword is `select: false` on the entity, so it has to be asked for by name.
+      // It is needed only to tell whether a password is stored at all — serializeSettings
+      // turns it into a mask and never emits the value.
+      .addSelect('settings.smtpPassword')
       .getOne();
 
     // If settings don't exist, create default settings
@@ -206,6 +210,12 @@ export class UserSettingsService {
       const existingSettings = await queryRunner.manager
         .createQueryBuilder(UserSettings, 'settings')
         .where('settings.userId = :userId', { userId })
+        /* smtpPassword is `select: false`, and this entity is loaded, mutated and saved.
+           Selecting it keeps the stored value on the object so an update that does not
+           touch the password writes it back unchanged, and so the audit trail compares a
+           real previous value rather than seeing undefined and reporting a change that
+           did not happen. */
+        .addSelect('settings.smtpPassword')
         .getOne();
 
       // Sanitize text fields to prevent XSS
