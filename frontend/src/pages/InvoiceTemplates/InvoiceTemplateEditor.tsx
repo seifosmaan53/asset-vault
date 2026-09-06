@@ -11,8 +11,7 @@ import {
   Divider,
   Switch,
   FormControlLabel,
-  Alert,
-  CircularProgress,
+  CircularProgress
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import { useInvoiceTemplate, useCreateInvoiceTemplate, useUpdateInvoiceTemplate } from '../../hooks/useInvoiceTemplates';

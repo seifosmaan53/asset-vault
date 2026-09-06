@@ -442,7 +442,7 @@ const Settings = () => {
     
     // Remove undefined values
     return Object.fromEntries(
-      Object.entries(cleaned).filter(([key, value]) => value !== undefined)
+      Object.entries(cleaned).filter(([_key, value]) => value !== undefined)
     ) as Partial<UserSettings>;
   };
 

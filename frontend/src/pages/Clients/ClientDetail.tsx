@@ -5,7 +5,6 @@ import {
   Typography,
   Paper,
   Button,
-  CircularProgress,
   Divider,
   Skeleton,
   Chip,
@@ -15,7 +14,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  IconButton,
+  IconButton
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';

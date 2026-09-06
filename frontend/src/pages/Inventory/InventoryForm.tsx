@@ -17,11 +17,10 @@ import {
   MenuItem,
   Skeleton,
   CircularProgress,
-  Autocomplete,
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Alert,
+  Alert
 } from '@mui/material';
 import { useInventoryItem, useCreateInventoryItem, useUpdateInventoryItem, useInventory } from '../../hooks/useInventory';
 import { useStores } from '../../hooks/useStore';

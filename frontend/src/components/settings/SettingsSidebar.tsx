@@ -11,12 +11,10 @@ import {
   TextField,
   InputAdornment,
   alpha,
-  Chip,
-  useTheme,
+  useTheme
 } from '@mui/material';
 import {
   ExpandLess,
-  ExpandMore,
   Search as SearchIcon,
   Person as PersonIcon,
   Business as BusinessIcon,
@@ -28,7 +26,7 @@ import {
   Email as EmailIcon,
   Notifications as NotificationsIcon,
   Palette as PaletteIcon,
-  Backup as BackupIcon,
+  Backup as BackupIcon
 } from '@mui/icons-material';
 
 export type SettingsCategory =

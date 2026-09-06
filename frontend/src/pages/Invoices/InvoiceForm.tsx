@@ -21,14 +21,13 @@ import {
   FormControlLabel,
   Accordion,
   AccordionSummary,
-  AccordionDetails,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogContentText,
   DialogActions,
   Chip,
-  InputAdornment,
+  InputAdornment
 } from '@mui/material';
 import WarningIcon from '@mui/icons-material/Warning';
 import AddIcon from '@mui/icons-material/Add';

@@ -539,7 +539,7 @@ const InventoryList = () => {
     setImportPreviewOpen(true);
   }, []);
 
-  const handleImportConfirm = useCallback(async (data: Partial<InventoryItem>[]) => {
+  const handleImportConfirm = useCallback(async (_data: Partial<InventoryItem>[]) => {
     if (!importFile) return;
     
     setIsImporting(true);

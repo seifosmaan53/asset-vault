@@ -49,7 +49,7 @@ export const useCreateOrUpdateStoreItemSettings = () => {
       queryClient.invalidateQueries({ queryKey: ['analytics', 'stores', variables.storeId] });
       await queryClient.refetchQueries({ queryKey: ['analytics', 'stores', variables.storeId], exact: false });
     },
-    onError: (error) => {
+    onError: (_error) => {
       // Error handling - could show toast notification here if needed
       // The error will be handled by the component using this hook
     },
@@ -61,7 +61,7 @@ export const useUpdateStoreItemSettings = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateStoreItemSettingsDto }) =>
       storeItemSettingsApi.update(id, data),
-    onSuccess: async (settings, variables) => {
+    onSuccess: async (_settings, _variables) => {
       // CRITICAL: Refetch queries to ensure data is persisted and fresh
       queryClient.invalidateQueries({ queryKey: ['store-item-settings'] });
       await queryClient.refetchQueries({ queryKey: ['store-item-settings'], exact: false });
@@ -71,7 +71,7 @@ export const useUpdateStoreItemSettings = () => {
       queryClient.invalidateQueries({ queryKey: ['analytics'], exact: false });
       await queryClient.refetchQueries({ queryKey: ['analytics'], exact: false });
     },
-    onError: (error) => {
+    onError: (_error) => {
       // Error handling - could show toast notification here if needed
       // The error will be handled by the component using this hook
     },
@@ -103,7 +103,7 @@ export const useUpdateStock = () => {
       queryClient.invalidateQueries({ queryKey: ['analytics', 'stores', variables.storeId] });
       await queryClient.refetchQueries({ queryKey: ['analytics', 'stores', variables.storeId], exact: false });
     },
-    onError: (error) => {
+    onError: (_error) => {
       // Error handling - could show toast notification here if needed
       // The error will be handled by the component using this hook
     },

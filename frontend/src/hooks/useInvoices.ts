@@ -32,7 +32,7 @@ const normalizePagedParams = (params?: {
 };
 
 // Query key builders - user-scoped (organizations removed)
-const buildListKey = (orgId: string | null, filters?: { status?: string; type?: string; search?: string }) => {
+const buildListKey = (_orgId: string | null, filters?: { status?: string; type?: string; search?: string }) => {
   const normalized = normalizeFilters(filters);
   // Organizations removed - query keys are now user-scoped only
   return ['invoices', 'list', normalized.status, normalized.type, normalized.search] as const;
@@ -47,12 +47,12 @@ const buildPagedKey = (
   return ['invoices', 'paged', normalized.page, normalized.limit, normalized.status, normalized.type, normalized.search] as const;
 };
 
-const buildDetailKey = (orgId: string | null, id: string) => {
+const buildDetailKey = (_orgId: string | null, id: string) => {
   // Organizations removed - query keys are now user-scoped only
   return ['invoices', id] as const;
 };
 
-const buildStatsKey = (orgId: string | null) => {
+const buildStatsKey = (_orgId: string | null) => {
   // Organizations removed - query keys are now user-scoped only
   return ['invoices', 'stats'] as const;
 };
@@ -229,7 +229,7 @@ export const useCreateInvoice = () => {
       
       return { tempId, previousData };
     },
-    onError: (error, _variables, context) => {
+    onError: (_error, _variables, context) => {
       // Rollback optimistic updates
       if (context?.previousData) {
         // Restore previous data - simplified rollback via invalidation

@@ -57,7 +57,7 @@ export const parseCSV = async (file: File): Promise<any[]> => {
  * Note: For Excel files, we'll send to backend for parsing
  * This is a placeholder - actual parsing happens on backend
  */
-export const parseExcel = async (file: File): Promise<any[]> => {
+export const parseExcel = async (_file: File): Promise<any[]> => {
   // For now, return empty array - backend will handle Excel parsing
   // Frontend can still validate file type
   return Promise.resolve([]);

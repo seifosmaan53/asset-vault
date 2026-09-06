@@ -122,7 +122,7 @@ export const useCreateInventoryItem = () => {
       await queryClient.refetchQueries({ queryKey: ['analytics'], exact: false });
     },
     // Issue #40: Rollback on error
-    onError: (error, variables, context) => {
+    onError: (_error, _variables, context) => {
       if (context?.previousInventory) {
         queryClient.setQueryData(['inventory'], context.previousInventory);
       }
@@ -196,7 +196,7 @@ export const useUpdateInventoryItem = () => {
       queryClient.invalidateQueries({ queryKey: ['analytics'], exact: false });
     },
     // Fix Missing Error Handler: Rollback optimistic update on error
-    onError: (err, variables, context) => {
+    onError: (_err, variables, context) => {
       if (context?.previousItem) {
         queryClient.setQueryData(['inventory', variables.id], context.previousItem);
       }
@@ -237,7 +237,7 @@ export const useDeleteInventoryItem = () => {
       return { previousInventory, previousItem };
     },
     // FIX #151: Clear error state on retry - error is cleared automatically by React Query
-    onError: (err, id, context) => {
+    onError: (_err, id, context) => {
       // Rollback on error
       if (context?.previousInventory) {
         queryClient.setQueryData(['inventory'], context.previousInventory);

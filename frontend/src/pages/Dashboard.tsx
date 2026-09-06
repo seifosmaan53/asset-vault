@@ -1123,7 +1123,7 @@ const Dashboard = () => {
                       return stockA - stockB;
                     })
                     .slice(0, 5)
-                    .map((item, index) => {
+                    .map((item, _index) => {
                       const currentStock = Math.max(0, item.currentStock || 0);
                       const reorderLevel = item.reorderLevel || 0;
                       const deficit = Math.max(0, reorderLevel - currentStock);

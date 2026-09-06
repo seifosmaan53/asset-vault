@@ -24,8 +24,7 @@ import {
   alpha,
   useTheme,
   CircularProgress,
-  InputAdornment,
-  TablePagination,
+  TablePagination
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -1006,7 +1005,7 @@ const InvoicesList = () => {
           </TableHead>
           <TableBody>
             {invoices && invoices.length > 0 ? (
-              invoices.map((invoice, index) => {
+              invoices.map((invoice, _index) => {
                 // Use the updated invoice from cache if available, otherwise use the original
                 const currentInvoice = invoice;
                 const statusConfig = getStatusConfig(currentInvoice.status);

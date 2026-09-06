@@ -161,7 +161,7 @@ export const useCreateClient = () => {
       }
     },
     // Fix Missing Error Handler: Rollback optimistic update on error
-    onError: (err, _newClient, context) => {
+    onError: (_err, _newClient, context) => {
       try {
         if (context?.previousClients) {
           queryClient.setQueryData(['clients'], context.previousClients);
@@ -277,7 +277,7 @@ export const useUpdateClient = () => {
       }
     },
     // Fix Missing Error Handler: Rollback optimistic update on error
-    onError: (err, variables, context) => {
+    onError: (_err, variables, context) => {
       try {
         if (context?.previousClient) {
           queryClient.setQueryData(['clients', variables.id], context.previousClient);

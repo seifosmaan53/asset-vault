@@ -10,8 +10,7 @@ import {
   TableHead,
   TableRow,
   Paper,
-  CircularProgress,
-  Skeleton,
+  Skeleton
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PrintIcon from '@mui/icons-material/Print';

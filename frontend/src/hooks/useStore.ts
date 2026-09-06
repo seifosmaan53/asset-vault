@@ -83,7 +83,7 @@ export const useCreateStore = () => {
       await queryClient.refetchQueries({ queryKey: ['analytics'], exact: false });
     },
     // Fix Missing Error Handler: Rollback optimistic update on error
-    onError: (err, _newStore, context) => {
+    onError: (_err, _newStore, context) => {
       if (context?.previousStores) {
         queryClient.setQueryData(['stores'], context.previousStores);
       }
@@ -181,7 +181,7 @@ export const useUpdateStore = () => {
       await queryClient.refetchQueries({ queryKey: ['analytics'], exact: false });
     },
     // Fix Missing Error Handler: Rollback optimistic update on error
-    onError: (err, variables, context) => {
+    onError: (_err, variables, context) => {
       if (context?.previousStore) {
         queryClient.setQueryData(['stores', variables.id], context.previousStore);
       }
@@ -262,7 +262,7 @@ export const useDeleteStore = () => {
       // The stores cache is already updated - no need to refetch
     },
     // Fix Missing Error Handler: Rollback optimistic update on error
-    onError: (err, id, context) => {
+    onError: (_err, id, context) => {
       if (context?.previousStore) {
         queryClient.setQueryData(['stores', id], context.previousStore);
       }

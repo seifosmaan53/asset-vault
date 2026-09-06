@@ -22,7 +22,7 @@ import {
   Link,
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
-import { subscriptionsApi, type BillingInvoice } from '../../api/subscriptions';
+import { subscriptionsApi} from '../../api/subscriptions';
 import { useSubscriptionStore } from '../../store/subscriptionStore';
 import { useToast } from '../../contexts/ToastContext';
 import { logger } from '../../utils/logger';

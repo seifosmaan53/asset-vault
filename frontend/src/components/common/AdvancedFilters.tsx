@@ -14,8 +14,7 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem,
-  Collapse,
+  Collapse
 } from '@mui/material';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import CloseIcon from '@mui/icons-material/Close';

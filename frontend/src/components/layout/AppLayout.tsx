@@ -16,13 +16,12 @@ import {
   ListItemIcon,
   ListItemText,
   IconButton,
-  Button,
   Chip,
   Tooltip,
   Avatar,
   Divider,
   alpha,
-  useTheme,
+  useTheme
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import MenuOpenIcon from '@mui/icons-material/MenuOpen';
