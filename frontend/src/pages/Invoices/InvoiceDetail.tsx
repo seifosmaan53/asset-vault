@@ -654,7 +654,8 @@ const InvoiceDetail = () => {
           unitPrice: item.unitPrice,
           taxRate: item.taxRate,
           discountRate: item.discountRate,
-          ...('printSpecifications' in item && item.printSpecifications && { printSpecifications: item.printSpecifications }),
+          // printSpecifications was dropped from the schema by the
+          // RemovePrintSpecifications migration; nothing stores it any more.
         })) || [],
         isDuplicate: true,
       };
