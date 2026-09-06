@@ -51,6 +51,7 @@ import { useUndo } from '../../hooks/useUndo';
 import { logger } from '../../utils/logger';
 import { getErrorMessage } from '../../utils/errorHandling';
 import { exportToCSV } from '../../utils/export';
+import { TableColumnControls } from '../../components/common/TableColumnControls';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { AdvancedFilters } from '../../components/common/AdvancedFilters';
 import type { AdvancedFiltersState } from '../../components/common/AdvancedFilters';
@@ -171,6 +172,19 @@ const InvoicesList = () => {
 
   // FIX #114: Filter state persisted in query key via useMemo
   // FIX #155: Use debounced search term to reduce API calls
+  /** The date-valued and amount-valued filter keys, kept apart so writes through a
+   *  lookup table stay type-checked rather than being cast. */
+  type DateFilterKey =
+    | 'issueDateFrom'
+    | 'issueDateTo'
+    | 'dueDateFrom'
+    | 'dueDateTo'
+    | 'paidDateFrom'
+    | 'paidDateTo'
+    | 'createdAtFrom'
+    | 'createdAtTo';
+  type AmountFilterKey = 'totalMin' | 'totalMax' | 'subtotalMin' | 'subtotalMax';
+
   const invoiceFilters = useMemo(() => {
     const filters: {
       status?: string;
@@ -202,8 +216,13 @@ const InvoicesList = () => {
     if (advancedFilters) {
       // Date ranges
       advancedFilters.dateRanges.forEach(range => {
+        /* The map values are typed as the exact date keys rather than `string`. Writing
+           through `keyof typeof filters` asked for a value assignable to EVERY field,
+           and since some are numbers and some strings that common type is `undefined` —
+           which is why assigning a date string here was an error. Naming the string-only
+           keys makes the write well typed instead of casting the check away. */
         if (range.startDate) {
-          const fieldMap: Record<string, string> = {
+          const fieldMap: Record<string, DateFilterKey> = {
             'Issue Date': 'issueDateFrom',
             'Due Date': 'dueDateFrom',
             'Paid Date': 'paidDateFrom',
@@ -211,11 +230,11 @@ const InvoicesList = () => {
           };
           const key = fieldMap[range.label];
           if (key) {
-            filters[key as keyof typeof filters] = range.startDate.toISOString().split('T')[0];
+            filters[key] = range.startDate.toISOString().split('T')[0];
           }
         }
         if (range.endDate) {
-          const fieldMap: Record<string, string> = {
+          const fieldMap: Record<string, DateFilterKey> = {
             'Issue Date': 'issueDateTo',
             'Due Date': 'dueDateTo',
             'Paid Date': 'paidDateTo',
@@ -223,7 +242,7 @@ const InvoicesList = () => {
           };
           const key = fieldMap[range.label];
           if (key) {
-            filters[key as keyof typeof filters] = range.endDate.toISOString().split('T')[0];
+            filters[key] = range.endDate.toISOString().split('T')[0];
           }
         }
       });
@@ -231,23 +250,23 @@ const InvoicesList = () => {
       // Amount ranges
       advancedFilters.amountRanges.forEach(range => {
         if (range.min !== null) {
-          const fieldMap: Record<string, string> = {
+          const fieldMap: Record<string, AmountFilterKey> = {
             'Total': 'totalMin',
             'Subtotal': 'subtotalMin',
           };
           const key = fieldMap[range.label];
           if (key) {
-            filters[key as keyof typeof filters] = range.min;
+            filters[key] = range.min;
           }
         }
         if (range.max !== null) {
-          const fieldMap: Record<string, string> = {
+          const fieldMap: Record<string, AmountFilterKey> = {
             'Total': 'totalMax',
             'Subtotal': 'subtotalMax',
           };
           const key = fieldMap[range.label];
           if (key) {
-            filters[key as keyof typeof filters] = range.max;
+            filters[key] = range.max;
           }
         }
       });
@@ -678,7 +697,18 @@ const InvoicesList = () => {
           <Skeleton variant="rectangular" width={150} height={56} />
         </Box>
         <Paper>
-          <TableContainer>
+          {/* The table already hides columns whose preference is false, and the preferences
+          already persist — the control to change them was simply never rendered, so the
+          whole column-visibility feature was unreachable. */}
+      <Box display="flex" justifyContent="flex-end" mb={1}>
+        <TableColumnControls
+          columns={columnControls}
+          onToggleVisibility={toggleColumnVisibility}
+          onReset={resetPreferences}
+        />
+      </Box>
+
+      <TableContainer>
             <Table>
               <TableHead>
                 <TableRow>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import ExportProgressDialog from '../../components/common/ExportProgressDialog';
 import { BulkActionsBar } from '../../components/common/BulkActionsBar';
+import { TableColumnControls } from '../../components/common/TableColumnControls';
 import { ImportDialog } from '../../components/import/ImportDialog';
 import { ImportPreview } from '../../components/import/ImportPreview';
 import {
@@ -1328,6 +1329,17 @@ const ClientsList = () => {
             Clear Filters
           </Button>
         )}
+      </Box>
+
+      {/* The table already hides columns whose preference is false, and the preferences
+          already persist — the control to change them was simply never rendered, so the
+          whole column-visibility feature was unreachable. */}
+      <Box display="flex" justifyContent="flex-end" mb={1}>
+        <TableColumnControls
+          columns={columnControls}
+          onToggleVisibility={toggleColumnVisibility}
+          onReset={resetPreferences}
+        />
       </Box>
 
       <BulkActionsBar

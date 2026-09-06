@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { BulkActionsBar } from '../../components/common/BulkActionsBar';
+import { TableColumnControls } from '../../components/common/TableColumnControls';
 import ExportProgressDialog from '../../components/common/ExportProgressDialog';
 import { ImportDialog } from '../../components/import/ImportDialog';
 import { ImportPreview } from '../../components/import/ImportPreview';
@@ -1472,6 +1473,17 @@ const InventoryList = () => {
         </Box>
       )}
 
+
+      {/* The table already hides columns whose preference is false, and the preferences
+          already persist — the control to change them was simply never rendered, so the
+          whole column-visibility feature was unreachable. */}
+      <Box display="flex" justifyContent="flex-end" mb={1}>
+        <TableColumnControls
+          columns={columnControls}
+          onToggleVisibility={toggleColumnVisibility}
+          onReset={resetPreferences}
+        />
+      </Box>
 
       {/* Every other piece of bulk delete was already here — the row checkboxes, the
           select-all header, the confirmation dialog and the mutation — but nothing
