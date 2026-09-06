@@ -97,7 +97,7 @@ export const useCreateInventoryItem = () => {
           id: `temp-${Date.now()}`,
           createdAt: new Date().toISOString(),
         };
-        return old ? [optimisticItem, ...old] : [optimisticItem];
+        return Array.isArray(old) ? [optimisticItem, ...old] : [optimisticItem];
       });
       
       return { previousInventory };

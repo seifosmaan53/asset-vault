@@ -37,15 +37,6 @@ export function centsToMoney(cents: number): number {
   return cents / 100;
 }
 
-/**
- * Apply percentage to money amount (returns cents)
- */
-function moneyApplyPercent(money: number, percent: number): number {
-  const cents = moneyToCents(money);
-  const percentCents = roundCents(cents * (percent / 100));
-  return percentCents;
-}
-
 export interface InvoiceItemDto {
   quantity: number;
   unitPrice: number;

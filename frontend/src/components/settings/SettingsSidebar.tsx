@@ -246,9 +246,7 @@ export const SettingsSidebar = ({
           {filteredGroups.map((group) => {
             const isGroupActive = hasActiveCategory(group);
             const isExpanded = expandedGroups.has(group.id);
-            // Calculate activeCount from original group, not filtered
             const originalGroup = categoryGroups.find(g => g.id === group.id);
-            const activeCount = originalGroup?.categories.filter(cat => cat.id === selectedCategory).length ?? 0;
             // Show badge with category count for all groups
             const categoryCount = originalGroup?.categories.length ?? 0;
             

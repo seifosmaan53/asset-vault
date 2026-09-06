@@ -111,7 +111,7 @@ export const useUpdateStore = () => {
       const updateStoresCache = (old: unknown) => {
         if (!Array.isArray(old)) return old;
         // Always return a new array to ensure React detects the change
-        const updated = old.map((store: { id?: string }) => {
+        const updated = old.map((store: { id?: string; active?: boolean }) => {
           if (store.id === id) {
             // Create a completely new object to ensure React detects the change
             const updatedStore = { ...store };

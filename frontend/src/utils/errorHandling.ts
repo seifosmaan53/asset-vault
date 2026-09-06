@@ -6,7 +6,11 @@
 /**
  * Type guard to check if an object has a response property
  */
-function hasResponse(error: unknown): error is { response?: { data?: { message?: string } } } {
+function hasResponse(
+  error: unknown,
+): error is {
+  response?: { data?: { message?: string }; status?: number; statusText?: string };
+} {
   return typeof error === 'object' && error !== null && 'response' in error;
 }
 

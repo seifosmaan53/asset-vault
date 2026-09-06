@@ -397,15 +397,15 @@ try {
         errorDiv.appendChild(p3);
         rootElement.appendChild(errorDiv);
       } else {
-        logger.debug('Root has content:', rootElement.children.length, 'children');
+        logger.debug('Root has content', { children: rootElement.children.length });
       }
     });
   });
   
 } catch (error: unknown) {
   logger.error('Failed to render app:', error);
-  const errorMessage = error?.message || String(error);
-  const errorStack = error?.stack || '';
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  const errorStack = error instanceof Error ? (error.stack ?? '') : '';
   
   // Use textContent instead of innerHTML to prevent XSS
   rootElement.textContent = ''; // Clear existing content

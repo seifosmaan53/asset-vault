@@ -1,7 +1,7 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
 import { useEffect, useState } from 'react';
-import { useFormState, type FieldValues, type UseFormReturn, type Control } from 'react-hook-form';
+import { type FieldValues, type UseFormReturn, type Control } from 'react-hook-form';
 
 /**
  * Hook for inline validation that shows errors as user types
@@ -11,7 +11,8 @@ export const useInlineValidation = <T extends FieldValues>(
   form: UseFormReturn<T> | { control: Control<T>; formState: { errors: any; touchedFields: any } },
   mode: 'onChange' | 'onBlur' | 'onTouched' = 'onChange',
 ) => {
-  const formState = 'formState' in form ? form.formState : useFormState({ control: form.control });
+  // Both accepted shapes carry formState, so this never needed a conditional hook call.
+  const formState = form.formState;
   const { errors, touchedFields } = formState;
   const [showErrors, setShowErrors] = useState<Record<string, boolean>>({});
 

@@ -648,11 +648,6 @@ const InvoiceForm = () => {
         return;
       }
       
-      // FIX #200: Validate metadata JSON structure if provided
-      if (data.metadataJson && typeof data.metadataJson !== 'object') {
-        showToast('Invalid metadata format', 'error');
-        return;
-      }
 
       const invoiceData = {
         ...data,
@@ -726,7 +721,6 @@ const InvoiceForm = () => {
         unitPrice: item.unitPrice,
         taxRate: item.taxRate,
         discountRate: item.discountRate,
-        printSpecifications: item.printSpecifications,
       })) || [{ description: '', quantity: 1, unitPrice: 0, taxRate: 0, discountRate: 0 }],
     });
     

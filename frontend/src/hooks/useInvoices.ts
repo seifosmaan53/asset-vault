@@ -39,7 +39,7 @@ const buildListKey = (_orgId: string | null, filters?: { status?: string; type?:
 };
 
 const buildPagedKey = (
-  orgId: string | null,
+  _orgId: string | null,
   params?: { page?: number; limit?: number; status?: string; type?: string; search?: string }
 ) => {
   const normalized = normalizePagedParams(params);

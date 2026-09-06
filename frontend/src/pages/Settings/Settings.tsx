@@ -35,15 +35,6 @@ import { TIMEOUTS } from '../../constants/timeouts';
 
 // Profile validation schema
 // Note: email is not included as it cannot be updated through this endpoint
-const profileSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  phone: z.string().optional(),
-  timezone: z.string().optional(),
-  address: z.string().optional(),
-  bio: z.string().optional(),
-});
-
-type ProfileFormData = z.infer<typeof profileSchema>;
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Current password is required'),
@@ -148,9 +139,7 @@ const createResetValues = (settings: UserSettings) => {
 
 const Settings = () => {
   const [selectedCategory, setSelectedCategory] = useState<SettingsCategory>('account');
-  
-  // Track category changes and scroll to top when switching tabs
-  const categoryScrollRef = useRef<{ scrollToTop: () => void } | null>(null);
+
   const handleCategoryChange = (category: SettingsCategory) => {
     setSelectedCategory(category);
     // Scroll to top when switching categories - use a small delay to ensure DOM is updated
@@ -332,7 +321,6 @@ const Settings = () => {
     control,
     watch,
     getValues,
-    setValue,
     handleSubmit: handleSettingsSubmitForm,
   } = useForm<UserSettings>({
     // Note: 'as any' is required here due to TypeScript type incompatibility between zod schema and UserSettings

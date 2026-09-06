@@ -56,7 +56,6 @@ import { useToast } from '../../contexts/ToastContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatCurrency } from '../../utils/formatters';
 import StoreIcon from '@mui/icons-material/Store';
-import { storeItemSettingsApi } from '../../api/storeItemSettings';
 import type { StoreItemSettings } from '../../types/store';
 import type { InventoryItem } from '../../types/inventory';
 import Grid from '../../components/common/Grid';
@@ -118,7 +117,6 @@ const StoreInventory = () => {
   const [newItemStock, setNewItemStock] = useState<number | string>(1);
   const [newItemMinQty, setNewItemMinQty] = useState<number | string>(0);
   const [editingStock, setEditingStock] = useState<Record<string, { stock: number | string; minQty: number | string; targetQty?: number | string }>>({});
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [isExporting, setIsExporting] = useState(false);
   const [storesDialogOpen, setStoresDialogOpen] = useState(false);
   const [selectedItemForStores, setSelectedItemForStores] = useState<InventoryItem | null>(null);
@@ -197,10 +195,6 @@ const StoreInventory = () => {
     
     return filtered;
   }, [settings, searchTerm, statusFilter, lowStockFilter, outOfStockFilter, sortBy, sortOrder]);
-  
-  const availableStock = useCallback((setting: StoreItemSettings) => {
-    return setting.currentStock || 0;
-  }, []);
   
   const isLowStock = useCallback((setting: StoreItemSettings) => {
     return setting.currentStock <= (setting.minQty || 0);
@@ -1185,9 +1179,6 @@ const StoreInventory = () => {
                 const outOfStock = isOutOfStock(setting);
                 const storeStock = Math.max(0, setting.currentStock || 0);
                 const globalStock = Math.max(0, item.currentStock || 0);
-                const weeklyUsageNum = typeof setting.weeklyUsage === 'string' 
-                  ? parseFloat(setting.weeklyUsage) 
-                  : (setting.weeklyUsage || 0);
                 // Calculate actual percentage (can exceed 100% if stock is above minimum)
                 const stockPercent = setting.minQty > 0 
                   ? (storeStock / setting.minQty) * 100

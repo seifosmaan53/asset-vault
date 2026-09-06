@@ -43,7 +43,9 @@ export const useKeyboardShortcuts = ({
   target,
 }: UseKeyboardShortcutsOptions) => {
   const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
+    (event: Event) => {
+      if (!(event instanceof KeyboardEvent)) return;
+      const e = event;
       if (!enabled) return;
 
       // Check if user is typing in an input field
