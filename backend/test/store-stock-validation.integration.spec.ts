@@ -186,8 +186,8 @@ describe('Store Stock Validation Integration', () => {
       const invoiceData = {
         clientId,
         storeId,
-        type: 'invoice',
-        status: 'draft',
+        type: 'invoice' as const,
+        status: 'draft' as const,
         issueDate: new Date().toISOString(),
         currency: 'USD',
         items: [
@@ -242,8 +242,8 @@ describe('Store Stock Validation Integration', () => {
       const invoiceData = {
         clientId,
         storeId,
-        type: 'invoice',
-        status: 'draft',
+        type: 'invoice' as const,
+        status: 'draft' as const,
         issueDate: new Date().toISOString(),
         currency: 'USD',
         items: [
@@ -298,7 +298,7 @@ describe('Store Stock Validation Integration', () => {
       };
 
       (storeRepository.findOne as jest.Mock).mockResolvedValue(mockStore);
-      (inventoryItemRepository.findOne as jest.Mock).mockResolvedValue(
+      (inventoryRepository.findOne as jest.Mock).mockResolvedValue(
         mockInventoryItem,
       );
       (storeItemSettingsRepository.findOne as jest.Mock).mockResolvedValue(
@@ -326,7 +326,7 @@ describe('Store Stock Validation Integration', () => {
       };
 
       (storeRepository.findOne as jest.Mock).mockResolvedValue(mockStore);
-      (inventoryItemRepository.findOne as jest.Mock).mockResolvedValue(
+      (inventoryRepository.findOne as jest.Mock).mockResolvedValue(
         mockInventoryItem,
       );
       (storeItemSettingsRepository.findOne as jest.Mock).mockResolvedValue(

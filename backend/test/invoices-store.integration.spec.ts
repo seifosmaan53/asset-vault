@@ -1,5 +1,6 @@
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
+import { NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
 import { DataSource } from 'typeorm';
@@ -164,7 +165,9 @@ describe('Invoices-Store Integration', () => {
       name: 'Test Item',
       sku: 'TEST-001',
       currentStock: 100,
-      reservedStock: 0,
+      // `reservedStock` was dropped from InventoryItem when reservations were removed
+      // from the service; it now survives only in the initial migration. Leaving it here
+      // meant this fixture no longer described the entity it claimed to be.
     } as InventoryItem;
   });
 
@@ -216,8 +219,8 @@ describe('Invoices-Store Integration', () => {
         userId: testUser.id,
         storeId: testStore.id,
         clientId: testClient.id,
-        type: 'invoice',
-        status: 'draft',
+        type: 'invoice' as const,
+        status: 'draft' as const,
         number: 'INV-2024-0001',
       } as Invoice;
 
@@ -260,8 +263,8 @@ describe('Invoices-Store Integration', () => {
       const invoiceData = {
         clientId: testClient.id,
         storeId: testStore.id,
-        type: 'invoice',
-        status: 'draft',
+        type: 'invoice' as const,
+        status: 'draft' as const,
         issueDate: new Date().toISOString(),
         currency: 'USD',
         items: [
@@ -291,8 +294,8 @@ describe('Invoices-Store Integration', () => {
         userId: testUser.id,
         storeId: testStore.id,
         clientId: testClient.id,
-        type: 'invoice',
-        status: 'draft',
+        type: 'invoice' as const,
+        status: 'draft' as const,
         number: 'INV-2024-0001',
         items: [
           {
@@ -307,7 +310,7 @@ describe('Invoices-Store Integration', () => {
         .mockResolvedValueOnce(existingInvoice)
         .mockResolvedValueOnce({
           ...existingInvoice,
-          status: 'sent',
+          status: 'sent' as const,
         });
       (invoiceRepository.update as jest.Mock).mockResolvedValue(undefined);
       (invoiceItemsRepository.delete as jest.Mock).mockResolvedValue(undefined);
@@ -337,8 +340,8 @@ describe('Invoices-Store Integration', () => {
         userId: testUser.id,
         storeId: testStore.id,
         clientId: testClient.id,
-        type: 'invoice',
-        status: 'sent',
+        type: 'invoice' as const,
+        status: 'sent' as const,
         number: 'INV-2024-0001',
       } as Invoice;
 
@@ -382,8 +385,8 @@ describe('Invoices-Store Integration', () => {
       const invoiceData = {
         clientId: testClient.id,
         storeId: testStore.id,
-        type: 'invoice',
-        status: 'sent',
+        type: 'invoice' as const,
+        status: 'sent' as const,
         issueDate: new Date().toISOString(),
         currency: 'USD',
         items: [
@@ -409,10 +412,13 @@ describe('Invoices-Store Integration', () => {
       const savedInvoice = {
         id: invoiceId,
         userId: testUser.id,
-        storeId: null,
+        // Invoice declares `storeId?: string`, so "no store" is undefined here. The column
+        // is nullable and the database really does hand back null, which is a mismatch in
+        // the entity worth tidying one day — but not from inside a test fixture.
+        storeId: undefined,
         clientId: testClient.id,
-        type: 'invoice',
-        status: 'sent',
+        type: 'invoice' as const,
+        status: 'sent' as const,
         number: 'INV-2024-0001',
       } as Invoice;
 
@@ -440,8 +446,8 @@ describe('Invoices-Store Integration', () => {
 
       const invoiceData = {
         clientId: testClient.id,
-        type: 'invoice',
-        status: 'sent',
+        type: 'invoice' as const,
+        status: 'sent' as const,
         issueDate: new Date().toISOString(),
         currency: 'USD',
         items: [
@@ -472,7 +478,7 @@ describe('Invoices-Store Integration', () => {
       const invoiceData = {
         clientId: testClient.id,
         storeId: 'non-existent-store',
-        type: 'invoice',
+        type: 'invoice' as const,
         issueDate: new Date().toISOString(),
         currency: 'USD',
         items: [
@@ -507,7 +513,7 @@ describe('Invoices-Store Integration', () => {
       const invoiceData = {
         clientId: testClient.id,
         storeId: 'store-other',
-        type: 'invoice',
+        type: 'invoice' as const,
         issueDate: new Date().toISOString(),
         currency: 'USD',
         items: [
