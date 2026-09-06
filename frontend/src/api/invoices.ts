@@ -71,8 +71,8 @@ export const invoicesApi = {
     totalMax?: number;
     subtotalMin?: number;
     subtotalMax?: number;
-    type?: string;
-    search?: string;
+    // `type` and `search` were listed a second time here, duplicating the declarations
+    // near the top of this same object type.
   }): Promise<PagedResult<Invoice>> => {
     const response = await apiClient.get<PagedResult<Invoice>>('/invoices/paged', { params });
     return response.data;

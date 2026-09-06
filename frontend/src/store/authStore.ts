@@ -64,17 +64,27 @@ export const useAuthStore = create<AuthState>()(
             // The component that made the original request will handle the result
             return null;
           }
+          /* `error` is `unknown` here, and the dedupe check above narrows it only to
+             `{}` — so reading .name, .code and .response off it was not permitted.
+             Rather than assert per access, describe the parts of an Axios-style error
+             this code actually depends on and read through that. */
+          const failure = error as {
+            name?: string;
+            code?: string;
+            response?: { status?: number };
+          };
+
           // Ignore CanceledError - this is expected in React Strict Mode (development)
           // when effects are double-invoked and requests get cancelled
-          if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') {
+          if (failure.name === 'CanceledError' || failure.code === 'ERR_CANCELED') {
             return null;
           }
           // Log other errors but don't clear auth state for network errors
-          if (error?.response?.status !== 401) {
+          if (failure.response?.status !== 401) {
             logger.error('Failed to sync user:', error);
           }
           // Only clear auth state on 401 (unauthorized)
-          if (error?.response?.status === 401) {
+          if (failure.response?.status === 401) {
             set({ user: null, isAuthenticated: false });
           }
           return null;
