@@ -23,8 +23,11 @@ const getClerkToken = async (maxWaitMs: number = 1000): Promise<string | null> =
     const startTime = Date.now();
     while (Date.now() - startTime < maxWaitMs) {
       await new Promise(resolve => setTimeout(resolve, 50)); // Check every 50ms
-      if (windowWithToken.__clerkGetToken) {
-        return await windowWithToken.__clerkGetToken() || null;
+      // Read into a local before calling: narrowing on the property does not survive the
+      // await above, because anything could have reassigned it while this was suspended.
+      const getToken = windowWithToken.__clerkGetToken;
+      if (getToken) {
+        return (await getToken()) || null;
       }
     }
 
@@ -188,7 +191,13 @@ class ApiClient {
     // Response interceptor to handle token refresh and network errors
     this.client.interceptors.response.use(
       (response) => {
-        const config = response.config as InternalAxiosRequestConfig & { __requestKey?: string; __isDedupe?: boolean };
+        // `__dedupePromise` is read a few lines down but was missing from this cast, so
+        // the two properties the deduplication logic actually uses were only half declared.
+        const config = response.config as InternalAxiosRequestConfig & {
+          __requestKey?: string;
+          __isDedupe?: boolean;
+          __dedupePromise?: Promise<unknown>;
+        };
         
         // Handle request deduplication - if this was a deduplicated request, it was cancelled
         // so we shouldn't reach here. But if we do, return the original promise result
