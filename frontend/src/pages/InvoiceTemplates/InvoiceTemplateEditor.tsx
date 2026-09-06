@@ -7,11 +7,11 @@ import {
   TextField,
   Button,
   Paper,
-  Grid,
   Switch,
   FormControlLabel,
   CircularProgress
 } from '@mui/material';
+import Grid from '../../components/common/Grid';
 import SaveIcon from '@mui/icons-material/Save';
 import { useInvoiceTemplate, useCreateInvoiceTemplate, useUpdateInvoiceTemplate } from '../../hooks/useInvoiceTemplates';
 import { useToast } from '../../contexts/ToastContext';

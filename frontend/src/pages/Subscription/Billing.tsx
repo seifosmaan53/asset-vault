@@ -7,7 +7,6 @@ import {
   Button,
   Card,
   CardContent,
-  Grid,
   Alert,
   CircularProgress,
   Container,
@@ -21,6 +20,7 @@ import {
   Chip,
   Link,
 } from '@mui/material';
+import Grid from '../../components/common/Grid';
 import { useQuery } from '@tanstack/react-query';
 import { subscriptionsApi} from '../../api/subscriptions';
 import { useSubscriptionStore } from '../../store/subscriptionStore';
