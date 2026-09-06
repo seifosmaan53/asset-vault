@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+import { BulkActionsBar } from '../../components/common/BulkActionsBar';
 import ExportProgressDialog from '../../components/common/ExportProgressDialog';
 import { ImportDialog } from '../../components/import/ImportDialog';
 import { ImportPreview } from '../../components/import/ImportPreview';
@@ -364,8 +365,12 @@ const InventoryList = () => {
                 name: item.name,
                 description: item.description,
                 unit: item.unit,
-                defaultUnitPrice: item.unitPrice || 0,
-                currentStock: item.stock || 0,
+                /* These read `item.unitPrice` and `item.stock`, which InventoryItem does
+                   not have — the fields are defaultUnitPrice and currentStock. Both were
+                   therefore always undefined, so `|| 0` fired every time and undoing a
+                   delete restored the item with a price of 0 and no stock. */
+                defaultUnitPrice: item.defaultUnitPrice || 0,
+                currentStock: item.currentStock || 0,
                 reorderLevel: item.reorderLevel || 0,
                 status: item.status || 'active',
                 bundleSize: item.bundleSize,
@@ -1468,10 +1473,22 @@ const InventoryList = () => {
       )}
 
 
-      <TableContainer 
-        component={Paper} 
-        sx={{ 
-          borderRadius: 2, 
+      {/* Every other piece of bulk delete was already here — the row checkboxes, the
+          select-all header, the confirmation dialog and the mutation — but nothing
+          rendered the bar that starts it, so items could be selected and then not acted
+          on. Wired the same way as ClientsList. */}
+      <BulkActionsBar
+        selectedCount={selectedItems.size}
+        onDelete={handleBulkDelete}
+        onClearSelection={handleClearSelection}
+        isLoading={bulkDeleteItems.isPending}
+        resourceName="items"
+      />
+
+      <TableContainer
+        component={Paper}
+        sx={{
+          borderRadius: 2,
           boxShadow: 1,
           overflowX: 'auto',
           overflowY: 'auto',

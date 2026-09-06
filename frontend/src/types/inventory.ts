@@ -7,6 +7,10 @@ export interface InventoryItem {
   sku: string;
   name: string;
   description?: string;
+  /* Kept in step with the entity and with CreateInventoryItemDto in api/inventory.ts.
+     There being two InventoryItem shapes in this codebase is the underlying problem —
+     they drift, and pages break depending on which one they happen to import. */
+  category?: string;
   unit: string;
   barcode?: string;
   costPrice?: number;

@@ -29,6 +29,8 @@ import {
   LinearProgress,
   InputAdornment} from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -121,7 +123,9 @@ const StoreInventory = () => {
   const [newItemStock, setNewItemStock] = useState<number | string>(1);
   const [newItemMinQty, setNewItemMinQty] = useState<number | string>(0);
   const [editingStock, setEditingStock] = useState<Record<string, { stock: number | string; minQty: number | string; targetQty?: number | string }>>({});
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [settingPendingRemoval, setSettingPendingRemoval] =
+    useState<StoreItemSettings | null>(null);
+  const [removingItem, setRemovingItem] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [storesDialogOpen, setStoresDialogOpen] = useState(false);
   const [selectedItemForStores, setSelectedItemForStores] = useState<InventoryItem | null>(null);
@@ -1738,6 +1742,24 @@ const StoreInventory = () => {
                                 <EditIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
+                            {/* handleRemoveItem was fully written and never called, so an
+                                item could be added to a store but not taken out again
+                                from this screen. Confirmed first: it deletes the store's
+                                settings row for the item. */}
+                            <Tooltip title="Remove from this store">
+                              <IconButton
+                                size="small"
+                                onClick={() => setSettingPendingRemoval(setting)}
+                                sx={{
+                                  '&:hover': {
+                                    bgcolor: 'error.light',
+                                    color: 'error.contrastText',
+                                  },
+                                }}
+                              >
+                                <DeleteOutlineIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
                           </>
                         )}
                       </Box>
@@ -2332,6 +2354,27 @@ const StoreInventory = () => {
           setSelectedItemForStores(null);
         }}
         item={selectedItemForStores}
+      />
+
+      <ConfirmDialog
+        open={settingPendingRemoval !== null}
+        onClose={() => setSettingPendingRemoval(null)}
+        onConfirm={async () => {
+          if (!settingPendingRemoval) return;
+          setRemovingItem(true);
+          try {
+            await handleRemoveItem(settingPendingRemoval);
+            setSettingPendingRemoval(null);
+          } finally {
+            setRemovingItem(false);
+          }
+        }}
+        title="Remove item from store"
+        message="Remove this item from the store? The item itself and its global stock are not affected — only its assignment to this store is removed."
+        confirmText="Remove"
+        cancelText="Cancel"
+        confirmColor="error"
+        loading={removingItem}
       />
     </Box>
   );
