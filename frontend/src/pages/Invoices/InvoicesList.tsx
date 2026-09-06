@@ -87,9 +87,6 @@ const InvoicesList = () => {
     }
     return localStorage.getItem('invoices_statusFilter') || 'all';
   });
-  // Type filter removed - all invoices are now just invoices (no estimates)
-  // Keep state for backward compatibility but always use 'all'
-  const [typeFilter, setTypeFilter] = useState<string>('all');
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
   const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
@@ -286,8 +283,6 @@ const InvoicesList = () => {
     }
   }, [invoiceFilters, refetch, queryClient]);
   
-  // FIX #111: Show loading indicator during background refetch
-  const isDataLoading = isLoading || isRefetching;
 
   // CRITICAL FIX: The mutation's onSuccess handler already updates the cache directly
   // We don't need a subscription refetch because:
@@ -308,21 +303,8 @@ const InvoicesList = () => {
   
   // Column visibility management
   const defaultColumns = ['number', 'client', 'store', 'status', 'total', 'issueDate', 'dueDate'];
-  const {
-    preferences,
-    toggleColumnVisibility,
-    resetPreferences,
-  } = useTableColumns('invoices-list', defaultColumns);
+  const { preferences } = useTableColumns('invoices-list', defaultColumns);
   
-  const columnControls = useMemo(() => [
-    { id: 'number', label: 'Number', visible: preferences.number?.visible !== false },
-    { id: 'client', label: 'Client', visible: preferences.client?.visible !== false },
-    { id: 'store', label: 'Store', visible: preferences.store?.visible !== false },
-    { id: 'status', label: 'Status', visible: preferences.status?.visible !== false },
-    { id: 'total', label: 'Total', visible: preferences.total?.visible !== false },
-    { id: 'issueDate', label: 'Issue Date', visible: preferences.issueDate?.visible !== false },
-    { id: 'dueDate', label: 'Due Date', visible: preferences.dueDate?.visible !== false },
-  ], [preferences]);
 
   // Keyboard shortcuts
   useEffect(() => {

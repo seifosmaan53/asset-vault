@@ -16,6 +16,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PrintIcon from '@mui/icons-material/Print';
 import { useStoreStockReport } from '../../hooks/useStoreItemSettings';
 import { useStore } from '../../hooks/useStore';
+import type { InventoryItem } from '../../types/inventory';
 
 const StoreStockReport = () => {
   const { id: storeId } = useParams<{ id: string }>();
@@ -73,8 +74,6 @@ const StoreStockReport = () => {
             <TableHead>
               <TableRow>
                 <TableCell>Item</TableCell>
-                <TableCell>Size</TableCell>
-                <TableCell>Material</TableCell>
                 <TableCell>Bundle Size</TableCell>
                 <TableCell>Current Stock</TableCell>
                 <TableCell>Min Qty</TableCell>
@@ -84,11 +83,19 @@ const StoreStockReport = () => {
             </TableHead>
             <TableBody>
               {report.items && report.items.length > 0 ? (
-                report.items.map((item: { item?: { name?: string }; currentStock: number; minQty: number }, index: number) => (
+                report.items.map(
+                  (
+                    item: {
+                      item?: Partial<InventoryItem>;
+                      currentStock: number;
+                      minQty: number;
+                      targetQty?: number;
+                      weeklyUsage?: number;
+                    },
+                    index: number,
+                  ) => (
                   <TableRow key={index}>
                     <TableCell>{item.item?.name || '-'}</TableCell>
-                    <TableCell>{item.item?.sizeInches || '-'}</TableCell>
-                    <TableCell>{item.item?.material || '-'}</TableCell>
                     <TableCell>
                       {item.item?.bundleSize ? `${item.item.bundleSize} ${item.item.bundleUnit || ''}` : '-'}
                     </TableCell>
@@ -100,7 +107,7 @@ const StoreStockReport = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
                     <Typography color="text.secondary">
                       No items found for this store.
                     </Typography>

@@ -343,7 +343,8 @@ try {
   });
 
   // Setup offline sync
-  const cleanupOfflineSync = setupOfflineSync({
+  // The root never unmounts, so the returned teardown is intentionally not held.
+  setupOfflineSync({
     queryClient,
     onSyncComplete: () => {
       logger.info('Offline mutations synced successfully');

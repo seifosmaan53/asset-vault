@@ -42,8 +42,8 @@ export const setGlobalSettings = (settings: { dateFormat?: string; timeFormat?: 
 export const formatDate = (
   date: string | Date | null | undefined,
   userDateFormat?: string,
-  userTimeFormat?: string,
-  userTimezone?: string,
+  _userTimeFormat?: string,
+  _userTimezone?: string,
 ): string => {
   if (!date) return '';
   
@@ -83,7 +83,7 @@ export const formatDateTime = (
   date: string | Date,
   userDateFormat?: string,
   userTimeFormat?: string,
-  userTimezone?: string,
+  _userTimezone?: string,
 ): string => {
   try {
     const d = typeof date === 'string' ? parseISO(date) : date;

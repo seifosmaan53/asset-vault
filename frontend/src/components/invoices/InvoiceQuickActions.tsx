@@ -83,5 +83,9 @@ export const InvoiceQuickActions = ({
     return null;
   }
 
-  return <QuickActionsMenu actions={actions} ariaLabel={`Quick actions for invoice ${invoice.number}`} />;
+  // The `disabled` prop was accepted but never forwarded; QuickActionsMenu
+  // disables per action, so apply it to each one.
+  const resolvedActions = disabled ? actions.map((a) => ({ ...a, disabled: true })) : actions;
+
+  return <QuickActionsMenu actions={resolvedActions} ariaLabel={`Quick actions for invoice ${invoice.number}`} />;
 };

@@ -36,7 +36,7 @@ interface UndoProviderProps {
 }
 
 export const UndoProvider = ({ children, showToastOnUndo = true }: UndoProviderProps) => {
-  const [operations, setOperations] = useState<UndoOperation[]>([]);
+  const [, setOperations] = useState<UndoOperation[]>([]);
   const { showToastWithAction } = useToast();
 
   useEffect(() => {

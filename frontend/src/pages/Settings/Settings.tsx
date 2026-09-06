@@ -1132,7 +1132,6 @@ const Settings = () => {
               label="Company Email"
               description="Email address for your company. Used in invoices and communications."
               example="contact@example.com"
-              placeholder="contact@example.com"
             >
               <TextField
                 fullWidth
@@ -1150,7 +1149,6 @@ const Settings = () => {
               label="Website"
               description="Your company website URL"
               example="https://www.example.com"
-              placeholder="https://www.example.com"
             >
               <TextField
                 fullWidth
@@ -1168,7 +1166,6 @@ const Settings = () => {
               label="Company Logo URL"
               description="URL to your company logo image. Will be displayed on invoices."
               example="https://example.com/logo.png"
-              placeholder="https://example.com/logo.png"
             >
               <TextField
                 fullWidth

@@ -48,7 +48,7 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Divider from '@mui/material/Divider';
 import Alert from '@mui/material/Alert';
-import { useStoreItemSettingsByStore, useCreateOrUpdateStoreItemSettings, useUpdateStock } from '../../hooks/useStoreItemSettings';
+import { useStoreItemSettingsByStore, useCreateOrUpdateStoreItemSettings } from '../../hooks/useStoreItemSettings';
 import { exportToCSV } from '../../utils/export';
 import { useStore } from '../../hooks/useStore';
 import { useInventory } from '../../hooks/useInventory';
@@ -91,14 +91,12 @@ const StoreInventory = () => {
   }, [storeId, refetchSettings, queryClient]);
 
   const updateSettings = useCreateOrUpdateStoreItemSettings();
-  const updateStock = useUpdateStock();
   const { showToast } = useToast();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchInput, setSearchInput] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [lowStockFilter, setLowStockFilter] = useState<boolean>(false);
   const [outOfStockFilter, setOutOfStockFilter] = useState<boolean>(false);
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [addItemDialogOpen, setAddItemDialogOpen] = useState(false);
@@ -135,18 +133,6 @@ const StoreInventory = () => {
     return allItems.filter(item => !addedItemIds.has(item.id));
   }, [allItems, settings]);
   
-  // Extract unique categories from items
-  const categories = useMemo(() => {
-    if (!settings) return [];
-    const categorySet = new Set<string>();
-    settings.forEach((setting) => {
-      const item = setting.inventoryItem;
-      if (item?.category) {
-        categorySet.add(item.category);
-      }
-    });
-    return Array.from(categorySet).sort();
-  }, [settings]);
 
   // Filter and sort settings
   const filteredSettings = useMemo(() => {
@@ -172,13 +158,6 @@ const StoreInventory = () => {
     if (statusFilter === 'active' || statusFilter === 'inactive') {
       filtered = filtered.filter((setting) => {
         return setting.inventoryItem?.status === statusFilter;
-      });
-    }
-
-    // Category filter
-    if (categoryFilter !== 'all') {
-      filtered = filtered.filter((setting) => {
-        return setting.inventoryItem?.category === categoryFilter;
       });
     }
 
@@ -217,7 +196,7 @@ const StoreInventory = () => {
     });
     
     return filtered;
-  }, [settings, searchTerm, statusFilter, lowStockFilter, outOfStockFilter, categoryFilter, sortBy, sortOrder]);
+  }, [settings, searchTerm, statusFilter, lowStockFilter, outOfStockFilter, sortBy, sortOrder]);
   
   const availableStock = useCallback((setting: StoreItemSettings) => {
     return setting.currentStock || 0;
@@ -674,7 +653,7 @@ const StoreInventory = () => {
       {/* Summary Cards - Always show totals for ALL items, not filtered */}
       {settings && settings.length > 0 && (
         <Grid container spacing={2.5} sx={{ width: '100%', mb: 3 }}>
-          <Grid size={{ xs: 6, sm: 3 }} sx={{ display: 'flex' }}>
+          <Grid item xs={6} sm={3} sx={{ display: 'flex' }}>
             <Paper 
               sx={{ 
                 p: 2.5, 
@@ -717,7 +696,7 @@ const StoreInventory = () => {
               </Box>
             </Paper>
           </Grid>
-          <Grid size={{ xs: 6, sm: 3 }} sx={{ display: 'flex' }}>
+          <Grid item xs={6} sm={3} sx={{ display: 'flex' }}>
             <Paper 
               sx={{ 
                 p: 2.5, 
@@ -760,7 +739,7 @@ const StoreInventory = () => {
               </Box>
             </Paper>
           </Grid>
-          <Grid size={{ xs: 6, sm: 3 }} sx={{ display: 'flex' }}>
+          <Grid item xs={6} sm={3} sx={{ display: 'flex' }}>
             <Paper 
               sx={{ 
                 p: 2.5, 
@@ -811,7 +790,7 @@ const StoreInventory = () => {
               </Box>
             </Paper>
           </Grid>
-          <Grid size={{ xs: 6, sm: 3 }} sx={{ display: 'flex' }}>
+          <Grid item xs={6} sm={3} sx={{ display: 'flex' }}>
             <Paper 
               sx={{ 
                 p: 2.5, 
@@ -997,29 +976,6 @@ const StoreInventory = () => {
           >
             Out of Stock
           </Button>
-          {categories.length > 0 && (
-            <FormControl sx={{ minWidth: { xs: '100%', sm: 160 } }}>
-              <InputLabel sx={{ fontSize: '0.875rem', fontWeight: 500 }}>Category</InputLabel>
-              <Select
-                value={categoryFilter}
-                label="Category"
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                sx={{ 
-                  borderRadius: 2.5, 
-                  bgcolor: 'background.paper',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                  '&:hover': {
-                    boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-                  },
-                }}
-              >
-                <MenuItem value="all">All Categories</MenuItem>
-                {categories.map(cat => (
-                  <MenuItem key={cat} value={cat}>{cat}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          )}
           <FormControl sx={{ minWidth: { xs: '100%', sm: 140 } }}>
             <InputLabel sx={{ fontSize: '0.875rem', fontWeight: 500 }}>Sort By</InputLabel>
             <Select
@@ -1244,19 +1200,13 @@ const StoreInventory = () => {
                 const item = setting.inventoryItem;
                 if (!item) return null;
                 
-                const available = availableStock(setting);
                 const lowStock = isLowStock(setting);
                 const outOfStock = isOutOfStock(setting);
                 const storeStock = Math.max(0, setting.currentStock || 0);
                 const globalStock = Math.max(0, item.currentStock || 0);
-                const stockDiff = storeStock - globalStock;
-                const stockValue = storeStock * (item.defaultUnitPrice || 0);
                 const weeklyUsageNum = typeof setting.weeklyUsage === 'string' 
                   ? parseFloat(setting.weeklyUsage) 
                   : (setting.weeklyUsage || 0);
-                const weeksOnHand = weeklyUsageNum > 0 
-                  ? (storeStock / weeklyUsageNum).toFixed(1)
-                  : null;
                 // Calculate actual percentage (can exceed 100% if stock is above minimum)
                 const stockPercent = setting.minQty > 0 
                   ? (storeStock / setting.minQty) * 100
@@ -1767,7 +1717,7 @@ const StoreInventory = () => {
                       color: 'text.primary',
                       fontSize: { xs: '1.25rem', sm: '1.5rem' },
                     }}>
-                      {searchTerm || statusFilter !== 'all' || categoryFilter !== 'all' || lowStockFilter || outOfStockFilter
+                      {searchTerm || statusFilter !== 'all' || lowStockFilter || outOfStockFilter
                         ? 'No items match your filters'
                         : 'No inventory items in this store'}
                     </Typography>
@@ -1776,13 +1726,13 @@ const StoreInventory = () => {
                       textAlign: 'center',
                       fontSize: '0.9375rem',
                     }}>
-                      {searchTerm || statusFilter !== 'all' || categoryFilter !== 'all' || lowStockFilter || outOfStockFilter
+                      {searchTerm || statusFilter !== 'all' || lowStockFilter || outOfStockFilter
                         ? 'Try adjusting your search or filter criteria to see more results'
                         : availableItemsToAdd.length > 0
                           ? `Get started by adding items to track inventory levels. You have ${availableItemsToAdd.length} ${availableItemsToAdd.length === 1 ? 'item' : 'items'} available to add.`
                           : 'No items available to add. Create inventory items first to track them in this store.'}
                     </Typography>
-                    {!searchTerm && statusFilter === 'all' && categoryFilter === 'all' && !lowStockFilter && !outOfStockFilter && availableItemsToAdd.length > 0 && (
+                    {!searchTerm && statusFilter === 'all' && !lowStockFilter && !outOfStockFilter && availableItemsToAdd.length > 0 && (
                       <Button
                         variant="contained"
                         startIcon={<AddIcon />}
@@ -1807,14 +1757,13 @@ const StoreInventory = () => {
                         Add Items to Store
                       </Button>
                     )}
-                    {(searchTerm || statusFilter !== 'all' || categoryFilter !== 'all' || lowStockFilter || outOfStockFilter) && (
+                    {(searchTerm || statusFilter !== 'all' || lowStockFilter || outOfStockFilter) && (
                       <Button
                         variant="outlined"
                         onClick={() => {
                           setSearchTerm('');
                           setSearchInput('');
                           setStatusFilter('all');
-                          setCategoryFilter('all');
                           setLowStockFilter(false);
                           setOutOfStockFilter(false);
                         }}
@@ -2007,7 +1956,7 @@ const StoreInventory = () => {
                       </Typography>
                     </Box>
                     <Grid container spacing={4} sx={{ width: '100%', margin: 0 }}>
-                      <Grid size={{ xs: 12, sm: 4 }}>
+                      <Grid item xs={12} sm={4}>
                         <Box sx={{ pr: { sm: 2 } }}>
                           <Typography 
                             variant="caption" 
@@ -2036,7 +1985,7 @@ const StoreInventory = () => {
                           </Typography>
                         </Box>
                       </Grid>
-                      <Grid size={{ xs: 12, sm: 4 }}>
+                      <Grid item xs={12} sm={4}>
                         <Box sx={{ px: { sm: 2 } }}>
                           <Typography 
                             variant="caption" 
@@ -2066,7 +2015,7 @@ const StoreInventory = () => {
                         </Box>
                       </Grid>
                       {selectedItemToAdd.defaultUnitPrice && (
-                        <Grid size={{ xs: 12, sm: 4 }}>
+                        <Grid item xs={12} sm={4}>
                           <Box sx={{ pl: { sm: 2 } }}>
                             <Typography 
                               variant="caption" 
@@ -2117,7 +2066,7 @@ const StoreInventory = () => {
                     />
                   </Box>
                   <Grid container spacing={3.5} sx={{ width: '100%', margin: 0 }}>
-                    <Grid size={{ xs: 12, sm: 6 }}>
+                    <Grid item xs={12} sm={6}>
                       <Box sx={{ pr: { sm: 1.5 } }}>
                         <TextField
                           fullWidth
@@ -2188,7 +2137,7 @@ const StoreInventory = () => {
                         />
                       </Box>
                     </Grid>
-                    <Grid size={{ xs: 12, sm: 6 }}>
+                    <Grid item xs={12} sm={6}>
                       <Box sx={{ pl: { sm: 1.5 } }}>
                         <TextField
                           fullWidth
