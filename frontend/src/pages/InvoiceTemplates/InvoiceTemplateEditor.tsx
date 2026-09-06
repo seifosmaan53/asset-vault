@@ -8,7 +8,6 @@ import {
   Button,
   Paper,
   Grid,
-  Divider,
   Switch,
   FormControlLabel,
   CircularProgress

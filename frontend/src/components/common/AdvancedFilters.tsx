@@ -11,9 +11,6 @@ import {
   IconButton,
   Chip,
   Divider,
-  FormControl,
-  InputLabel,
-  Select,
   Collapse
 } from '@mui/material';
 import FilterListIcon from '@mui/icons-material/FilterList';

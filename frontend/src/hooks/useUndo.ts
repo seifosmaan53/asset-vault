@@ -10,7 +10,7 @@ import { useCallback } from 'react';
  */
 export const useUndo = () => {
   const undoContext = useUndoContext();
-  const { showToastWithAction } = useToast();
+  useToast();
 
   /**
    * Add an undo operation with automatic toast notification

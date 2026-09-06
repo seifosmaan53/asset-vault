@@ -41,7 +41,7 @@ const Dashboard = () => {
   const queryClient = useQueryClient();
   const { data: stats, isLoading: statsLoading, isError: statsIsError, error: statsError, refetch } = useInvoiceStats();
   const { data: lowStockItems, isLoading: lowStockLoading } = useLowStock();
-  const { data: invoices, isLoading: invoicesLoading, isError: invoicesError, refetch: refetchInvoices } = useInvoices();
+  const { data: invoices, isLoading: invoicesLoading } = useInvoices();
   const { data: inventoryItems } = useInventory(); // Fetch all inventory items to get cost prices
   
   // Listen for invoice mutations to ensure Dashboard updates immediately

@@ -231,7 +231,7 @@ const AppLayout = () => {
   const location     = useLocation();
   const theme        = useTheme();
   const isDark       = theme.palette.mode === 'dark';
-  const { showToast } = useToast();
+  useToast();
   const queryClient  = useQueryClient();
   const { signOut }  = useClerk();
   const sidebarOpen  = useUIStore((state) => state.sidebarOpen);

@@ -16,7 +16,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const location = useLocation();
   const syncUser = useAuthStore((state) => state.syncUser);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const { loadSubscription, checkAccess, subscription } = useSubscriptionStore();
+  const { loadSubscription, checkAccess } = useSubscriptionStore();
   const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
 
   // Set up global getToken function for API client

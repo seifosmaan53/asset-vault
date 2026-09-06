@@ -37,7 +37,7 @@ const Analytics = () => {
   const { data: topClients, isLoading: clientsLoading } = useTopClients();
   const { data: topItems, isLoading: itemsLoading } = useTopItems();
   const { data: salesByCategory, isLoading: categoryLoading } = useSalesByCategory(startDate, endDate);
-  const { data: revenueByPaymentMethod, isLoading: paymentLoading } = useRevenueByPaymentMethod(startDate, endDate);
+  const { isLoading: paymentLoading } = useRevenueByPaymentMethod(startDate, endDate);
   const { data: invoiceStatus, isLoading: statusLoading } = useInvoicesByStatus();
   const { data: invoices } = useInvoices();
   const { data: inventoryItems } = useInventory();

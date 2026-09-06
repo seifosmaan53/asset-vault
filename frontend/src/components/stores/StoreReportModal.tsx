@@ -645,7 +645,7 @@ const LowStockReport = ({
   onItemClick: (itemId: string) => void;
 }) => {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
-  const { data: allStores } = useStores();
+  useStores();
 
   const toggleExpanded = (itemId: string) => {
     setExpandedItems((prev) => {

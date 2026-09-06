@@ -98,7 +98,7 @@ const InventoryForm = () => {
   const { id } = useParams<{ id: string }>();
   const isEdit = !!id;
   const { data: item, isLoading } = useInventoryItem(id || '');
-  const { data: allInventoryItems } = useInventory();
+  useInventory();
   const { data: stores } = useStores();
   const { data: existingStoreSettings } = useStoreItemSettingsByItem(id || '');
   const createItem = useCreateInventoryItem();
