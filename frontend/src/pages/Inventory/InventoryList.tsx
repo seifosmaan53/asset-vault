@@ -814,7 +814,7 @@ const InventoryList = () => {
         <Box mb={3.5} sx={{ width: '100%' }}>
           <Grid container spacing={2.5} sx={{ width: '100%', margin: 0 }}>
           {/* Total Items Card */}
-          <Grid item xs={{ xs: 6, sm: 6, md: 2.4 }} sx={{ display: 'flex' }}>
+          <Grid item xs={6} sm={6} md={2.4} sx={{ display: 'flex' }}>
             <Paper 
               elevation={0}
               sx={{ 
@@ -910,7 +910,7 @@ const InventoryList = () => {
           </Grid>
 
           {/* Total Store Stock Card */}
-          <Grid item xs={{ xs: 6, sm: 6, md: 2.4 }} sx={{ display: 'flex' }}>
+          <Grid item xs={6} sm={6} md={2.4} sx={{ display: 'flex' }}>
             <Paper 
               elevation={0}
               sx={{ 
@@ -1006,7 +1006,7 @@ const InventoryList = () => {
           </Grid>
 
           {/* Low Stock Items Card */}
-          <Grid item xs={{ xs: 6, sm: 6, md: 2.4 }} sx={{ display: 'flex' }}>
+          <Grid item xs={6} sm={6} md={2.4} sx={{ display: 'flex' }}>
             <Paper 
               elevation={0}
               sx={{ 
@@ -1116,7 +1116,7 @@ const InventoryList = () => {
           </Grid>
 
           {/* Out of Stock Items Card */}
-          <Grid item xs={{ xs: 6, sm: 6, md: 2.4 }} sx={{ display: 'flex' }}>
+          <Grid item xs={6} sm={6} md={2.4} sx={{ display: 'flex' }}>
             <Paper 
               elevation={0}
               sx={{ 
@@ -1226,7 +1226,7 @@ const InventoryList = () => {
           </Grid>
 
           {/* Total Inventory Value Card */}
-          <Grid item xs={{ xs: 12, sm: 6, md: 2.4 }} sx={{ display: 'flex' }}>
+          <Grid item xs={12} sm={6} md={2.4} sx={{ display: 'flex' }}>
             <Paper 
               elevation={0}
               sx={{ 
