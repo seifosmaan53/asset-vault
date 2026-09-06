@@ -247,6 +247,15 @@ export class UserSettings {
   compactMode: boolean;
 
   // Backup and export
+  @Column({ default: true })
+  autoBackup: boolean;
+
+  @Column({ type: 'int', default: 7 })
+  backupRetentionDays: number;
+
+  @Column({ default: true })
+  allowDataExport: boolean;
+
   @Column({ nullable: true })
   backupSchedule: string;
 

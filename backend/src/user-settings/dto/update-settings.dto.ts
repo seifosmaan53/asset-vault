@@ -855,6 +855,20 @@ export class UpdateSettingsDto {
   compactMode?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  autoBackup?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(365, { message: 'Backup retention must be between 1 and 365 days' })
+  backupRetentionDays?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  allowDataExport?: boolean;
+
+  @IsOptional()
   @IsString()
   @IsIn(['none', 'daily', 'weekly', 'monthly'], {
     message: 'Backup schedule must be none, daily, weekly or monthly',

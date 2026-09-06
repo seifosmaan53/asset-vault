@@ -104,6 +104,9 @@ export interface UserSettings {
   compactMode?: boolean;
 
   // Backup and export
+  autoBackup?: boolean;
+  backupRetentionDays?: number;
+  allowDataExport?: boolean;
   backupSchedule?: string;
   backupTime?: string;
   exportFormats?: string;
@@ -179,6 +182,57 @@ export const settingsApi = {
     const response = await apiClient.post<{ success: boolean; message: string }>(
       '/user-settings/test-email',
       credentials || {}
+    );
+    return response.data;
+  },
+
+  /* Two-factor authentication. The four endpoints below have existed on the backend
+     (POST /user-settings/2fa/{generate,verify,enable,disable}) and the Settings page has
+     been calling them all along — they were simply never declared on this client, so the
+     whole 2FA setup dialog was calling methods that did not exist. Signatures match the
+     controller's @Body shapes exactly. */
+
+  generate2FA: async (): Promise<{
+    secret: string;
+    qrCode: string;
+    email: string;
+  }> => {
+    const response = await apiClient.post<{
+      secret: string;
+      qrCode: string;
+      email: string;
+    }>('/user-settings/2fa/generate');
+    return response.data;
+  },
+
+  verify2FA: async (
+    token: string,
+    secret: string
+  ): Promise<{ valid: boolean }> => {
+    const response = await apiClient.post<{ valid: boolean }>(
+      '/user-settings/2fa/verify',
+      { token, secret }
+    );
+    return response.data;
+  },
+
+  enable2FA: async (
+    token: string,
+    secret: string
+  ): Promise<{ success: boolean; message: string }> => {
+    const response = await apiClient.post<{ success: boolean; message: string }>(
+      '/user-settings/2fa/enable',
+      { token, secret }
+    );
+    return response.data;
+  },
+
+  disable2FA: async (
+    token: string
+  ): Promise<{ success: boolean; message: string }> => {
+    const response = await apiClient.post<{ success: boolean; message: string }>(
+      '/user-settings/2fa/disable',
+      { token }
     );
     return response.data;
   },
