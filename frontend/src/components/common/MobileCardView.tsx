@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { Box, Card, CardContent, Typography, useTheme, useMediaQuery, Divider } from '@mui/material';
 
 interface MobileCardViewProps {

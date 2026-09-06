@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import { KeyboardShortcutsDialog } from '../components/common/KeyboardShortcutsDialog';
 import type { ShortcutGroup } from '../components/common/KeyboardShortcutsDialog';
 

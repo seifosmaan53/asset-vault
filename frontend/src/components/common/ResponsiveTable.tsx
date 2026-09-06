@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { useTheme, useMediaQuery } from '@mui/material';
 import { TableContainer, Paper, Table, TableHead, TableBody, TableRow, TableCell } from '@mui/material';
 

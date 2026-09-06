@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import {Box,
+import {
+  Box,
   Typography,
   Paper,
   Button,
@@ -17,8 +18,7 @@ import {Box,
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  LinearProgress,
-  Divider,
+  LinearProgress
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import EditIcon from '@mui/icons-material/Edit';

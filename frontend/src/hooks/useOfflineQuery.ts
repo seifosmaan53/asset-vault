@@ -4,7 +4,7 @@
  * React Query hook with IndexedDB persistence for offline support
  */
 
-import { useQuery, UseQueryOptions } from '@tanstack/react-query';
+import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
 import { getQueryCache, storeQueryCache } from '../utils/indexedDB';
 import { isOnline } from '../utils/offlineSync';
 

@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {Box,
+import {
+  Box,
   Typography,
   Table,
   TableBody,
