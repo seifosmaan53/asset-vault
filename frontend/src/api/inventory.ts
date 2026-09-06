@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient';
+import { logger } from '../utils/logger';
 import type { InventoryItem, StockMovement } from '../types/inventory';
 
 export interface CreateInventoryItemDto {

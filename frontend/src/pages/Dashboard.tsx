@@ -28,7 +28,6 @@ import { invoicesApi } from '../api/invoices';
 import { subMonths, format, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO, startOfDay, endOfDay } from 'date-fns';
 import { validateDateRange } from '../utils/dates';
 import { useInvoices } from '../hooks/useInvoices';
-import { useTopClients, useTopItems, useSalesByCategory, useRevenueByPaymentMethod, useInvoicesByStatus } from '../hooks/useAnalytics';
 import { exportToCSV } from '../utils/export';
 import { getErrorMessage } from '../utils/errorHandling';
 import { useToast } from '../contexts/ToastContext';
@@ -49,9 +48,12 @@ const Dashboard = () => {
   // We invalidate queries which will trigger automatic refetch when components become active
   useEffect(() => {
     const unsubscribe = queryClient.getMutationCache().subscribe((event) => {
-      // When an invoice update mutation succeeds, invalidate queries
-      // React Query will automatically refetch when components are active
-      if (event?.type === 'success' && event?.mutation?.options?.mutationKey) {
+      /* React Query v5 emits 'added' | 'removed' | 'updated' from the mutation cache;
+         there is no 'success' event. Success now lives on the mutation's own state. The
+         old check could therefore never be true, so an invoice update never invalidated
+         anything here and the dashboard kept showing pre-edit figures until something
+         else happened to refetch. */
+      if (event.type === 'updated' && event.mutation.state.status === 'success') {
         const mutationKey = event.mutation.options.mutationKey;
         if (Array.isArray(mutationKey) && mutationKey[0] === 'invoices' && mutationKey[1] === 'update') {
           // Invalidate queries - React Query will refetch automatically for active queries
@@ -130,12 +132,12 @@ const Dashboard = () => {
     return validateDateRange(dateRange.start, dateRange.end, 6);
   }, [dateRange.start, dateRange.end]);
   
-  // Analytics hooks (using validated date range)
-  const { data: topClients, isLoading: clientsLoading } = useTopClients();
-  const { data: topItems, isLoading: itemsLoading } = useTopItems();
-  const { data: salesByCategory, isLoading: categoryLoading } = useSalesByCategory(validatedDateRange.start, validatedDateRange.end);
-  const { data: revenueByPaymentMethod, isLoading: paymentLoading } = useRevenueByPaymentMethod(validatedDateRange.start, validatedDateRange.end);
-  const { data: invoiceStatus, isLoading: statusLoading } = useInvoicesByStatus();
+  /* Five analytics queries used to be issued here and nothing on this page ever read
+     them — not the data and not the loading flags. The components that display these
+     figures (SalesByCategoryChart, RevenueByPaymentMethodChart, TopClientsTable,
+     TopItemsTable) each call their own hook, so the page was asking for the same data a
+     second time and discarding it. Removed rather than wired to anything, because there
+     is nothing here left to wire them to. */
 
   // Helper function to calculate actual revenue (profit) for an invoice
   // Moved outside useMemo for better performance and reusability
@@ -889,14 +891,16 @@ const Dashboard = () => {
                                     ? (Number(invoice.total) || 0)
                                     : 0);
                                 if (isNaN(total) || !isFinite(total) || total < 0) {
-                                  logger.warn('Invalid invoice total:', invoice.total, 'for invoice:', invoice.id);
+                                  // logger.warn takes (message, data) — the extra positional arguments were
+              // silently dropped, so the invoice id never reached the log that needed it.
+              logger.warn('Invalid invoice total', { total: invoice.total, invoiceId: invoice.id });
                                   return;
                                 }
                                 monthData.revenue += total;
                               }
                             } catch (error) {
                               // Fix Bug #52: Log error instead of silently ignoring
-                              logger.warn('Failed to parse invoice date for export:', error, 'invoice:', invoice.id);
+                              logger.warn('Failed to parse invoice date for export', { error, invoiceId: invoice.id });
                               // Skip invalid dates but log for debugging
                             }
                           }
