@@ -38,6 +38,13 @@ interface UserFormProps {
 type CreateUserFormData = z.infer<typeof createUserSchema>;
 type UpdateUserFormData = z.infer<typeof updateUserSchema>;
 
+/**
+ * react-hook-form cannot narrow a union of field-value shapes, so the form is
+ * typed as the superset of both. Which fields are actually required is enforced
+ * at runtime by whichever schema the resolver is given.
+ */
+type UserFormValues = Partial<CreateUserFormData & UpdateUserFormData>;
+
 const UserForm = ({ userId, onSuccess, onCancel }: UserFormProps) => {
   const isEdit = !!userId;
   const { data: user, isLoading } = useUser(userId || '');
@@ -51,7 +58,7 @@ const UserForm = ({ userId, onSuccess, onCancel }: UserFormProps) => {
     formState: { errors },
     reset,
     control,
-  } = useForm<CreateUserFormData | UpdateUserFormData>({
+  } = useForm<UserFormValues>({
     resolver: zodResolver(isEdit ? updateUserSchema : createUserSchema),
     defaultValues: {
       role: isEdit ? (user?.role as 'owner' | 'admin' || 'admin') : 'admin',
@@ -76,7 +83,7 @@ const UserForm = ({ userId, onSuccess, onCancel }: UserFormProps) => {
     }
   }, [user, isEdit, reset]);
 
-  const onSubmit = async (data: CreateUserFormData | UpdateUserFormData) => {
+  const onSubmit = async (data: UserFormValues) => {
     try {
       if (isEdit && userId) {
         const updateData: UpdateUserDto = {
@@ -90,12 +97,18 @@ const UserForm = ({ userId, onSuccess, onCancel }: UserFormProps) => {
         await updateUser.mutateAsync({ id: userId, data: updateData });
         showToast('User updated successfully', 'success');
       } else {
+        // createUserSchema requires all four, but the shared form type cannot
+        // express that; check rather than assert.
+        if (!data.name || !data.email || !data.role || !data.password) {
+          showToast('Please complete all required fields', 'error');
+          return;
+        }
         const createData: CreateUserDto = {
           name: data.name,
-          email: (data as CreateUserFormData).email,
+          email: data.email,
           role: data.role,
           password: data.password,
-          companyName: (data as CreateUserFormData).companyName,
+          companyName: data.companyName,
         };
         await createUser.mutateAsync(createData);
         showToast('User created successfully', 'success');

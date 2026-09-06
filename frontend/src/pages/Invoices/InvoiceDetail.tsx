@@ -654,7 +654,6 @@ const InvoiceDetail = () => {
           unitPrice: item.unitPrice,
           taxRate: item.taxRate,
           discountRate: item.discountRate,
-          ...('printSpecifications' in item && item.printSpecifications && { printSpecifications: item.printSpecifications }),
         })) || [],
         isDuplicate: true,
       };

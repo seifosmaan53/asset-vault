@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invoicesApi } from '../api/invoices';
 import type { CreateInvoiceDto, UpdateInvoiceDto, PagedResult } from '../api/invoices';
@@ -462,7 +463,8 @@ export const useUpdateInvoice = () => {
       }
       
       // Rollback paged queries - create new array reference for change detection
-      if (context?.oldInvoice) {
+      const rollbackInvoice = context?.oldInvoice;
+      if (rollbackInvoice) {
         queryClient.setQueriesData(
           { 
             predicate: (query) => {
@@ -477,7 +479,7 @@ export const useUpdateInvoice = () => {
               if (invoiceIndex === -1) return old;
               
               const updatedData = [...pagedOld.data];
-              updatedData[invoiceIndex] = { ...context.oldInvoice };
+              updatedData[invoiceIndex] = { ...rollbackInvoice };
               
               return {
                 ...pagedOld,
@@ -490,7 +492,7 @@ export const useUpdateInvoice = () => {
       }
       
       // FIX #138: If 409 Conflict, invalidate to force refetch
-      if (error?.response?.status === 409) {
+      if (axios.isAxiosError(error) && error.response?.status === 409) {
         queryClient.invalidateQueries({ queryKey: ['invoices'], exact: false });
       }
     },

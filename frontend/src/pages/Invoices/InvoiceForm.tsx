@@ -67,7 +67,9 @@ interface InvoiceItemForm {
   discountRate: number;
 }
 
-interface InvoiceFormData {
+// A type alias, not an interface: only aliases get the implicit index
+// signature that useFormAutosave's Record<string, unknown> constraint needs.
+type InvoiceFormData = {
   clientId: string;
   storeId?: string;
   type: 'invoice'; // Only invoices, no estimates
@@ -76,7 +78,7 @@ interface InvoiceFormData {
   currency: string;
   notes?: string;
   items: InvoiceItemForm[];
-}
+};
 
 // Currency options list (matching Settings.tsx)
 const CURRENCIES = [

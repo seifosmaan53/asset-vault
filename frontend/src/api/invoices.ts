@@ -9,12 +9,16 @@ export interface CreateInvoiceDto {
   dueDate?: string;
   currency: string;
   notes?: string;
-  items: Omit<InvoiceItem, 'id' | 'invoiceId' | 'createdAt'>[];
+  /** lineTotal is optional on create: the server computes it (backend InvoiceItemDto). */
+  items: (Omit<InvoiceItem, 'id' | 'invoiceId' | 'createdAt' | 'lineTotal'> & {
+    lineTotal?: number;
+  })[];
 }
 
 export interface UpdateInvoiceDto extends Partial<CreateInvoiceDto> {
   status?: Invoice['status'];
-  paidAt?: string;
+  /** null clears the payment date; undefined leaves it unchanged. */
+  paidAt?: string | null;
   paymentMethodNote?: string;
   storeId?: string;
 }
