@@ -13,7 +13,6 @@ import { StockMovement } from '../inventory/entities/stock-movement.entity';
 import { Store } from '../inventory/entities/store.entity';
 import { StoreItemSettings } from '../inventory/entities/store-item-settings.entity';
 import { BackupSchedulerService } from './backup-scheduler.service';
-import { TwoFactorService } from './two-factor.service';
 import { MailModule } from '../mail/mail.module';
 import { UsersModule } from '../users/users.module';
 
@@ -36,7 +35,7 @@ import { UsersModule } from '../users/users.module';
     UsersModule,
   ],
   controllers: [UserSettingsController],
-  providers: [UserSettingsService, BackupSchedulerService, TwoFactorService],
-  exports: [UserSettingsService, TwoFactorService],
+  providers: [UserSettingsService, BackupSchedulerService],
+  exports: [UserSettingsService],
 })
 export class UserSettingsModule {}

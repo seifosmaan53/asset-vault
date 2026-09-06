@@ -13,13 +13,6 @@ import {Box,
   MenuItem,
   Alert,
   CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Stepper,
-  Step,
-  StepLabel,
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useProfile, useUpdateProfile } from '../../hooks/useAuth';
@@ -173,16 +166,6 @@ const Settings = () => {
   const [isBackupLoading, setIsBackupLoading] = useState(false);
   const [isPasswordChanging, setIsPasswordChanging] = useState(false);
   
-  // 2FA state
-  const [twoFactorDialogOpen, setTwoFactorDialogOpen] = useState(false);
-  const [twoFactorStep, setTwoFactorStep] = useState(0);
-  const [twoFactorSecret, setTwoFactorSecret] = useState<string>('');
-  const [twoFactorQRCode, setTwoFactorQRCode] = useState<string>('');
-  const [twoFactorVerificationCode, setTwoFactorVerificationCode] = useState('');
-  const [isGenerating2FA, setIsGenerating2FA] = useState(false);
-  const [isVerifying2FA, setIsVerifying2FA] = useState(false);
-  const [isEnabling2FA, setIsEnabling2FA] = useState(false);
-  const [isDisabling2FA, setIsDisabling2FA] = useState(false);
   
   // Fix Issue #78: Inline success feedback state
   const [showSuccessFeedback, setShowSuccessFeedback] = useState(false);
@@ -704,33 +687,18 @@ const Settings = () => {
             // Exclude error response properties
             if (errorResponseProperties.includes(key)) return false;
             // Exclude removed fields that no longer exist in the backend
+            // Only these are genuinely absent from the backend. Everything else in
+            // the old list exists on the entity, the DTO and UserSettings, and was
+            // being silently dropped from every save.
             const removedFields = [
-              'twoFactorSecret',
-              'enableTwoFactorAuth',
-              'fontSize',
-              'compactMode',
               'showDashboardCharts',
               'showNotifications',
               'autoBackup',
               'backupRetentionDays',
               'allowDataExport',
-              'backupSchedule',
-              'backupTime',
-              'exportFormats',
-              'notificationFrequency',
-              'quietHoursStart',
-              'quietHoursEnd',
-              'additionalTaxRates',
-              'inventoryUnitConversion',
               'weeksSupplyTarget',
               'autoCreateClients',
               'defaultClientNotes',
-              'defaultClientPaymentMethod',
-              'defaultClientCreditLimit',
-              'defaultClientCurrency',
-              'invoiceHeaderText',
-              'showInvoiceWatermark',
-              'invoiceWatermarkText',
             ];
             if (removedFields.includes(key)) return false;
             return true;
@@ -1013,64 +981,6 @@ const Settings = () => {
       </form>
 
 
-      <SettingsSection title="Two-Factor Authentication (2FA)" description="Add an extra layer of security to your account">
-        {/* Fix Issue #95: Security warning for 2FA */}
-        {!watch('enableTwoFactorAuth') && (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            <Typography variant="body2">
-              <strong>Security Recommendation:</strong> Enable two-factor authentication to protect your account from unauthorized access.
-            </Typography>
-          </Alert>
-        )}
-        <Grid container spacing={3}>
-          <SettingsField 
-            xs={12}
-            description={settings?.enableTwoFactorAuth ? "Two-factor authentication is enabled. Disable it to remove the extra security layer." : "Enable two-factor authentication for enhanced account security"}
-            tooltip="2FA adds an extra layer of security by requiring a code from your authenticator app"
-            helpLink="https://docs.example.com/2fa"
-          >
-            <Box>
-              <Controller
-                name="enableTwoFactorAuth"
-                control={control}
-                render={({ field }) => (
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={field.value ?? settings?.enableTwoFactorAuth ?? false}
-                        onChange={async (e) => {
-                          const newValue = e.target.checked;
-                          // Fix 2FA Switch Form State: Update form value immediately to trigger dirty state
-                          field.onChange(newValue);
-                          
-                          if (newValue) {
-                            // Opening setup dialog
-                            setTwoFactorDialogOpen(true);
-                            setTwoFactorStep(0);
-                            setTwoFactorVerificationCode('');
-                          } else {
-                            // Disabling 2FA - need verification code
-                            setTwoFactorDialogOpen(true);
-                            setTwoFactorStep(3); // Go to disable step
-                            setTwoFactorVerificationCode('');
-                          }
-                        }}
-                        disabled={updateSettings.isPending || isEnabling2FA || isDisabling2FA}
-                      />
-                    }
-                    label={settings?.enableTwoFactorAuth ? "Two-Factor Authentication (Enabled)" : "Enable Two-Factor Authentication"}
-                  />
-                )}
-              />
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1, ml: 4 }}>
-                {settings?.enableTwoFactorAuth 
-                  ? "Your account is protected with two-factor authentication. You'll need a verification code from your authenticator app to sign in."
-                  : "Add an extra layer of security by requiring a verification code in addition to your password."}
-              </Typography>
-            </Box>
-          </SettingsField>
-        </Grid>
-      </SettingsSection>
     </SettingsCategoryWrapper>
   );
 
@@ -2262,193 +2172,10 @@ const Settings = () => {
     >
       {renderSuccessFeedback()}
       <form onSubmit={handleSettingsSubmit} style={{ pointerEvents: 'auto' }}>
-        <SettingsSection title="Automatic Backups" description="Configure scheduled backups to protect your data">
-              <Grid container spacing={3}>
-            <SettingsField xs={12}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, bgcolor: 'background.default', borderRadius: 2, border: '1px solid', borderColor: 'divider', pointerEvents: 'auto' }}>
-                  <Box sx={{ pointerEvents: 'auto' }}>
-                    <Typography variant="body1" fontWeight={600} gutterBottom>
-                      Enable Automatic Backups
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Automatically create backups on a schedule to protect your data
-                    </Typography>
-                  </Box>
-                  <Box sx={{ pointerEvents: 'auto' }}>
-                    <Controller
-                      name="autoBackup"
-                      control={control}
-                      render={({ field }) => (
-                        <Switch
-                          {...field}
-                          checked={field.value ?? settings?.autoBackup ?? true}
-                          onChange={(e) => {
-                            field.onChange(e.target.checked);
-                          }}
-                          size="medium"
-                          disabled={updateSettings.isPending}
-                        />
-                      )}
-                    />
-                  </Box>
-                </Box>
-            </SettingsField>
-            
-            {false && (
-              <>
-                {/* Fix Issue #95, #98: Add warnings and best practices */}
-                <SettingsField 
-                  xs={12} 
-                  md={6} 
-                  label="Backup Schedule"
-                  description="How often backups should be created"
-                  tooltip="Daily backups provide the best protection but use more storage. Weekly or monthly backups are more storage-efficient."
-                  error={errors.backupSchedule?.message}
-                >
-                    <Controller
-                      name="backupSchedule"
-                      control={control}
-                      render={({ field }) => (
-                        <FormControl fullWidth error={!!errors.backupSchedule}>
-                          <Select 
-                            {...field} 
-                            value={field.value ?? ''} 
-                            displayEmpty
-                            disabled={updateSettings.isPending}
-                            onChange={(e) => {
-                              const value = e.target.value === '' ? undefined : e.target.value;
-                              field.onChange(value);
-                              // Clear backupTime if schedule is disabled, set default if enabled
-                              if (!value) {
-                                setValue('backupTime', undefined, { shouldDirty: true });
-                              } else if (!getValues('backupTime')) {
-                                // Set default time if schedule is enabled but no time is set
-                                setValue('backupTime', '02:00', { shouldDirty: true });
-                              }
-                            }}
-                          >
-                            <MenuItem value="">
-                              <em>Disabled</em>
-                            </MenuItem>
-                            <MenuItem value="daily">Daily - Every day</MenuItem>
-                            <MenuItem value="weekly">Weekly - Once per week</MenuItem>
-                            <MenuItem value="monthly">Monthly - Once per month</MenuItem>
-                          </Select>
-                        </FormControl>
-                      )}
-                    />
-                </SettingsField>
-                
-                {false && (
-                  <>
-                    <SettingsField 
-                      xs={12} 
-                      md={6} 
-                      label="Backup Time"
-                      description={`Backups will run at this time (${settings?.timezone || 'America/New_York'})`}
-                    >
-                        <Controller
-                          name="backupTime"
-                          control={control}
-                          render={({ field }) => (
-                            <TextField
-                              fullWidth
-                              type="time"
-                              {...field}
-                              value={field.value || '02:00'}
-                              disabled={updateSettings.isPending}
-                              onChange={(e) => {
-                                field.onChange(e.target.value);
-                              }}
-                              InputLabelProps={{ shrink: true }}
-                              inputProps={{ step: 300 }}
-                            />
-                          )}
-                        />
-                    </SettingsField>
-                  </>
-                )}
-                
-                {/* Fix Issue #86-87: Add unit and range display */}
-                <SettingsField 
-                  xs={12} 
-                  md={6} 
-                  label="Backup Retention"
-                  description="How many days to keep backups before automatic deletion"
-                  tooltip="Recommended: 7-30 days for daily backups, 30-90 days for weekly/monthly"
-                >
-                    <Controller
-                      name="backupRetentionDays"
-                      control={control}
-                      render={({ field }) => (
-                        <TextField
-                          fullWidth
-                          type="number"
-                          {...field}
-                          value={field.value ?? 7}
-                          disabled={updateSettings.isPending}
-                          onChange={(e) => {
-                            const value = e.target.value.trim();
-                            if (value === '') {
-                              field.onChange(undefined);
-                              return;
-                            }
-                            const numValue = Number(value);
-                            if (Number.isFinite(numValue) && numValue >= 0 && numValue <= 3650) {
-                              field.onChange(numValue);
-                            } else {
-                              field.onChange(numValue < 0 ? 0 : 3650);
-                            }
-                          }}
-                          InputLabelProps={{ shrink: true }}
-                          inputProps={{ min: 1, max: 365, step: 1 }}
-                          error={!!errors.backupRetentionDays}
-                          helperText={errors.backupRetentionDays?.message || `Range: 1-365 days. Backups older than this will be automatically deleted.`}
-                          InputProps={{
-                            endAdornment: <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>days</Typography>
-                          }}
-                        />
-                      )}
-                    />
-                </SettingsField>
-              </>
-            )}
-              </Grid>
-        </SettingsSection>
 
         <SettingsSection title="Data Export" description="Control data export capabilities and formats">
               <Grid container spacing={3}>
-            <SettingsField xs={12}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, bgcolor: 'background.default', borderRadius: 2, border: '1px solid', borderColor: 'divider', pointerEvents: 'auto' }}>
-                  <Box sx={{ pointerEvents: 'auto' }}>
-                    <Typography variant="body1" fontWeight={600} gutterBottom>
-                      Allow Data Export
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Enable users to export data in various formats
-                    </Typography>
-                  </Box>
-                  <Box sx={{ pointerEvents: 'auto' }}>
-                    <Controller
-                      name="allowDataExport"
-                      control={control}
-                      render={({ field }) => (
-                        <Switch
-                          {...field}
-                          checked={field.value ?? settings?.allowDataExport ?? true}
-                          onChange={(e) => {
-                            field.onChange(e.target.checked);
-                          }}
-                          size="medium"
-                          disabled={updateSettings.isPending}
-                        />
-                      )}
-                    />
-                  </Box>
-                </Box>
-            </SettingsField>
             
-            {watch('allowDataExport') && (
               <SettingsField
                 xs={12}
                 label="Default Export Formats"
@@ -2578,7 +2305,6 @@ const Settings = () => {
                     }}
                   />
               </SettingsField>
-            )}
               </Grid>
         </SettingsSection>
 
@@ -2863,216 +2589,6 @@ const Settings = () => {
 
   return (
     <>
-      {/* 2FA Setup Dialog */}
-      <Dialog 
-        open={twoFactorDialogOpen} 
-        onClose={() => {
-          if (!isGenerating2FA && !isVerifying2FA && !isEnabling2FA && !isDisabling2FA) {
-            setTwoFactorDialogOpen(false);
-            setTwoFactorStep(0);
-            setTwoFactorSecret('');
-            setTwoFactorQRCode('');
-            setTwoFactorVerificationCode('');
-          }
-        }}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>
-          {settings?.enableTwoFactorAuth ? 'Disable Two-Factor Authentication' : 'Set Up Two-Factor Authentication'}
-        </DialogTitle>
-        <DialogContent>
-          <Stepper activeStep={twoFactorStep} sx={{ mt: 2, mb: 3 }}>
-            <Step>
-              <StepLabel>Generate QR Code</StepLabel>
-            </Step>
-            <Step>
-              <StepLabel>Scan QR Code</StepLabel>
-            </Step>
-            <Step>
-              <StepLabel>Verify Code</StepLabel>
-            </Step>
-            {settings?.enableTwoFactorAuth && (
-              <Step>
-                <StepLabel>Disable 2FA</StepLabel>
-              </Step>
-            )}
-          </Stepper>
-
-          {twoFactorStep === 0 && !settings?.enableTwoFactorAuth && (
-            <Box>
-              <Typography variant="body1" gutterBottom>
-                Click the button below to generate a QR code for your authenticator app.
-              </Typography>
-              <Button
-                variant="contained"
-                onClick={async () => {
-                  setIsGenerating2FA(true);
-                  try {
-                    const result = await settingsApi.generate2FA();
-                    setTwoFactorSecret(result.secret);
-                    setTwoFactorQRCode(result.qrCode);
-                    setTwoFactorStep(1);
-                  } catch (error: unknown) {
-                    showToast(getErrorMessage(error, 'Failed to generate 2FA setup'), 'error');
-                  } finally {
-                    setIsGenerating2FA(false);
-                  }
-                }}
-                disabled={isGenerating2FA}
-                fullWidth
-                sx={{ mt: 2 }}
-              >
-                {isGenerating2FA ? <CircularProgress size={24} /> : 'Generate QR Code'}
-              </Button>
-            </Box>
-          )}
-
-          {twoFactorStep === 1 && (
-            <Box>
-              <Typography variant="body1" gutterBottom>
-                Scan this QR code with your authenticator app (Google Authenticator, Authy, Microsoft Authenticator, etc.)
-              </Typography>
-              <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
-                {twoFactorQRCode && (
-                  <img src={twoFactorQRCode} alt="2FA QR Code" style={{ maxWidth: '100%', height: 'auto' }} />
-                )}
-              </Box>
-              <Alert severity="info" sx={{ mb: 2 }}>
-                <Typography variant="body2">
-                  <strong>Manual Entry:</strong> If you can't scan the QR code, enter this secret key manually:
-                </Typography>
-                <Typography variant="body2" sx={{ fontFamily: 'monospace', mt: 1, p: 1, bgcolor: 'grey.100', borderRadius: 1 }}>
-                  {twoFactorSecret}
-                </Typography>
-              </Alert>
-              <Button
-                variant="contained"
-                onClick={() => setTwoFactorStep(2)}
-                fullWidth
-              >
-                I've Scanned the QR Code
-              </Button>
-            </Box>
-          )}
-
-          {twoFactorStep === 2 && (
-            <Box>
-              <Typography variant="body1" gutterBottom>
-                Enter the 6-digit code from your authenticator app to verify the setup:
-              </Typography>
-              <TextField
-                fullWidth
-                label="Verification Code"
-                value={twoFactorVerificationCode}
-                onChange={(e) => setTwoFactorVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                inputProps={{ maxLength: 6, pattern: '[0-9]*' }}
-                sx={{ mt: 2, mb: 2 }}
-                placeholder="000000"
-              />
-              <Button
-                variant="contained"
-                onClick={async () => {
-                  if (twoFactorVerificationCode.length !== 6) {
-                    showToast('Please enter a 6-digit verification code', 'error');
-                    return;
-                  }
-                  setIsVerifying2FA(true);
-                  try {
-                    await settingsApi.verify2FA(twoFactorVerificationCode, twoFactorSecret);
-                    // If verification succeeds, enable 2FA
-                    setIsEnabling2FA(true);
-                    await settingsApi.enable2FA(twoFactorVerificationCode, twoFactorSecret);
-                    showToast('Two-factor authentication has been enabled successfully!', 'success');
-                    queryClient.invalidateQueries({ queryKey: ['settings'] });
-                    setTwoFactorDialogOpen(false);
-                    setTwoFactorStep(0);
-                    setTwoFactorSecret('');
-                    setTwoFactorQRCode('');
-                    setTwoFactorVerificationCode('');
-                    // Update form
-                    setValue('enableTwoFactorAuth', true);
-                  } catch (error: unknown) {
-                    showToast(getErrorMessage(error, 'Failed to verify or enable 2FA'), 'error');
-                  } finally {
-                    setIsVerifying2FA(false);
-                    setIsEnabling2FA(false);
-                  }
-                }}
-                disabled={isVerifying2FA || isEnabling2FA || twoFactorVerificationCode.length !== 6}
-                fullWidth
-              >
-                {isVerifying2FA || isEnabling2FA ? <CircularProgress size={24} /> : 'Verify and Enable 2FA'}
-              </Button>
-            </Box>
-          )}
-
-          {twoFactorStep === 3 && settings?.enableTwoFactorAuth && (
-            <Box>
-              <Alert severity="warning" sx={{ mb: 2 }}>
-                <Typography variant="body2">
-                  <strong>Warning:</strong> Disabling two-factor authentication will reduce your account security.
-                </Typography>
-              </Alert>
-              <Typography variant="body1" gutterBottom>
-                Enter the 6-digit code from your authenticator app to disable 2FA:
-              </Typography>
-              <TextField
-                fullWidth
-                label="Verification Code"
-                value={twoFactorVerificationCode}
-                onChange={(e) => setTwoFactorVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                inputProps={{ maxLength: 6, pattern: '[0-9]*' }}
-                sx={{ mt: 2, mb: 2 }}
-                placeholder="000000"
-              />
-              <Button
-                variant="contained"
-                color="error"
-                onClick={async () => {
-                  if (twoFactorVerificationCode.length !== 6) {
-                    showToast('Please enter a 6-digit verification code', 'error');
-                    return;
-                  }
-                  setIsDisabling2FA(true);
-                  try {
-                    await settingsApi.disable2FA(twoFactorVerificationCode);
-                    showToast('Two-factor authentication has been disabled', 'success');
-                    queryClient.invalidateQueries({ queryKey: ['settings'] });
-                    setTwoFactorDialogOpen(false);
-                    setTwoFactorStep(0);
-                    setTwoFactorVerificationCode('');
-                    // Update form
-                    setValue('enableTwoFactorAuth', false);
-                  } catch (error: unknown) {
-                    showToast(getErrorMessage(error, 'Failed to disable 2FA'), 'error');
-                  } finally {
-                    setIsDisabling2FA(false);
-                  }
-                }}
-                disabled={isDisabling2FA || twoFactorVerificationCode.length !== 6}
-                fullWidth
-              >
-                {isDisabling2FA ? <CircularProgress size={24} /> : 'Disable 2FA'}
-              </Button>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => {
-              setTwoFactorDialogOpen(false);
-              setTwoFactorStep(0);
-              setTwoFactorSecret('');
-              setTwoFactorQRCode('');
-              setTwoFactorVerificationCode('');
-            }}
-            disabled={isGenerating2FA || isVerifying2FA || isEnabling2FA || isDisabling2FA}
-          >
-            Cancel
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       <Box 
         sx={{ 

@@ -358,25 +358,6 @@ const StoreInventory = () => {
     }
   };
   
-  const handleRemoveItem = async (setting: StoreItemSettings) => {
-    try {
-      if (setting.id) {
-        // Use delete by ID if available
-        await storeItemSettingsApi.delete(setting.id);
-      } else {
-        // Fallback to delete by store and item IDs
-        await storeItemSettingsApi.deleteByStoreAndItem(storeId!, setting.inventoryItemId);
-      }
-      
-      queryClient.invalidateQueries({ queryKey: ['store-item-settings', 'store', storeId] });
-      queryClient.invalidateQueries({ queryKey: ['store-item-settings', 'item', setting.inventoryItemId] });
-      showToast('Item removed from store', 'success');
-      refetchSettings();
-    } catch (error: unknown) {
-      const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to remove item';
-      showToast(errorMessage, 'error');
-    }
-  };
 
   if (isLoading) {
     return (

@@ -1075,7 +1075,7 @@ const InvoiceForm = () => {
                   <Typography variant="h6" fontWeight="600" color="text.primary">
                     Line Items
                   </Typography>
-                  {selectedStoreId && watch('type') !== 'estimate' && (
+                  {selectedStoreId && (
                     <Typography variant="caption" color="primary.main" sx={{ mt: 1, display: 'block', fontWeight: 500 }}>
                       📦 Stock will be deducted from: {stores?.find(s => s.id === selectedStoreId)?.name || 'Selected Store'}
                       {' (deducted when invoice is sent/paid)'}
@@ -1488,7 +1488,7 @@ const InvoiceForm = () => {
                 >
                   Summary
                 </Typography>
-                {selectedStoreId && watch('type') !== 'estimate' && (
+                {selectedStoreId && (
                   <Alert 
                     severity="info" 
                     sx={{ mb: 3, borderRadius: 1.5 }}
