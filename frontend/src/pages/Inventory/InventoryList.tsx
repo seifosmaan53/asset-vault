@@ -1411,7 +1411,9 @@ const InventoryList = () => {
         </FormControl>
         <Button
           variant={inStoresOnly ? 'contained' : 'outlined'}
-          color={inStoresOnly ? 'primary' : 'default'}
+          // MUI v5 has no 'default' button colour — that was v4. 'inherit' is the
+          // equivalent, and the invalid value meant this button had no colour applied.
+          color={inStoresOnly ? 'primary' : 'inherit'}
           startIcon={<StoreIcon />}
           onClick={() => setInStoresOnly(!inStoresOnly)}
           sx={{

@@ -73,15 +73,18 @@ const StoreReportModal = ({ open, onClose, reportType }: StoreReportModalProps) 
             description: 'No stores with active alerts',
           };
         }
+        // Only full Store records go in here: StoresReport renders a store card and
+        // needs the whole entity. alert.store carries just id, name and code.
         const storesWithAlerts = new Map<string, typeof allStores[0]>();
         const alertsByStore = new Map<string, typeof alerts>();
         alerts.forEach((alert) => {
           if (!alert.resolved) {
             // Find store from allStores if not in alert.store
-            let store = alert.store;
-            if (!store && allStores) {
-              store = allStores.find((s) => s.id === alert.storeId) || undefined;
-            }
+            /* Resolve from allStores rather than trusting alert.store, which is a
+               summary (id, name, code) and cannot fill a store card. An alert whose store
+               is not in the list is still counted in alertsByStore below; it just has no
+               card to attach to. */
+            const store = allStores?.find((s) => s.id === alert.storeId);
             if (store) {
               storesWithAlerts.set(alert.storeId, store);
               if (!alertsByStore.has(alert.storeId)) {
@@ -182,7 +185,7 @@ const StoreReportModal = ({ open, onClose, reportType }: StoreReportModalProps) 
             ))}
           </Box>
         ) : reportType === 'lowStock' ? (
-          <LowStockReport items={reportData.items} onItemClick={handleItemClick} />
+          <LowStockReport items={reportData.items ?? []} onItemClick={handleItemClick} />
         ) : reportType === 'alerts' && reportData.alerts ? (
           <AlertsReport
             stores={reportData.stores}
@@ -191,7 +194,7 @@ const StoreReportModal = ({ open, onClose, reportType }: StoreReportModalProps) 
             onItemClick={handleItemClick}
           />
         ) : (
-          <StoresReport stores={reportData.stores} onStoreClick={handleStoreClick} />
+          <StoresReport stores={reportData.stores ?? []} onStoreClick={handleStoreClick} />
         )}
       </DialogContent>
       <DialogActions sx={{ p: 2, pt: 1 }}>

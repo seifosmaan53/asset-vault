@@ -11,7 +11,11 @@ const STORAGE_PREFIX = 'form-draft-';
  * Automatically saves form data periodically and on unmount
  * Provides draft recovery functionality
  */
-export const useFormAutosave = <T extends Record<string, unknown>>(
+/* Constrained to `object` rather than Record<string, unknown>. The hook only serialises
+   the form data and stores it — it never indexes into it — and the stricter constraint
+   excluded every caller whose form type is an `interface`, since TypeScript does not give
+   interfaces an implicit index signature. */
+export const useFormAutosave = <T extends object>(
   formId: string,
   formData: T,
   isDirty: boolean,

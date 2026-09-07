@@ -204,7 +204,10 @@ export const SearchBar = ({
                     <Chip
                       label="Clear"
                       size="small"
-                      onClick={clearHistory}
+                      /* Called with no argument on purpose. clearHistory(context = 'global') only
+                         clears when the context IS 'global'; passing it straight to onClick handed
+                         it the MouseEvent, so this button responded to clicks and cleared nothing. */
+                      onClick={() => clearHistory()}
                       sx={{ height: 20, fontSize: '0.7rem' }}
                     />
                   )}

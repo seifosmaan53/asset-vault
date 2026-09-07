@@ -262,7 +262,18 @@ const ClientForm = () => {
           );
         }
       } else {
-        const newClient = await createClient.mutateAsync(clientData);
+        /* clientData is Partial<Client>, and creating one requires a name. The form's
+           schema already enforces that, so this is a check rather than an assertion: if
+           the two ever drift apart the user is told, instead of a nameless client
+           reaching the API. */
+        if (!clientData.name) {
+          showToast('Client name is required', 'error');
+          return;
+        }
+        const newClient = await createClient.mutateAsync({
+          ...clientData,
+          name: clientData.name,
+        });
         showToast('Client created successfully', 'success');
         
         // Add undo operation for create

@@ -27,7 +27,7 @@ const InvoiceTemplateEditor = () => {
   const updateTemplate = useUpdateInvoiceTemplate();
   const { showToast } = useToast();
 
-  const { control, handleSubmit, reset, watch } = useForm<CreateInvoiceTemplateDto>({
+  const { control, handleSubmit, reset } = useForm<CreateInvoiceTemplateDto>({
     defaultValues: {
       name: '',
       description: '',

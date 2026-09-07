@@ -196,10 +196,13 @@ class ApiClient {
       (response) => {
         // `__dedupePromise` is read a few lines down but was missing from this cast, so
         // the two properties the deduplication logic actually uses were only half declared.
+        // It resolves to the AxiosResponse of the in-flight request it deduplicates against
+        // (assigned from `pendingRequests` above), and typing it as such is what lets the
+        // early return below satisfy the interceptor's own return type.
         const config = response.config as InternalAxiosRequestConfig & {
           __requestKey?: string;
           __isDedupe?: boolean;
-          __dedupePromise?: Promise<unknown>;
+          __dedupePromise?: Promise<AxiosResponse>;
         };
         
         // Handle request deduplication - if this was a deduplicated request, it was cancelled
