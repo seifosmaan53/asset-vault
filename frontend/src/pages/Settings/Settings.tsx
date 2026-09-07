@@ -37,6 +37,7 @@ import { SettingsCategory as SettingsCategoryWrapper } from '../../components/se
 import { SettingsSection } from '../../components/settings/SettingsSection';
 import { SettingsField } from '../../components/settings/SettingsField';
 import { logger } from '../../utils/logger';
+import { buildSettingsPayload } from '../../utils/settings-payload.util';
 import { getErrorMessage } from '../../utils/errorHandling';
 import Grid from '../../components/common/Grid';
 import { TIMEOUTS } from '../../constants/timeouts';
@@ -694,85 +695,7 @@ const Settings = () => {
       // Merge submitted data with all form values to ensure we don't lose any fields
       const mergedData = { ...allFormValues, ...data };
       
-      // List of error response properties that should never be sent as settings
-      const errorResponseProperties = ['statusCode', 'timestamp', 'path', 'message', 'error', 'errors'];
-      
-      // Ensure empty strings, null, and undefined values are removed or converted
-      const cleanedData = Object.fromEntries(
-        Object.entries(mergedData)
-          // First, filter out error response properties and sensitive fields that shouldn't be updated via settings
-          .filter(([key]) => {
-            // Exclude error response properties
-            if (errorResponseProperties.includes(key)) return false;
-            // Exclude removed fields that no longer exist in the backend
-            // Only these are genuinely absent from the backend. Every other name
-            // that used to be here exists on the entity, the DTO and UserSettings,
-            // and was being dropped from every save -- the form reported success and
-            // the value never persisted.
-            const removedFields = [
-              // Server-generated credential: the backend deliberately does not accept
-              // it and the client has no business sending it back.
-              'twoFactorSecret',
-              'showDashboardCharts',
-              'showNotifications',
-              'weeksSupplyTarget',
-              'autoCreateClients',
-              'defaultClientNotes',
-            ];
-            if (removedFields.includes(key)) return false;
-            return true;
-          })
-          .map(([key, value]) => {
-            // Special handling for exportFormats - keep it even if it's a string
-            if (key === 'exportFormats' && value) {
-              // Ensure exportFormats is always a JSON string
-              if (Array.isArray(value)) {
-                return [key, JSON.stringify(value)];
-              }
-              if (typeof value === 'string' && value.trim() !== '') {
-                return [key, value];
-              }
-            }
-            
-            // Special handling for invoiceNumberFormat - must be undefined if empty or invalid
-            if (key === 'invoiceNumberFormat') {
-              if (!value || (typeof value === 'string' && value.trim() === '')) {
-                return [key, undefined];
-              }
-              // Check if it has a placeholder
-              const placeholders = ['{YYYY}', '{YY}', '{MM}', '{DD}', '{NUM}', '{####}'];
-              const hasPlaceholder = placeholders.some(placeholder => String(value).includes(placeholder));
-              if (!hasPlaceholder) {
-                return [key, undefined]; // Remove invalid format
-              }
-              return [key, typeof value === 'string' ? value.trim() : value];
-            }
-            
-            // Special handling for numeric fields - convert strings to numbers
-            const numericFields = ['defaultTaxRate', 'defaultPaymentTermsDays', 'defaultReorderLevel',
-              'stockAlertThreshold', 'itemsPerPage', 'smtpPort'];
-            if (numericFields.includes(key)) {
-              if (value === null || value === undefined || value === '') {
-                return [key, undefined];
-              }
-              const numValue = typeof value === 'string' ? parseFloat(value) : Number(value);
-              if (isNaN(numValue)) {
-                return [key, undefined];
-              }
-              return [key, numValue];
-            }
-            
-            // Convert empty strings, null, or whitespace-only strings to undefined
-            if (value === null || value === undefined) return [key, undefined];
-            if (typeof value === 'string' && value.trim() === '') return [key, undefined];
-            return [key, value];
-          })
-          // Remove undefined values from the object to avoid sending them (except exportFormats)
-          .filter(([key, value]) => {
-            if (key === 'exportFormats') return true; // Always include exportFormats
-            return value !== undefined;
-          })
-      ) as UserSettings;
+      const cleanedData = buildSettingsPayload(mergedData);
       
       await updateSettings.mutateAsync(cleanedData);
     } catch (error: unknown) {
