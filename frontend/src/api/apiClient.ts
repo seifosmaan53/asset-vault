@@ -12,20 +12,23 @@ const getClerkToken = async (maxWaitMs: number = 1000): Promise<string | null> =
       return null;
     }
 
-    const windowWithToken = window as Window & { __clerkGetToken?: () => Promise<string | null> };
-    
-    // If token function is already available, use it immediately
-    if (windowWithToken.__clerkGetToken) {
-      return await windowWithToken.__clerkGetToken() || null;
+    // Clerk assigns __clerkGetToken asynchronously, so read it through a function.
+    // Reading the property directly lets the first falsy check narrow it to undefined
+    // for the rest of the scope, which types the retry loop below as dead code.
+    const readGetToken = () =>
+      (window as Window & { __clerkGetToken?: () => Promise<string | null> })
+        .__clerkGetToken;
+
+    let getToken = readGetToken();
+    if (getToken) {
+      return (await getToken()) || null;
     }
 
     // Wait for token function to be available (handles race condition)
     const startTime = Date.now();
     while (Date.now() - startTime < maxWaitMs) {
       await new Promise(resolve => setTimeout(resolve, 50)); // Check every 50ms
-      // Read into a local before calling: narrowing on the property does not survive the
-      // await above, because anything could have reassigned it while this was suspended.
-      const getToken = windowWithToken.__clerkGetToken;
+      getToken = readGetToken();
       if (getToken) {
         return (await getToken()) || null;
       }
