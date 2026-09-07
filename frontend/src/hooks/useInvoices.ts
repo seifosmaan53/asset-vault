@@ -476,6 +476,11 @@ export const useUpdateInvoice = () => {
               const invoiceIndex = pagedOld.data.findIndex((inv: Invoice) => inv.id === variables.id);
               if (invoiceIndex === -1) return old;
               
+              /* oldInvoice is `Invoice | undefined`; spreading undefined yields {},
+                 which would put an empty object into the list where a row used to be.
+                 Only roll back when there is something to roll back to. */
+              if (!context.oldInvoice) return old;
+
               const updatedData = [...pagedOld.data];
               updatedData[invoiceIndex] = { ...context.oldInvoice };
               
@@ -490,7 +495,9 @@ export const useUpdateInvoice = () => {
       }
       
       // FIX #138: If 409 Conflict, invalidate to force refetch
-      if (error?.response?.status === 409) {
+      // `error` is unknown in this handler; describe the part being read.
+      const failure = error as { response?: { status?: number } };
+      if (failure?.response?.status === 409) {
         queryClient.invalidateQueries({ queryKey: ['invoices'], exact: false });
       }
     },

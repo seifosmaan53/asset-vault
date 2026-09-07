@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { InventoryItem } from '../types/inventory';
 import { inventoryApi } from '../api/inventory';
 import type {
   CreateInventoryItemDto,
@@ -91,7 +92,9 @@ export const useCreateInventoryItem = () => {
       const previousInventory = queryClient.getQueryData(['inventory']);
       
       // FIX #150: Apply optimistic update immediately
-      queryClient.setQueryData(['inventory'], (old: unknown) => {
+      // Typed as the list this key actually holds; `unknown` cannot be spread, so the
+      // optimistic prepend below had no basis.
+      queryClient.setQueryData(['inventory'], (old: InventoryItem[] | undefined) => {
         const optimisticItem = {
           ...newItem,
           id: `temp-${Date.now()}`,
