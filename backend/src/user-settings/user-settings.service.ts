@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
-import * as bcrypt from 'bcryptjs';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs/promises';
@@ -227,40 +226,22 @@ export class UserSettingsService {
       // Sanitize text fields to prevent XSS
       const sanitizedData = this.sanitizeInput(data);
 
-      // Encrypt SMTP password if provided and not already encrypted
-      // Fix Issue #1: Use proper bcrypt validation - bcrypt hashes have format: $2[abxy]$[cost]$[22 char salt][31 char hash]
-      if (sanitizedData.smtpPassword === MASKED_SMTP_PASSWORD) {
-        /* The read path replaces the stored password with this placeholder so the real
-           value never leaves the server. If a client ever echoes it back — a form
-           pre-filled from a GET, a scripted round-trip of the settings object — it must
-           mean "unchanged", never "set the password to these literal characters".
-           Without this, the placeholder would fail the bcrypt-shape test below, be
-           hashed, and silently replace a working password with a hash of '***ENCRYPTED***'.
-           The UI does not populate the field today; this makes that a safe property of
-           the server rather than a habit of one client. */
-        delete sanitizedData.smtpPassword;
-      } else if (
-        sanitizedData.smtpPassword &&
-        sanitizedData.smtpPassword.trim() !== ''
-      ) {
-        // Proper bcrypt hash validation: $2[abxy]$[cost]$[22 char salt][31 char hash] = 60 chars total
-        // Cost is 2 digits (04-31), salt is base64 encoded (22 chars), hash is base64 encoded (31 chars)
-        const isValidBcryptHash = /^\$2[abxy]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(
-          sanitizedData.smtpPassword,
-        );
-        if (!isValidBcryptHash) {
-          sanitizedData.smtpPassword = await bcrypt.hash(
-            sanitizedData.smtpPassword,
-            10,
-          );
-          // Fix Issue #5: Remove password-related logging for security
-        } else {
-          // Password is already hashed, don't hash again
-        }
-      } else if (sanitizedData.smtpPassword === '') {
-        // Empty string means don't update password
-        delete sanitizedData.smtpPassword;
-      }
+      /* Per-account SMTP is not connected to anything. MailService authenticates with
+         SMTP_PASS from the environment and never reads this column, and
+         testEmailConnection returns "email functionality has been disabled" without
+         opening a connection. A submitted password therefore has no consumer, and storing
+         one would only create a secret to protect for no benefit — so it is dropped here,
+         before it can reach the database.
+
+         Dropping rather than rejecting is deliberate: the request still succeeds and every
+         other setting on the form saves normally.
+
+         Existing stored values are left alone and stay masked in responses. If per-account
+         SMTP is ever revived this needs authenticated encryption with a server-managed key,
+         and the rows already stored are unrecoverable regardless, because bcrypt is
+         one-way — those users would re-enter their password. */
+      delete sanitizedData.smtpPassword;
+
 
       let settings: UserSettings;
 

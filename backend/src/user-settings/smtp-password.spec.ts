@@ -1,80 +1,85 @@
-import * as bcrypt from 'bcryptjs';
 import { getMetadataArgsStorage } from 'typeorm';
 import { MASKED_SMTP_PASSWORD } from './user-settings.service';
 import { UserSettings } from './entities/user-settings.entity';
+import { MailService } from '../mail/mail.service';
+import { UserSettingsService } from './user-settings.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
-/* The stored SMTP password has four properties that have to hold together, and each one
-   is a different kind of mistake if it slips:
+/* Per-account SMTP is not connected to anything, and these tests are what stops that from
+   quietly becoming untrue again.
 
-     not loaded by default   — so a future endpoint returning the entity cannot leak it
-     never serialised raw    — the response carries a placeholder instead
-     a blank field is "leave it alone", not "erase it"
-     the placeholder coming back is "leave it alone", not a new password
+   MailService authenticates with SMTP_PASS from the environment; the stored smtpPassword
+   column has no consumer. So the settings endpoint drops a submitted password instead of
+   storing a secret nobody can use — and because that is an unusual thing for an endpoint
+   to do, it is worth pinning rather than leaving to a comment.
 
-   The last one is the subtle one. The placeholder is not a bcrypt hash, so without an
-   explicit guard it takes the "this is a new password" branch and a working password is
-   replaced by a hash of '***ENCRYPTED***'.
+   The environment-based path is deliberately untouched: these assert the stored column is
+   unused, NOT that email is broken. */
 
-   These test the decision rules directly rather than driving the service, which needs a
-   DataSource, a query runner and eight repositories to construct. The rules are the part
-   that has to be right; a test that needed all that scaffolding would not be run. */
+const read = (p: string) => fs.readFileSync(path.join(__dirname, p), 'utf8');
 
-const BCRYPT_HASH_SHAPE = /^\$2[abxy]\$\d{2}\$[./A-Za-z0-9]{53}$/;
+describe('stored SMTP password', () => {
+  describe('is not exposed', () => {
+    it('is not loaded by default', () => {
+      const column = getMetadataArgsStorage().columns.find(
+        (c) => c.target === UserSettings && c.propertyName === 'smtpPassword',
+      );
+      expect(column?.options.select).toBe(false);
+    });
 
-/** Mirrors the branch in UserSettingsService.updateSettings that decides what a submitted
- *  smtpPassword means. Returns the value to persist, or undefined for "leave unchanged". */
-async function resolveSubmittedPassword(
-  submitted: string | undefined,
-): Promise<string | undefined> {
-  if (submitted === MASKED_SMTP_PASSWORD) return undefined;
-  if (submitted && submitted.trim() !== '') {
-    return BCRYPT_HASH_SHAPE.test(submitted) ? submitted : bcrypt.hashSync(submitted, 10);
-  }
-  if (submitted === '') return undefined;
-  return undefined;
-}
+    it('is replaced by a placeholder in responses, never returned raw', () => {
+      const service = read('user-settings.service.ts');
+      expect(service).toContain('smtpPassword: settings.smtpPassword ? MASKED_SMTP_PASSWORD');
+      // The placeholder must not look like something a person would type as a password.
+      expect(MASKED_SMTP_PASSWORD).toBe('***ENCRYPTED***');
+    });
 
-describe('smtpPassword handling', () => {
-  it('is not loaded by default', () => {
-    const column = getMetadataArgsStorage().columns.find(
-      (c) => c.target === UserSettings && c.propertyName === 'smtpPassword',
-    );
-    expect(column?.options.select).toBe(false);
+    it('is never written to a log line', () => {
+      const service = read('user-settings.service.ts');
+      const logsWithPassword = service
+        .split('\n')
+        .filter((l) => /logger\.(log|warn|error|debug)/.test(l) && /smtpPassword/.test(l));
+      expect(logsWithPassword).toEqual([]);
+    });
   });
 
-  it('leaves the stored password alone when the field is submitted empty', async () => {
-    // Saving any other setting sends an untouched, empty password field. That must not
-    // be read as "clear it".
-    await expect(resolveSubmittedPassword('')).resolves.toBeUndefined();
+  describe('is not accepted while the feature is inactive', () => {
+    it('drops a submitted password before it can be persisted', () => {
+      const service = read('user-settings.service.ts');
+      expect(service).toContain('delete sanitizedData.smtpPassword;');
+    });
+
+    it('no longer hashes anything, since nothing is stored', () => {
+      // bcrypt produced a one-way value that could never authenticate to a mail server.
+      // Its removal is the point, so a reintroduced hash call should fail here.
+      const service = read('user-settings.service.ts');
+      expect(service).not.toMatch(/bcrypt\.hash\s*\(/);
+    });
   });
 
-  it('leaves the stored password alone when the field is absent', async () => {
-    await expect(resolveSubmittedPassword(undefined)).resolves.toBeUndefined();
+  describe('environment-based email is untouched', () => {
+    it('MailService still reads its credentials from the environment', () => {
+      const mail = fs.readFileSync(
+        path.join(__dirname, '..', 'mail', 'mail.service.ts'),
+        'utf8',
+      );
+      expect(mail).toContain("this.configService.get('SMTP_PASS')");
+      expect(MailService).toBeDefined();
+    });
+
+    it('MailService does not read the stored settings column', () => {
+      const mail = fs.readFileSync(
+        path.join(__dirname, '..', 'mail', 'mail.service.ts'),
+        'utf8',
+      );
+      // If this ever changes, the drop rule above becomes a bug rather than a safeguard,
+      // and the credential needs real encryption before it can be stored again.
+      expect(mail).not.toMatch(/smtpPassword/);
+    });
   });
 
-  it('treats the returned placeholder as unchanged, not as a new password', async () => {
-    // The regression this exists for: the placeholder is not bcrypt-shaped, so without
-    // the guard it would be hashed and stored, destroying the real password.
-    const result = await resolveSubmittedPassword(MASKED_SMTP_PASSWORD);
-    expect(result).toBeUndefined();
-  });
-
-  it('hashes a genuinely new password', async () => {
-    const result = await resolveSubmittedPassword('correct horse battery staple');
-    expect(result).toBeDefined();
-    expect(result).toMatch(BCRYPT_HASH_SHAPE);
-    expect(result).not.toBe('correct horse battery staple');
-  });
-
-  it('does not re-hash a value that is already a bcrypt hash', async () => {
-    const alreadyHashed = bcrypt.hashSync('something', 10);
-    await expect(resolveSubmittedPassword(alreadyHashed)).resolves.toBe(alreadyHashed);
-  });
-
-  it('never uses the placeholder as a real secret', () => {
-    // Guards against someone "simplifying" the placeholder into something a person might
-    // plausibly type, which would make the guard above reject a legitimate password.
-    expect(MASKED_SMTP_PASSWORD).toBe('***ENCRYPTED***');
-    expect(BCRYPT_HASH_SHAPE.test(MASKED_SMTP_PASSWORD)).toBe(false);
+  it('still exports the service it is describing', () => {
+    expect(UserSettingsService).toBeDefined();
   });
 });

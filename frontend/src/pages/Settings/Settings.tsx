@@ -21,6 +21,7 @@ import {
   Stepper,
   Step,
   StepLabel,
+  Tooltip,
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useProfile, useUpdateProfile } from '../../hooks/useAuth';
@@ -1783,8 +1784,18 @@ const Settings = () => {
       hasUnsavedChanges={hasChanges}
     >
       <form onSubmit={handleSettingsSubmit}>
-          <Alert severity="info" sx={{ mb: 3 }}>
-            Configure SMTP settings to send invoices and notifications via email. After saving, you can test your configuration.
+          {/* These fields described a feature that does not run. The server sends mail
+              using SMTP_HOST / SMTP_USER / SMTP_PASS from its own environment and never
+              reads these values, and the test endpoint returns "email functionality has
+              been disabled" without attempting a connection. Saying so plainly beats a
+              form that accepts credentials and quietly ignores them. */}
+          <Alert severity="warning" sx={{ mb: 3 }}>
+            <strong>Per-account SMTP is not active.</strong> Email is sent using the
+            server&apos;s own SMTP configuration, set through the <code>SMTP_HOST</code>,{' '}
+            <code>SMTP_USER</code> and <code>SMTP_PASS</code> environment variables. The
+            fields below are shown for reference only — values entered here are not used
+            to send mail, so they are read-only and the password field no longer accepts
+            input.
           </Alert>
 
         <SettingsSection title="SMTP Configuration" description="Email server settings">
@@ -1794,6 +1805,7 @@ const Settings = () => {
                   fullWidth
                   placeholder="smtp.gmail.com"
                 {...register('smtpHost')}
+                disabled
                 InputLabelProps={{ shrink: true }}
                 />
             </SettingsField>
@@ -1803,6 +1815,7 @@ const Settings = () => {
                   type="number"
                   placeholder="587"
                 {...register('smtpPort', { valueAsNumber: true })}
+                disabled
                 InputLabelProps={{ shrink: true }}
                 />
             </SettingsField>
@@ -1827,6 +1840,7 @@ const Settings = () => {
                 <TextField
                   fullWidth
                 {...register('smtpUser')}
+                disabled
                 InputLabelProps={{ shrink: true }}
                 />
             </SettingsField>
@@ -1840,11 +1854,17 @@ const Settings = () => {
                   tabIndex={-1}
                   aria-hidden="true"
                 />
+                {/* Deliberately not registered with the form. Nothing consumes a stored
+                    SMTP password — the mail service authenticates with SMTP_PASS from the
+                    environment — so accepting one here would only persist an unusable
+                    secret. Existing stored values are still masked in responses. */}
                 <TextField
                   fullWidth
                   type="password"
-                {...register('smtpPassword')}
-                InputLabelProps={{ shrink: true }}
+                  disabled
+                  value=""
+                  placeholder="Not used — configured on the server"
+                  InputLabelProps={{ shrink: true }}
                 />
             </SettingsField>
             <SettingsField xs={12} md={6} label="From Name" description="Display name for sent emails">
@@ -1852,6 +1872,7 @@ const Settings = () => {
                   fullWidth
                   placeholder="Your Company Name"
                 {...register('emailFromName')}
+                disabled
                 InputLabelProps={{ shrink: true }}
               />
             </SettingsField>
@@ -1882,45 +1903,25 @@ const Settings = () => {
               >
                 Reset
               </Button>
-              <Button 
-                type="button"
-                variant="outlined"
-                disabled={updateSettings.isPending}
-                onClick={async () => {
-                  try {
-                    // Get current form values for testing
-                    const formValues = getValues();
-                    const testCredentials = {
-                      smtpHost: formValues.smtpHost,
-                      smtpPort: formValues.smtpPort,
-                      smtpSecure: formValues.smtpSecure,
-                      smtpUser: formValues.smtpUser,
-                      smtpPassword: formValues.smtpPassword,
-                      emailFromAddress: formValues.emailFromAddress,
-                      emailFromName: formValues.emailFromName,
-                    };
-
-                    // Test connection using provided credentials or environment variables
-                    const result = await settingsApi.testEmail(
-                      (testCredentials.smtpHost || testCredentials.smtpUser || testCredentials.smtpPassword)
-                        ? testCredentials
-                        : undefined
-                    );
-
-                    if (result.success) {
-                      showToast(result.message || 'Email connection test successful!', 'success');
-                    } else {
-                      showToast(result.message || 'Email connection test failed', 'error');
-                    }
-                  } catch (error: unknown) {
-                    showToast(getErrorMessage(error, 'Failed to test email connection'), 'error');
-                  }
-                }}
-              >
-                Test Connection
-              </Button>
-              <Button 
-                type="submit" 
+              {/* Disabled along with the fields it tested. The endpoint behind it returns
+                  "email functionality has been disabled" without opening a connection, so
+                  pressing it could only ever report a failure that says nothing about the
+                  server's actual, working, environment-based SMTP setup. Sending the form's
+                  credentials to it would also have put a password in a request body for no
+                  purpose. */}
+              <Tooltip title="Per-account SMTP is not active. The server sends mail using its own SMTP_* environment configuration.">
+                <span>
+                  <Button
+                    type="button"
+                    variant="outlined"
+                    disabled
+                  >
+                    Test Connection
+                  </Button>
+                </span>
+              </Tooltip>
+              <Button
+                type="submit"
                 variant="contained"
             disabled={updateSettings.isPending}
                 sx={{ minWidth: 120 }}
