@@ -1,7 +1,7 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
 import { Breadcrumbs as MuiBreadcrumbs, Link, Typography } from '@mui/material';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import HomeIcon from '@mui/icons-material/Home';
 
@@ -18,7 +18,6 @@ interface BreadcrumbsProps {
 
 export const Breadcrumbs = ({ items = [], showHome = true }: BreadcrumbsProps) => {
   const navigate = useNavigate();
-  const location = useLocation();
 
   const handleClick = (e: React.MouseEvent, path?: string) => {
     e.preventDefault();

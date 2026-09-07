@@ -119,7 +119,6 @@ const ClientForm = () => {
     formState: { errors, touchedFields },
     reset,
     watch,
-    setValue,
     setError,
     control,
   } = useForm<ClientFormData>({

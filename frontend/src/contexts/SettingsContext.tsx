@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo } from 'react';
 import type { ReactNode } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { settingsApi, type UserSettings } from '../api/settings';
 import { setGlobalSettings } from '../utils/dates';
 import { setGlobalCurrencySettings } from '../utils/formatters';
@@ -48,7 +48,6 @@ interface SettingsProviderProps {
 
 export const SettingsProvider = ({ children }: SettingsProviderProps) => {
   // Get queryClient instance for cache invalidation
-  const queryClient = useQueryClient();
   
   // Check if user is authenticated before making API call
   const hasToken = typeof window !== 'undefined' ? !!localStorage.getItem('accessToken') : false;
