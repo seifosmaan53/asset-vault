@@ -705,33 +705,19 @@ const Settings = () => {
             // Exclude error response properties
             if (errorResponseProperties.includes(key)) return false;
             // Exclude removed fields that no longer exist in the backend
+            // Only these are genuinely absent from the backend. Every other name
+            // that used to be here exists on the entity, the DTO and UserSettings,
+            // and was being dropped from every save -- the form reported success and
+            // the value never persisted.
             const removedFields = [
+              // Server-generated credential: the backend deliberately does not accept
+              // it and the client has no business sending it back.
               'twoFactorSecret',
-              'enableTwoFactorAuth',
-              'fontSize',
-              'compactMode',
               'showDashboardCharts',
               'showNotifications',
-              'autoBackup',
-              'backupRetentionDays',
-              'allowDataExport',
-              'backupSchedule',
-              'backupTime',
-              'exportFormats',
-              'notificationFrequency',
-              'quietHoursStart',
-              'quietHoursEnd',
-              'additionalTaxRates',
-              'inventoryUnitConversion',
               'weeksSupplyTarget',
               'autoCreateClients',
               'defaultClientNotes',
-              'defaultClientPaymentMethod',
-              'defaultClientCreditLimit',
-              'defaultClientCurrency',
-              'invoiceHeaderText',
-              'showInvoiceWatermark',
-              'invoiceWatermarkText',
             ];
             if (removedFields.includes(key)) return false;
             return true;
