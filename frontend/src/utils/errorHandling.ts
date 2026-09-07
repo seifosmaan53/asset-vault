@@ -6,7 +6,12 @@
 /**
  * Type guard to check if an object has a response property
  */
-function hasResponse(error: unknown): error is { response?: { data?: { message?: string } } } {
+/* The guard has to describe every part of the response this module reads. It promised
+   only `data`, while the status branch below reads `status` and `statusText` — so those
+   two reads were unauthorised even though the guard had already run. */
+function hasResponse(error: unknown): error is {
+  response?: { data?: { message?: string }; status?: number; statusText?: string };
+} {
   return typeof error === 'object' && error !== null && 'response' in error;
 }
 

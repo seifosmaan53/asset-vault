@@ -648,11 +648,9 @@ const InvoiceForm = () => {
         return;
       }
       
-      // FIX #200: Validate metadata JSON structure if provided
-      if (data.metadataJson && typeof data.metadataJson !== 'object') {
-        showToast('Invalid metadata format', 'error');
-        return;
-      }
+      /* A metadataJson check stood here. The field exists only on the backend entity —
+         not on this form, not in either DTO — so `data.metadataJson` was always undefined
+         and the branch could never run. */
 
       const invoiceData = {
         ...data,
@@ -1074,7 +1072,7 @@ const InvoiceForm = () => {
                   <Typography variant="h6" fontWeight="600" color="text.primary">
                     Line Items
                   </Typography>
-                  {selectedStoreId && watch('type') !== 'estimate' && (
+                  {selectedStoreId && (
                     <Typography variant="caption" color="primary.main" sx={{ mt: 1, display: 'block', fontWeight: 500 }}>
                       📦 Stock will be deducted from: {stores?.find(s => s.id === selectedStoreId)?.name || 'Selected Store'}
                       {' (deducted when invoice is sent/paid)'}
@@ -1487,7 +1485,7 @@ const InvoiceForm = () => {
                 >
                   Summary
                 </Typography>
-                {selectedStoreId && watch('type') !== 'estimate' && (
+                {selectedStoreId && (
                   <Alert 
                     severity="info" 
                     sx={{ mb: 3, borderRadius: 1.5 }}

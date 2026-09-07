@@ -45,14 +45,6 @@ import { TIMEOUTS } from '../../constants/timeouts';
 
 // Profile validation schema
 // Note: email is not included as it cannot be updated through this endpoint
-const profileSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  phone: z.string().optional(),
-  timezone: z.string().optional(),
-  address: z.string().optional(),
-  bio: z.string().optional(),
-});
-
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Current password is required'),
