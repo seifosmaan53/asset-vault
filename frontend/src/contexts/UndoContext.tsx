@@ -36,7 +36,11 @@ interface UndoProviderProps {
 }
 
 export const UndoProvider = ({ children, showToastOnUndo = true }: UndoProviderProps) => {
-  const [operations, setOperations] = useState<UndoOperation[]>([]);
+  /* Only the setter is used. This state exists to re-render consumers when the global
+     undo queue changes — they read the queue through getOperations(), not through this
+     value — so the binding is dropped rather than the state, which would stop the
+     re-render. */
+  const [, setOperations] = useState<UndoOperation[]>([]);
   const { showToastWithAction } = useToast();
 
   useEffect(() => {

@@ -343,7 +343,8 @@ try {
   });
 
   // Setup offline sync
-  const cleanupOfflineSync = setupOfflineSync({
+  // Runs for the lifetime of the page; there is no unmount to clean up after.
+  setupOfflineSync({
     queryClient,
     onSyncComplete: () => {
       logger.info('Offline mutations synced successfully');
@@ -396,15 +397,19 @@ try {
         errorDiv.appendChild(p3);
         rootElement.appendChild(errorDiv);
       } else {
-        logger.debug('Root has content:', rootElement.children.length, 'children');
+        // logger.debug takes (message, data) — the third argument was dropped silently.
+        logger.debug('Root has content', { children: rootElement.children.length });
       }
     });
   });
   
 } catch (error: unknown) {
   logger.error('Failed to render app:', error);
-  const errorMessage = error?.message || String(error);
-  const errorStack = error?.stack || '';
+    // `error` is unknown in this catch. Narrow to the shape actually read, rather
+    // than reaching into a value the compiler knows nothing about.
+    const failure = error as { message?: string; stack?: string };
+    const errorMessage = failure?.message || String(error);
+    const errorStack = failure?.stack || '';
   
   // Use textContent instead of innerHTML to prevent XSS
   rootElement.textContent = ''; // Clear existing content

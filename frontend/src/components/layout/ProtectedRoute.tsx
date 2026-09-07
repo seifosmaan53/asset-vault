@@ -15,7 +15,8 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { isSignedIn, isLoaded, getToken } = useAuth();
   const location = useLocation();
   const syncUser = useAuthStore((state) => state.syncUser);
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  // Authentication is decided by Clerk's isSignedIn below; the store's flag is a
+  // leftover from the pre-Clerk auth and was read nowhere in this component.
   const { loadSubscription, checkAccess } = useSubscriptionStore();
   const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
 
