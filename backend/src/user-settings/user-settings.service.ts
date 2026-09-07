@@ -81,6 +81,12 @@ interface ExportData extends Record<string, unknown> {
   // invoiceTemplates: InvoiceTemplate[]; // Removed
 }
 
+/** Stands in for the stored SMTP password in every settings response, so the real value
+ *  never leaves the server. Declared once because it is written by the read path and
+ *  recognised by the update path — if those two ever disagreed, echoing the placeholder
+ *  back would overwrite a working password with a hash of this string. */
+export const MASKED_SMTP_PASSWORD = '***ENCRYPTED***';
+
 @Injectable()
 export class UserSettingsService {
   private readonly logger = new Logger(UserSettingsService.name);
@@ -223,7 +229,17 @@ export class UserSettingsService {
 
       // Encrypt SMTP password if provided and not already encrypted
       // Fix Issue #1: Use proper bcrypt validation - bcrypt hashes have format: $2[abxy]$[cost]$[22 char salt][31 char hash]
-      if (
+      if (sanitizedData.smtpPassword === MASKED_SMTP_PASSWORD) {
+        /* The read path replaces the stored password with this placeholder so the real
+           value never leaves the server. If a client ever echoes it back — a form
+           pre-filled from a GET, a scripted round-trip of the settings object — it must
+           mean "unchanged", never "set the password to these literal characters".
+           Without this, the placeholder would fail the bcrypt-shape test below, be
+           hashed, and silently replace a working password with a hash of '***ENCRYPTED***'.
+           The UI does not populate the field today; this makes that a safe property of
+           the server rather than a habit of one client. */
+        delete sanitizedData.smtpPassword;
+      } else if (
         sanitizedData.smtpPassword &&
         sanitizedData.smtpPassword.trim() !== ''
       ) {
@@ -462,7 +478,7 @@ export class UserSettingsService {
       smtpSecure: settings.smtpSecure ?? false,
       smtpUser: settings.smtpUser || '',
       // Never return password in serialized settings for security
-      smtpPassword: settings.smtpPassword ? '***ENCRYPTED***' : '',
+      smtpPassword: settings.smtpPassword ? MASKED_SMTP_PASSWORD : '',
       emailFromName: settings.emailFromName || '',
       emailFromAddress: settings.emailFromAddress || '',
       emailInvoiceSent: settings.emailInvoiceSent ?? true,
