@@ -104,9 +104,20 @@ export const useKeyboardShortcuts = ({
 
     if (!element) return;
 
-    element.addEventListener('keydown', handleKeyDown);
+    /* `element` is a Window | HTMLElement union, so TypeScript cannot pick the
+       'keydown' overload that would type the event as a KeyboardEvent — it falls back to
+       the base EventListener, which takes a plain Event. Narrowing with instanceof keeps
+       handleKeyDown's KeyboardEvent parameter honest without asserting the type, and the
+       same listener reference is used to add and remove so the cleanup still detaches it. */
+    const listener = (event: Event) => {
+      if (event instanceof KeyboardEvent) {
+        handleKeyDown(event);
+      }
+    };
+
+    element.addEventListener('keydown', listener);
     return () => {
-      element.removeEventListener('keydown', handleKeyDown);
+      element.removeEventListener('keydown', listener);
     };
   }, [handleKeyDown, enabled, target]);
 };
