@@ -47,7 +47,7 @@
     "test": "vitest",
     "test:coverage": "vitest --coverage",
     "test:ui": "vitest --ui",
-    "typecheck": "tsc -b --pretty false"
+    "typecheck": "tsc -b --force --pretty false"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.61.3",

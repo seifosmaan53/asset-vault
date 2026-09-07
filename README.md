@@ -303,11 +303,18 @@ http://localhost:3000/api/docs
 # Build frontend  (vite build — produces dist/)
 cd frontend && npm run build
 
-# Optional: type-check the frontend separately.
-# ~360 pre-existing type errors are still being worked down; they do not affect the
-# bundle, because Vite strips types without checking them. `build` therefore produces
-# a working app, and `typecheck` reports the debt.
+# Type-check the frontend separately. Vite strips types without checking them, so
+# `build` produces a working app either way and `typecheck` is what reports the debt.
+#
+# Use the script, not a hand-written tsc invocation. The frontend uses project
+# references, so `tsc --noEmit -p tsconfig.json` type-checks NOTHING and exits 0 —
+# the root config lists references and no files of its own. `npm run typecheck`
+# runs `tsc -b --force`, which builds the referenced projects and includes --force so
+# a warm build cache cannot report a stale count.
 cd frontend && npm run typecheck
+
+# Same for the backend.
+cd backend && npm run typecheck
 
 # Build backend
 cd backend && npm run build
