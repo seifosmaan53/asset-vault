@@ -14,7 +14,6 @@ import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { UserSettingsService } from './user-settings.service';
-import { TwoFactorService } from './two-factor.service';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
@@ -28,7 +27,6 @@ import { UsersService } from '../users/users.service';
 export class UserSettingsController {
   constructor(
     private readonly settingsService: UserSettingsService,
-    private readonly twoFactorService: TwoFactorService,
     private readonly usersService: UsersService,
   ) {}
 
@@ -203,140 +201,6 @@ export class UserSettingsController {
         body,
       );
       return result;
-    } catch (error: any) {
-      throw error;
-    }
-  }
-
-  @Post('2fa/generate')
-  @ApiOperation({
-    summary: 'Generate 2FA secret and QR code',
-    description:
-      'Generate a new TOTP secret and QR code for two-factor authentication setup',
-  })
-  @ApiResponse({
-    status: 200,
-    description: '2FA secret and QR code generated successfully',
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async generate2FA(@Request() req) {
-    try {
-      const user = await this.usersService.findById(req.user.userId);
-      if (!user) {
-        throw new BadRequestException('User not found');
-      }
-
-      const secret = this.twoFactorService.generateSecret();
-      const qrCode = await this.twoFactorService.generateQRCode(
-        secret,
-        user.email,
-        'Asset Vault',
-      );
-
-      return {
-        secret,
-        qrCode,
-        email: user.email,
-      };
-    } catch (error: any) {
-      throw error;
-    }
-  }
-
-  @Post('2fa/verify')
-  @ApiOperation({
-    summary: 'Verify 2FA token',
-    description:
-      'Verify a TOTP token against a secret. Used during 2FA setup to confirm the authenticator app is working.',
-  })
-  @ApiResponse({ status: 200, description: 'Token verified successfully' })
-  @ApiResponse({ status: 400, description: 'Invalid token' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async verify2FA(
-    @Request() req,
-    @Body() body: { token: string; secret: string },
-  ) {
-    try {
-      const isValid = this.twoFactorService.verifyToken(
-        body.token,
-        body.secret,
-      );
-
-      if (!isValid) {
-        throw new BadRequestException(
-          'Invalid verification code. Please try again.',
-        );
-      }
-
-      return {
-        verified: true,
-        message: 'Verification code is valid',
-      };
-    } catch (error: any) {
-      throw error;
-    }
-  }
-
-  @Post('2fa/enable')
-  @ApiOperation({
-    summary: 'Enable 2FA for user',
-    description:
-      'Enable two-factor authentication after verifying the setup token',
-  })
-  @ApiResponse({ status: 200, description: '2FA enabled successfully' })
-  @ApiResponse({ status: 400, description: 'Invalid token or secret' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async enable2FA(
-    @Request() req,
-    @Body() body: { token: string; secret: string },
-    @OrganizationId() organizationId: string | null,
-  ) {
-    try {
-      // Verify the token first
-      const isValid = this.twoFactorService.verifyToken(
-        body.token,
-        body.secret,
-      );
-
-      if (!isValid) {
-        throw new BadRequestException(
-          'Invalid verification code. Please verify your authenticator app is working correctly.',
-        );
-      }
-
-      // NOTE: 2FA settings fields have been removed from UserSettings
-      // 2FA state should be managed separately if needed in the future
-      // For now, we just verify the token but don't store 2FA state in settings
-
-      return {
-        enabled: true,
-        message: 'Two-factor authentication has been enabled successfully',
-      };
-    } catch (error: any) {
-      throw error;
-    }
-  }
-
-  @Post('2fa/disable')
-  @ApiOperation({
-    summary: 'Disable 2FA for user',
-    description:
-      'Disable two-factor authentication. Requires verification token.',
-  })
-  @ApiResponse({ status: 200, description: '2FA disabled successfully' })
-  @ApiResponse({ status: 400, description: 'Invalid token' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async disable2FA(
-    @Request() req,
-    @Body() body: { token: string },
-    @OrganizationId() organizationId: string | null,
-  ) {
-    try {
-      // NOTE: 2FA settings fields have been removed from UserSettings
-      // This endpoint is disabled - 2FA state is no longer stored in settings
-      throw new BadRequestException(
-        'Two-factor authentication feature has been removed from settings',
-      );
     } catch (error: any) {
       throw error;
     }
