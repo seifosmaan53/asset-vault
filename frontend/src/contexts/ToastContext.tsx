@@ -129,7 +129,7 @@ export const ToastProvider = ({ children, maxToasts = 5 }: ToastProviderProps) =
           maxWidth: '400px',
         }}
       >
-        {toasts.map((toast, index) => (
+        {toasts.map((toast, _index) => (
           <Snackbar
             key={toast.id}
             open={true}

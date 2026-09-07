@@ -28,7 +28,7 @@ import { useInventoryItem, useStockMovements, useLinkedInvoices } from '../../ho
 import { useStoreItemSettingsByItem } from '../../hooks/useStoreItemSettings';
 import { useRecentItems } from '../../hooks/useRecentItems';
 import type { Invoice } from '../../types/invoice';
-import type { Store, StoreItemSettings } from '../../types/store';
+import type { Store } from '../../types/store';
 import { formatCurrency } from '../../utils/formatters';
 import { formatDate } from '../../utils/dates';
 import StockAdjustmentModal from '../../components/inventory/StockAdjustmentModal';

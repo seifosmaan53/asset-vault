@@ -249,7 +249,7 @@ const StoreForm = () => {
       if (isEdit && id) {
         // Get previous data for undo
         const previousStore = store;
-        const updatedStore = await updateStore.mutateAsync({ id, data: payload });
+        await updateStore.mutateAsync({ id, data: payload });
         showToast('Store updated successfully', 'success');
         
         // Add undo operation for update

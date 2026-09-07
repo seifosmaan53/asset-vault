@@ -79,7 +79,7 @@ const InventorySelect = ({ value, onChange, disabled, storeId, storeStocks }: In
         onChange={(_, newValue) => {
           onChange(newValue);
         }}
-        onInputChange={(_, newInputValue, reason) => {
+        onInputChange={(_, _newInputValue, _reason) => {
           // CRITICAL FIX: Only update searchQuery when user types and presses Enter
           // Don't control inputValue to prevent infinite loops
           // The Autocomplete will manage inputValue internally based on the selected value

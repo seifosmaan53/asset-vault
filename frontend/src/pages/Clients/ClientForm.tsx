@@ -241,7 +241,7 @@ const ClientForm = () => {
       if (isEdit && id) {
         // Get previous data for undo
         const previousClient = client;
-        const updatedClient = await updateClient.mutateAsync({ id, data: clientData });
+        await updateClient.mutateAsync({ id, data: clientData });
         showToast('Client updated successfully', 'success');
         
         // Add undo operation for update
