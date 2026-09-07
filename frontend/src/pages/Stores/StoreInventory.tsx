@@ -51,7 +51,7 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Divider from '@mui/material/Divider';
 import Alert from '@mui/material/Alert';
-import { useStoreItemSettingsByStore, useCreateOrUpdateStoreItemSettings, useUpdateStock } from '../../hooks/useStoreItemSettings';
+import { useStoreItemSettingsByStore, useCreateOrUpdateStoreItemSettings } from '../../hooks/useStoreItemSettings';
 import { exportToCSV } from '../../utils/export';
 import { useStore } from '../../hooks/useStore';
 import { useInventory } from '../../hooks/useInventory';
@@ -94,7 +94,8 @@ const StoreInventory = () => {
   }, [storeId, refetchSettings, queryClient]);
 
   const updateSettings = useCreateOrUpdateStoreItemSettings();
-  const updateStock = useUpdateStock();
+  /* useUpdateStock was called here and never used: stock edits persist through
+     updateSettings.mutateAsync in handleStockSave. Left over from an earlier approach. */
   const { showToast } = useToast();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchInput, setSearchInput] = useState('');
@@ -223,10 +224,6 @@ const StoreInventory = () => {
     
     return filtered;
   }, [settings, searchTerm, statusFilter, lowStockFilter, outOfStockFilter, categoryFilter, sortBy, sortOrder]);
-  
-  const availableStock = useCallback((setting: StoreItemSettings) => {
-    return setting.currentStock || 0;
-  }, []);
   
   const isLowStock = useCallback((setting: StoreItemSettings) => {
     return setting.currentStock <= (setting.minQty || 0);
@@ -1249,19 +1246,15 @@ const StoreInventory = () => {
                 const item = setting.inventoryItem;
                 if (!item) return null;
                 
-                const available = availableStock(setting);
                 const lowStock = isLowStock(setting);
                 const outOfStock = isOutOfStock(setting);
                 const storeStock = Math.max(0, setting.currentStock || 0);
                 const globalStock = Math.max(0, item.currentStock || 0);
-                const stockDiff = storeStock - globalStock;
-                const stockValue = storeStock * (item.defaultUnitPrice || 0);
-                const weeklyUsageNum = typeof setting.weeklyUsage === 'string' 
-                  ? parseFloat(setting.weeklyUsage) 
-                  : (setting.weeklyUsage || 0);
-                const weeksOnHand = weeklyUsageNum > 0 
-                  ? (storeStock / weeklyUsageNum).toFixed(1)
-                  : null;
+                /* available, stockDiff, stockValue and weeksOnHand were computed here
+                   for every row on every render and rendered nowhere — no column shows
+                   them and nothing else reads them. The neighbouring values (lowStock,
+                   stockPercent, targetPercent) are used, so this was a partial removal
+                   rather than a feature waiting to be wired up. */
                 // Calculate actual percentage (can exceed 100% if stock is above minimum)
                 const stockPercent = setting.minQty > 0 
                   ? (storeStock / setting.minQty) * 100
