@@ -240,7 +240,9 @@ const StoreForm = () => {
       };
 
       // Remove undefined values to avoid sending them
-      Object.keys(payload).forEach((key) => {
+      // Iterating the object's own keys keeps the index typed, instead of indexing a
+      // typed object with an arbitrary string.
+      (Object.keys(payload) as Array<keyof typeof payload>).forEach((key) => {
         if (payload[key] === undefined) {
           delete payload[key];
         }

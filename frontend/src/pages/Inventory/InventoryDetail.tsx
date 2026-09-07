@@ -797,7 +797,7 @@ const InventoryDetail = () => {
                                     </Box>
                                     {movement.storeId && storeById.get(movement.storeId) && (
                                       <Typography variant="caption" color="text.secondary" noWrap>
-                                        {storeById.get(movement.storeId).name} ({storeById.get(movement.storeId).code})
+                                        {storeById.get(movement.storeId)?.name} ({storeById.get(movement.storeId)?.code})
                                       </Typography>
                                     )}
                                   </Box>
@@ -808,7 +808,7 @@ const InventoryDetail = () => {
                                 <Typography variant="body2">{movement.sourceType}</Typography>
                                 {movement.storeId && storeById.get(movement.storeId) && (
                                   <Typography variant="caption" color="text.secondary" noWrap>
-                                    {storeById.get(movement.storeId).name} ({storeById.get(movement.storeId).code})
+                                    {storeById.get(movement.storeId)?.name} ({storeById.get(movement.storeId)?.code})
                                   </Typography>
                                 )}
                               </Box>
