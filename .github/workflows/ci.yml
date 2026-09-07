@@ -98,16 +98,17 @@ jobs:
         working-directory: ./frontend
         run: npm run build
 
-      # Reported, not gating. The frontend carries ~360 pre-existing type errors; the
-      # app bundles and runs regardless (Vite strips types without checking them).
-      # Keeping this visible-but-green means the count can be driven down over time
-      # instead of the whole pipeline sitting red and being ignored.
-      - name: Type-check (non-blocking — tracking existing debt)
+      # Now GATING. The debt this was tracking is paid off: 358 -> 0, with no
+      # suppressions and no loosened compiler options. There is nothing left to
+      # tolerate, so a reintroduced error fails the build.
+      #
+      # `npm run typecheck` is `tsc -b --force`, and the `-b` matters. The root
+      # tsconfig.json is a project-references file listing no files of its own, so
+      # `tsc --noEmit -p tsconfig.json` type-checks nothing and exits 0 — it looks
+      # like a clean run and is the reason this debt went unnoticed for so long.
+      - name: Type-check
         working-directory: ./frontend
-        run: |
-          npm run typecheck > tsc.log 2>&1 || true
-          echo "type errors: $(grep -cE 'error TS' tsc.log || echo 0)"
-          tail -30 tsc.log
+        run: npm run typecheck
 
       # Now GATING, same as the backend: all 58 pass across 7 files.
       - name: Tests

@@ -304,7 +304,8 @@ http://localhost:3000/api/docs
 cd frontend && npm run build
 
 # Type-check the frontend separately. Vite strips types without checking them, so
-# `build` produces a working app either way and `typecheck` is what reports the debt.
+# `build` succeeds either way and `typecheck` is the only thing that would catch a
+# type regression. Both projects are at zero errors and CI gates on it.
 #
 # Use the script, not a hand-written tsc invocation. The frontend uses project
 # references, so `tsc --noEmit -p tsconfig.json` type-checks NOTHING and exits 0 —
