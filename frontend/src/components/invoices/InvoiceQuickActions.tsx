@@ -17,7 +17,6 @@ interface InvoiceQuickActionsProps {
   onDuplicate?: () => void;
   onDownloadPdf?: () => void;
   onSend?: () => void;
-  disabled?: boolean;
 }
 
 export const InvoiceQuickActions = ({
@@ -27,7 +26,6 @@ export const InvoiceQuickActions = ({
   onDuplicate,
   onDownloadPdf,
   onSend,
-  disabled = false,
 }: InvoiceQuickActionsProps) => {
   const actions: QuickAction[] = [];
 

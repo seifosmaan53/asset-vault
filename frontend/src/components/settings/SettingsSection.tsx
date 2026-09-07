@@ -5,14 +5,12 @@ interface SettingsSectionProps {
   title: string;
   description?: string;
   children: ReactNode;
-  defaultExpanded?: boolean;
 }
 
 export const SettingsSection = ({
   title,
   description,
   children,
-  defaultExpanded = true,
 }: SettingsSectionProps) => {
   const theme = useTheme();
 

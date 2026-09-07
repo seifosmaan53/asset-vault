@@ -16,7 +16,6 @@ interface SettingsFieldProps {
   tooltip?: string;
   helpLink?: string;
   example?: string;
-  placeholder?: string;
   icon?: ReactNode;
   // Fix Issue #70-73: Accessibility
   ariaLabel?: string;
@@ -35,7 +34,6 @@ export const SettingsField = ({
   tooltip,
   helpLink,
   example,
-  placeholder,
   icon,
   ariaLabel,
   ariaDescribedBy,
