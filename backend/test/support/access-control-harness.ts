@@ -94,9 +94,24 @@ export async function bootHarness(): Promise<Harness> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { AppModule } =
     require('../../src/app.module') as typeof import('../../src/app.module');
-  const mod = await Test.createTestingModule({
-    imports: [AppModule],
-  }).compile();
+  // PuppeteerService pre-warms a headless Chrome in onModuleInit. CI has no Chrome, so the launch fails
+  // and its debug logger then imports a file after Jest has torn down, crashing the process after
+  // every test has passed. PDF rendering is not under test, so a browser-free stand-in is used.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { PuppeteerService } =
+    require('../../src/common/services/puppeteer.service') as typeof import('../../src/common/services/puppeteer.service');
+  const mod = await Test.createTestingModule({ imports: [AppModule] })
+    .overrideProvider(PuppeteerService)
+    .useValue({
+      onModuleInit: () => undefined,
+      onModuleDestroy: () => undefined,
+      generatePdfFromHtml: () => {
+        throw new Error(
+          'PDF rendering is disabled in the access-control tests',
+        );
+      },
+    })
+    .compile();
   const app = mod.createNestApplication();
   // Same validation settings as src/main.ts, so request-body behaviour matches production
   // (a plain whitelist-only pipe silently strips unknown fields, which hides mass-assignment bugs).
