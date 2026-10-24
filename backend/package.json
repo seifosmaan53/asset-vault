@@ -73,6 +73,7 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:integration": "jest --config ./test/jest-integration.json",
     "test:watch": "jest --watch",
     "verify-data": "node -r tsconfig-paths/register -r ts-node/register src/database/verify-data.ts",
     "verify-user-data": "node -r tsconfig-paths/register -r ts-node/register src/database/verify-user-data.ts",
