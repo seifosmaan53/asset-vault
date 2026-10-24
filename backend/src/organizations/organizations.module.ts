@@ -2,7 +2,6 @@ import { Module, Global } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { OrganizationsService } from './organizations.service';
 import { OrganizationsController } from './organizations.controller';
-import { OrganizationContextGuard } from './organization-context.guard';
 import { Organization } from './entities/organization.entity';
 import { UserOrganization } from './entities/user-organization.entity';
 import { User } from '../users/entities/user.entity';
@@ -15,7 +14,7 @@ import { UsersModule } from '../users/users.module';
     UsersModule,
   ],
   controllers: [OrganizationsController],
-  providers: [OrganizationsService, OrganizationContextGuard],
-  exports: [OrganizationsService, OrganizationContextGuard],
+  providers: [OrganizationsService],
+  exports: [OrganizationsService],
 })
 export class OrganizationsModule {}

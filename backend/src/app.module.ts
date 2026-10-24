@@ -32,7 +32,6 @@ import { TrpcModule } from './trpc/trpc.module';
 import { TrpcController } from './trpc/trpc.controller';
 import { ClerkAuthGuard } from './auth/clerk-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
-import { OrganizationContextGuard } from './organizations/organization-context.guard';
 import { SubscriptionGuard } from './subscriptions/subscription.guard';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { RateLimitHeadersInterceptor } from './common/interceptors/rate-limit-headers.interceptor';
@@ -210,10 +209,6 @@ import { DataSource } from 'typeorm';
       useClass: ClerkAuthGuard,
     },
     // Must run after JWT so request.user exists (used for membership verification)
-    {
-      provide: APP_GUARD,
-      useClass: OrganizationContextGuard,
-    },
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
