@@ -15,7 +15,9 @@ jobs:
   backend:
     name: Backend (build + tests)
     runs-on: ubuntu-latest
-    # The suite talks to Postgres, so CI brings up a real one rather than mocking it.
+    # A real PostgreSQL service. The unit suite below mocks its repositories and does not use it;
+    # the access-control suite (npm run test:integration) does, on a schema built by running the
+    # repository's own migrations.
     services:
       postgres:
         image: postgres:16-alpine
@@ -66,12 +68,28 @@ jobs:
         # `prebuild` runs lint with --fix, which would mask failures in CI.
         run: npx nest build
 
-      # Now GATING. These were reported-not-gating while 30 specs were being repaired
-      # from API drift; all 147 pass across 12 suites, so the pipeline enforces it and
-      # a regression fails the build instead of printing a number nobody reads.
-      - name: Unit tests
+      # GATING. Unit tests mock their database repositories (no PostgreSQL involved).
+      - name: Unit tests (mocked dependencies)
         working-directory: ./backend
         run: npm test -- --ci --runInBand --passWithNoTests
+
+      # GATING. Builds the schema with the repository's own migrations in the empty CI database,
+      # which also proves the migrations apply from scratch.
+      - name: Apply migrations to the test database
+        working-directory: ./backend
+        env:
+          CLERK_SECRET_KEY: sk_test_ci_not_a_real_key
+        run: npm run migration:run
+
+      # GATING. Boots the real application against real PostgreSQL with synthetic users and checks
+      # authentication and per-user ownership. Only Clerk's network calls (and the ESM-only tRPC
+      # module) are stubbed; see test/support/access-control-harness.ts. Never point this at a real
+      # database: it creates and deletes users matching *@access-test.invalid.
+      - name: Access-control tests (real PostgreSQL)
+        working-directory: ./backend
+        env:
+          CLERK_SECRET_KEY: sk_test_ci_not_a_real_key
+        run: npm run test:integration -- --ci
 
   frontend:
     name: Frontend (build + tests)
@@ -110,7 +128,7 @@ jobs:
         working-directory: ./frontend
         run: npm run typecheck
 
-      # Now GATING, same as the backend: all 58 pass across 7 files.
+      # GATING (component and utility tests; run `npx vitest run` for the current count).
       - name: Tests
         working-directory: ./frontend
         run: npx vitest run --passWithNoTests

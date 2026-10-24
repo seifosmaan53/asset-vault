@@ -1,9 +1,11 @@
 # Asset Vault
 
 <!--portfolio-note-->
-> **Portfolio note —** one of three invoicing builds exploring the same problem across stacks. **This is the modern, fully type-safe take: React 19 + NestJS 11 + tRPC** (with Stripe + Clerk). Siblings: [pizza-box-system](https://github.com/seifosmaan53/pizza-box-system) (React + Express + Prisma) and [invoiceme](https://github.com/seifosmaan53/invoiceme) (Flutter mobile, offline-first).
+> **Portfolio note —** one of three invoicing builds exploring the same problem across stacks: this one (React 19 + NestJS 11 + PostgreSQL, with Clerk and Stripe), [pizza-box-system](https://github.com/seifosmaan53/pizza-box-system) (React + Express + Prisma) and [invoiceme](https://github.com/seifosmaan53/invoiceme) (Flutter client + NestJS API).
 
-> Invoice, inventory, and multi-store management for small businesses, built self-hostable.
+> Invoice, inventory, and multi-store management for small businesses, built to be self-hosted.
+>
+> **Status: tested portfolio build, not a deployed service.** It builds and passes CI, but it has no hosted instance and no production users. Treat it as reference code, not a hosted product. See [Security model and known limitations](#security-model-and-known-limitations) before running it anywhere public.
 
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev)
 [![NestJS](https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs&logoColor=white)](https://nestjs.com)
@@ -15,10 +17,10 @@
 
 ## A look at it
 
-The API ships OpenAPI docs at `/api/docs` — 107 documented endpoints across 21 tagged
-areas, generated from the controllers themselves rather than maintained by hand.
+The API serves OpenAPI (Swagger) docs at `/api/docs`, organised into 21 tagged areas and
+generated from the controllers themselves rather than maintained by hand.
 
-![Asset Vault API documentation — 21 tagged sections](docs/screenshots/api-docs-overview.jpg)
+![Asset Vault API documentation, 21 tagged sections](docs/screenshots/api-docs-overview.jpg)
 
 Every route carries its auth requirement, parameters and response schema:
 
@@ -28,9 +30,9 @@ Every route carries its auth requirement, parameters and response schema:
 
 ## Why this exists
 
-I work in retail/pharmacy operations supporting a network of 890 stores, and the recurring pain there is the same one small multi-location businesses hit everywhere: invoicing, stock levels, and per-store reporting live in separate spreadsheets or disconnected tools. Asset Vault is my take on collapsing that into one self-hosted app — invoices, inventory (with reorder alerts and inter-store transfers), clients, and Stripe-metered subscription plans, scoped per organization.
+I work in retail/pharmacy operations supporting a network of 890 stores, and the recurring pain there is the same one small multi-location businesses hit everywhere: invoicing, stock levels, and per-store reporting live in separate spreadsheets or disconnected tools. Asset Vault is my take on collapsing that into one self-hosted app: invoices, inventory (with reorder alerts and inter-store transfers), clients, and Stripe-metered subscription plans. Every record belongs to the user who created it (see [Security model](#security-model-and-known-limitations)).
 
-It's also the "type-safety-first" entry in a set of three invoicing rebuilds I've done to compare approaches: this one leans on tRPC + TypeORM + Clerk; [pizza-box-system](https://github.com/seifosmaan53/pizza-box-system) does the same domain with Express + REST + Prisma; [invoiceme](https://github.com/seifosmaan53/invoiceme) does it offline-first on Flutter. See [Key engineering decisions](#key-engineering-decisions) below for why this one is built the way it is.
+It's also one of a set of three invoicing rebuilds I made to compare approaches: this one uses NestJS + TypeORM + Clerk with a React web client; [pizza-box-system](https://github.com/seifosmaan53/pizza-box-system) does the same domain with Express + Prisma; [invoiceme](https://github.com/seifosmaan53/invoiceme) pairs a Flutter client with a NestJS API. See [Key engineering decisions](#key-engineering-decisions) below for why this one is built the way it is.
 
 ---
 
@@ -40,14 +42,14 @@ Each item below maps to code in `backend/src/` and `frontend/src/` — no unveri
 
 - **Invoices** — CRUD, status transitions, PDF export (`invoices/invoice-pdf.service.ts`, Puppeteer-rendered), email delivery (`POST /:id/send` via `MailService`, SendGrid/SMTP)
 - **Inventory** — SKU/barcode items, stock movements, reorder-level alerts (`inventory/store-alerts.service.ts`), bulk CSV import with per-row error reporting
-- **Multi-store** — stores scoped per user/org, store-to-store stock transfers (`inventory/store-transfer.service.ts`), per-store item settings and alert thresholds
-- **Multi-tenant organizations** — `organizations/` module with an `OrganizationContextGuard` and an owner/admin/manager/staff role enum enforced on the backend, not just hidden in the UI
+- **Multi-store** — stores owned per user, store-to-store stock transfers (`inventory/store-transfer.service.ts`), per-store item settings and alert thresholds
+- **Organizations and memberships** — an `organizations/` API for creating an organization and managing its members (owner/admin/manager/staff). Membership changes are authorised on the server from the caller's own membership rows. **Business data (invoices, clients, inventory, stores) is not partitioned by organization: it is owned per user.**
 - **Clients** — contact database tied to invoice history
 - **Analytics & reports** — revenue/payment-method breakdowns and PDF store reports (`analytics/store-report-pdf.service.ts`)
 - **Subscription billing** — Stripe customer/subscription sync, webhook-driven plan updates, per-plan usage quotas enforced by a `QuotaGuard`
-- **API keys** — programmatic access tokens for integrations
+- **API keys** — keys can be created, rotated and revoked, but nothing authenticates requests with them yet
 - **Invoice templates** — saved, reusable invoice layouts
-- **Offline caching** — Dexie/IndexedDB layer on the frontend for read caching
+- **Read cache** — a small IndexedDB layer in the frontend (`frontend/src/utils/indexedDB.ts`) caches reads. The app does not work offline: writes always need the API.
 - **Dark/light mode, keyboard shortcuts, draggable sidebar** — frontend UX conveniences in `frontend/src/components`
 
 ---
@@ -55,53 +57,52 @@ Each item below maps to code in `backend/src/` and `frontend/src/` — no unveri
 ## Architecture
 
 ```
-┌─────────────────────────────┐
-│           Browser            │
-│  React 19 + Vite + MUI       │
-│  ┌─────────────┬───────────┐ │
-│  │ tRPC client │ REST/axios │ │   invoices, clients,
-│  │ (typed RPC) │ (apiClient)│ │   inventory, analytics
-│  └──────┬──────┴─────┬─────┘ │   go over tRPC; everything
-└─────────┼────────────┼───────┘   else (auth, orgs, billing,
-          │            │           storage, reports…) is REST
-          ▼            ▼
-┌──────────────────────────────────────┐
-│              NestJS 11 API            │
-│  /trpc  (TrpcRouter: 4 routers)       │
-│  /api/v1/*  (per-module controllers)  │
-│  /api/docs  (Swagger, REST side only) │
-│                                        │
-│  Guards: ClerkAuthGuard → JwtAuthGuard│
-│  → RolesGuard → OrganizationContext  │
-│  → SubscriptionGuard / QuotaGuard    │
-└───────┬─────────────────┬─────────────┘
+┌──────────────────────────────┐
+│            Browser            │
+│  React 19 + Vite + MUI        │
+│  TanStack Query + axios       │
+│  IndexedDB read cache         │
+└──────────────┬───────────────┘
+               │ REST (JSON), Authorization: Bearer <Clerk session token>
+               ▼
+┌───────────────────────────────────────┐
+│              NestJS 11 API             │
+│  /api/v1/*   per-module controllers    │
+│  /api/docs   Swagger                   │
+│                                         │
+│  Global guards, in order:               │
+│  Throttler → ClerkAuthGuard             │
+│  → RolesGuard → SubscriptionGuard       │
+│  (QuotaGuard on invoice creation)       │
+└───────┬─────────────────┬──────────────┘
         │                 │
         ▼                 ▼
-┌───────────────┐  ┌─────────────────────┐
-│  PostgreSQL 15  │  │  External services   │
-│  via TypeORM    │  │  Clerk (auth, webhook)│
-│  (40 migrations,│  │  Stripe (billing,     │
-│  QueryRunner-   │  │    webhook)            │
-│  based)         │  │  SendGrid/SMTP (mail) │
-└───────────────┘  │  S3/R2 (file storage) │
-                    └─────────────────────┘
+┌───────────────┐  ┌──────────────────────┐
+│ PostgreSQL 15  │  │  External services    │
+│ via TypeORM    │  │  Clerk (auth, webhook) │
+│ (40 migrations)│  │  Stripe (billing)      │
+└───────────────┘  │  SendGrid/SMTP (mail)  │
+                    │  S3/R2 (file storage)  │
+                    └──────────────────────┘
 ```
 
-**Auth flow (Clerk):** the frontend uses `@clerk/clerk-react` to obtain a session token; `ClerkAuthGuard` (`backend/src/auth/clerk-auth.guard.ts`) decodes it, checks expiry locally, then re-verifies the user against Clerk's API on *every* request (no caching — see the `Issue #169` comments in that file) so a revoked/deleted Clerk user is rejected immediately. User lifecycle events (create/update/delete) arrive at `POST /api/v1/auth/webhooks/clerk`, verified with `svix` signature headers before being applied.
+A tRPC layer (four routers, `backend/src/trpc/`) exists on the server but the web client does not call it; **all application traffic is REST.**
+
+**Auth flow (Clerk):** the frontend uses `@clerk/clerk-react` to obtain a session token and sends it as a bearer token. `ClerkAuthGuard` (`backend/src/auth/clerk-auth.guard.ts`) **verifies the token's signature and expiry** with `verifyToken` from `@clerk/backend` (networkless if `CLERK_JWT_KEY` is set, otherwise against the instance's cached JWKS), and only then trusts its `sub` claim. It then re-checks the user against Clerk's API on every request, with no caching, so a deleted or banned account is rejected immediately. User lifecycle events arrive at `POST /api/v1/auth/webhooks/clerk`, verified with `svix` signature headers.
 
 **Billing flow (Stripe):** `subscriptions/stripe.service.ts` drives customer/subscription creation; `stripe-webhook.controller.ts` consumes Stripe webhook events to keep the local `Subscription`/`Plan`/`Usage` entities in sync; `QuotaGuard` and `SubscriptionGuard` enforce plan limits on protected routes; `usage-reset.scheduler.ts` resets usage counters on a cron schedule.
 
-**Why tRPC only covers part of the API:** the four tRPC routers (`invoices`, `clients`, `inventory`, `analytics` — see `backend/src/trpc/trpc.router.ts`) handle the data-heavy CRUD/read surface where end-to-end typed calls pay off most. Auth, Clerk/Stripe webhooks, file uploads (Multer), organizations, and PDF/report generation stay on plain NestJS REST controllers with Swagger docs, because webhooks need raw-body signature verification and file uploads need multipart handling — neither maps cleanly onto tRPC procedures.
+**About the tRPC code:** four routers (`invoices`, `clients`, `inventory`, `analytics`) are mounted at `/api/v1/trpc`, but the web client's data layer is axios + TanStack Query over REST, and `frontend/src/utils/trpc.ts` is not yet typed against the real `AppRouter`. Treat the tRPC routers as unused scaffolding. Webhooks and file uploads are plain REST by necessity (raw-body signature verification, multipart).
 
 ---
 
 ## Key engineering decisions
 
-**tRPC end-to-end types vs. the Express/REST sibling.** The [pizza-box-system](https://github.com/seifosmaan53/pizza-box-system) sibling uses Express + a hand-written REST layer with Prisma. Here, the four highest-traffic domains (invoices, clients, inventory, analytics) are exposed as tRPC routers so the frontend imports the backend's `AppRouter` type directly (`frontend/src/utils/trpc.ts`) instead of hand-maintaining request/response types on both sides. The tradeoff, visible in the architecture above, is that tRPC doesn't fit everything — webhooks and file uploads still need plain HTTP, so the API is intentionally a hybrid rather than "pure tRPC."
+**REST with Swagger vs. tRPC.** I added tRPC routers hoping to get end-to-end types, then kept the REST API as the real interface because the client was already built on it and webhooks and uploads need plain HTTP anyway. Wiring the client to the router's types is unfinished, which is why this README no longer describes the project as tRPC-based.
 
-**Clerk vs. hand-rolled JWT.** This isn't a hypothetical comparison — the codebase used to *be* the hand-rolled version. The `CHANGELOG.md` describes a JWT + bcrypt + password-reset-token + account-lockout auth system with rate-limited login/reset endpoints, and migration `1755000000000-MigrateToClerkAuth.ts` shows the actual cutover: it adds a `clerkUserId` column and drops `password`, `passwordResetToken`, `failedLoginAttempts`, `lockedUntil`, etc. from the `users` table. The `AUTH_SECURITY_IMPROVEMENTS.md` notes in `backend/` are essentially a checklist from that older system. Moving to Clerk traded self-hosted control over the auth flow for not having to maintain password hashing, reset-token expiry, and lockout logic by hand — the remaining `JwtAuthGuard`/`passport-jwt` pieces stay in the dependency tree for the API-key auth path, not for interactive login.
+**Clerk vs. hand-rolled JWT.** This isn't a hypothetical comparison — the codebase used to *be* the hand-rolled version. The `CHANGELOG.md` describes a JWT + bcrypt + password-reset-token + account-lockout auth system with rate-limited login/reset endpoints, and migration `1755000000000-MigrateToClerkAuth.ts` shows the actual cutover: it adds a `clerkUserId` column and drops `password`, `passwordResetToken`, `failedLoginAttempts`, `lockedUntil`, etc. from the `users` table. The `AUTH_SECURITY_IMPROVEMENTS.md` notes in `backend/` are essentially a checklist from that older system. Moving to Clerk traded self-hosted control over the auth flow for not having to maintain password hashing, reset-token expiry, and lockout logic by hand. `JwtAuthGuard` and the `passport-jwt` dependency are leftovers from the old system: no module registers them, and they are scheduled for removal.
 
-**TypeORM vs. Prisma.** The pizza-box-system sibling uses Prisma; this one uses TypeORM with hand-written, `QueryRunner`-based migrations (40 of them in `backend/src/migrations/`, including the Clerk cutover above, plus `CreateOrganizations`/`AddOrganizationIdToEntities` for multi-tenancy). That gives direct control over migration SQL for schema changes that also need to reshape existing data — e.g. `backend/src/database/migrate-to-organizations.ts` backfills an `organizationId` onto pre-existing rows once the column exists, which is easier to hand-write against TypeORM's `QueryRunner`/repositories than to express as a declarative schema diff.
+**TypeORM vs. Prisma.** The pizza-box-system sibling uses Prisma; this one uses TypeORM with hand-written, `QueryRunner`-based migrations (40 of them in `backend/src/migrations/`, including the Clerk cutover above, plus the organization tables). That gives direct control over migration SQL for schema changes that also need to reshape existing data, which is easier to hand-write against TypeORM's `QueryRunner` than to express as a declarative schema diff.
 
 ---
 
@@ -115,18 +116,18 @@ Each item below maps to code in `backend/src/` and `frontend/src/` — no unveri
 | Material UI | 7 | Component library |
 | TypeScript | 5.9 | Type safety |
 | TanStack Query | 5 | Server state + caching |
-| tRPC | 11 | Type-safe API layer (invoices/clients/inventory/analytics) |
+| axios | latest | REST client (`frontend/src/api/`) |
 | Zustand | 5 | Global state |
 | React Hook Form + Zod | latest | Forms + validation |
 | Recharts | 3 | Data visualization |
 | dnd-kit | 6 | Drag & drop |
 | Clerk (`@clerk/clerk-react`) | 5 | Authentication |
-| Dexie / IndexedDB | 4 | Read caching |
+| IndexedDB (hand-rolled) | n/a | Read caching |
 
 ### Backend
 | Technology | Version | Purpose |
 |---|---|---|
-| NestJS | 11 | Server framework |
+| NestJS | 11 | Server framework (REST + Swagger) |
 | Node.js | 18+ | Runtime |
 | PostgreSQL | 15 | Database |
 | TypeORM | 0.3 | ORM + hand-written migrations |
@@ -147,46 +148,58 @@ Each item below maps to code in `backend/src/` and `frontend/src/` — no unveri
 
 ## Testing
 
-The test story is real but partial: services and utilities are covered, end-to-end HTTP flows less so.
+Tests come in three kinds, and the difference matters:
 
-> **Current state, stated plainly.** With CI now running (it was removed in an early
-> commit for lacking the `workflow` OAuth scope and never restored), the suite reports
-> **42 passing / 30 failing across 12 suites**. The failures are drift, not regressions:
-> specs were written against an older API and never updated when the source moved on —
-> mocks that still stub `findOne()` where the service now builds a QueryBuilder, and
-> assertions for methods like `AuthService.validateUser` that no longer exist. Three
-> suites have been repaired so far (`app.controller`, `invoice-totals.util`,
-> `store-stock-validator`); the rest are tracked and being worked through. CI runs them
-> so the number is visible instead of assumed.
-
-**Backend (Jest, 12 unit spec files + 2 integration specs in `backend/`):**
-- `auth/auth.service.spec.ts`
-- `clients/clients.controller.spec.ts`, `clients/clients.service.spec.ts`
-- `inventory/inventory.service.spec.ts`, `inventory/store-item-settings.service.spec.ts`, `inventory/store-stock-validator.service.spec.ts`
-- `invoices/invoices.controller.spec.ts`, `invoices/invoices.service.spec.ts`, `invoices/utils/invoice-status.util.spec.ts`, `invoices/utils/invoice-totals.util.spec.ts`
-- `users/users.service.spec.ts`, `app.controller.spec.ts`
-- `test/invoices-store.integration.spec.ts`, `test/store-stock-validation.integration.spec.ts` (integration specs present under `test/`, run ad-hoc — the current `jest-e2e.json` `testRegex` matches only `*.e2e-spec.ts`, so `test:e2e` does not pick them up)
-- `test/app.e2e-spec.ts` (e2e smoke test)
+| Kind | Command (from `backend/`) | Database | What it covers |
+|---|---|---|---|
+| Unit tests | `npm test` | **Mocked** repositories (no PostgreSQL) | Service and utility logic |
+| Access-control tests | `npm run test:integration` | **Real PostgreSQL**, schema built from the repo's own migrations | Authentication, per-user ownership, users, storage keys, organization membership. The real application is booted; only Clerk's network calls and the ESM-only tRPC module are stubbed (`backend/test/support/access-control-harness.ts`) |
+| Frontend tests | `npm test` (from `frontend/`) | n/a | Component and utility tests (Vitest) |
 
 ```bash
-cd backend
-npm test          # unit specs (co-located *.spec.ts under src/)
-npm run test:cov  # unit specs with coverage
-npm run test:e2e  # test/app.e2e-spec.ts via jest-e2e.json (matches *.e2e-spec.ts only)
+# Backend unit tests (mocked database)
+cd backend && npm test
+
+# Access-control tests: need a PostgreSQL database that is NOT a real one. They create and delete
+# synthetic users (*@access-test.invalid).
+createdb asset_vault_test
+export NODE_ENV=test DB_HOST=localhost DB_PORT=5432 DB_USERNAME=postgres DB_PASSWORD=postgres \
+       DB_DATABASE=asset_vault_test CLERK_SECRET_KEY=sk_test_local_not_real
+npm run migration:run
+npm run test:integration
+
+# Frontend
+cd frontend && npm test
 ```
 
-**Frontend (Vitest, 6 spec files in `frontend/src/`):**
-- `utils/formatters.test.ts`, `utils/dates.test.ts`
-- `components/dashboard/RevenueChart.test.tsx`, `components/inventory/InventorySelect.test.tsx`
-- `pages/Invoices/InvoiceForm.test.tsx`, `pages/Invoices/InvoicesList.test.tsx`
+`backend/test/invoices-store.integration.spec.ts` and `store-stock-validation.integration.spec.ts` are **mock-based despite their names** and are not run by `test:integration`; `npm run test:e2e` runs only `app.e2e-spec.ts`.
 
-```bash
-cd frontend
-npm test          # vitest
-npm run test:coverage
-```
+**CI** (`.github/workflows/ci.yml`, GitHub Actions) runs on every push and pull request to `main`: backend build, backend unit tests, migrations against a PostgreSQL 16 service, the access-control tests against that service, frontend build, frontend type-check and tests, and a dependency audit (reported, not gating). Lint runs but is not gating. See the latest run on the [Actions tab](https://github.com/seifosmaan53/asset-vault/actions) for current results rather than counts quoted here.
 
-There is no CI workflow file in this repo (removed — see git history), so these currently run locally/on-demand rather than as a required gate.
+---
+
+## Security model and known limitations
+
+**Model.** Asset Vault is a per-user application. Every business record (client, store, inventory item, invoice, template, API key, settings) carries the id of the user who created it, and every query filters on the authenticated user's id taken from the verified session, never from the request. A request that references another user's record gets the same 404 as one that does not exist.
+
+- **Authentication:** Clerk. The bearer token's signature and expiry are verified on every request (`verifyToken`), then the account is re-checked against Clerk's API.
+- **Roles:** every account is created as `OWNER` of its own data. There is no invitation or staff-management flow, so `@Roles(...)` guards on routes distinguish nothing in practice. Role is not user-editable.
+- **Subscriptions:** `SubscriptionGuard` denies business routes unless the account has an active or trialing subscription; `QuotaGuard` enforces plan limits on invoice creation.
+- **Accounts (`/users`):** these routes only ever act on the caller's own account, and identity or privilege fields (email, role, password) cannot be changed through them.
+- **File storage:** every object key is `{folder}/{userId}/{uuid}.{ext}` and a key is only usable by the user whose id is in it. The upload folder name is reduced to one safe segment.
+- **Organizations:** the `/organizations` API manages organizations and their members. It is authorised on the server from the caller's own membership; it does **not** partition business data, so being in an organization does not share anyone's invoices or inventory.
+
+**Verified by tests, not just by reading.** `backend/test/access-control.db.spec.ts` boots the real application against real PostgreSQL with synthetic users and checks the rules above, including forged tokens, cross-user reads and writes by id, forged owner ids, privilege escalation, storage keys, organization membership, data export, and the matching positive controls (the owner can still do each thing).
+
+**Known limitations and open items**
+- Not deployed anywhere, and not hardened for the public internet: no WAF, no audit of the Stripe and Clerk webhook handlers beyond signature checks, and `npm audit` findings remain (CI reports them without gating).
+- Multipart file upload is currently rejected by the global content-negotiation interceptor ("Content-Type must be application/json"), so uploads do not work through the API as shipped.
+- The API-key feature creates keys but nothing authenticates requests with them.
+- `JwtAuthGuard` and `passport-jwt` are unused leftovers from the pre-Clerk auth system.
+- The organization-context decorators (`@OrganizationId()`) are deprecated and always return `null`; call sites remain in two controllers.
+- The `users` page and API client in `frontend/src` are not routed or linked from the UI.
+- The unit suite uses mocked repositories; the integration tests cover access control, not business logic such as totals, taxes or stock arithmetic against a real database.
+- Docker Compose configuration is verified by reading, not by running it in this review.
 
 ---
 
@@ -234,12 +247,12 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_USERNAME=postgres
 DB_PASSWORD=yourpassword
-DB_DATABASE=asset_vault
+DB_DATABASE=asset_vault   # the code's fallback is the legacy name `invoiceme`; always set this explicitly
 
-# Auth — Clerk only. JWT_SECRET is no longer read by the running app
-# (authentication moved to Clerk); it has been dropped from .env.example.
-CLERK_SECRET_KEY=sk_...
-CLERK_WEBHOOK_SECRET=whsec_...
+# Auth — Clerk only. JWT_SECRET is no longer read by the running app.
+CLERK_SECRET_KEY=sk_...        # required
+CLERK_WEBHOOK_SECRET=whsec_... # needed to receive Clerk user webhooks
+CLERK_JWT_KEY=                 # optional PEM public key: verify tokens without a JWKS network call
 
 # Optional: Email
 SENDGRID_API_KEY=SG....
@@ -290,7 +303,7 @@ cd backend && npm run db:reset
 
 ## API Documentation
 
-The REST half of the API (everything outside the four tRPC routers) is documented with Swagger when the backend is running:
+The REST API is documented with Swagger when the backend is running (all routes are under `/api/v1`):
 ```
 http://localhost:3000/api/docs
 ```
@@ -337,22 +350,22 @@ docker compose up -d
 asset-vault/
 ├── backend/
 │   └── src/
-│       ├── auth/            # Clerk + JWT guards, webhook handler
-│       ├── organizations/   # multi-tenant orgs, role enum, context guard
+│       ├── auth/            # Clerk guard (signature-verified), roles guard, webhook handler
+│       ├── organizations/   # organizations and memberships (not a data-partitioning layer)
 │       ├── inventory/       # items, stores, transfers, alerts
 │       ├── invoices/        # CRUD, PDF, totals/status utils
 │       ├── clients/
 │       ├── subscriptions/   # Stripe billing, quota/usage guards
 │       ├── analytics/       # revenue charts, store report PDFs
 │       ├── reports/
-│       ├── trpc/            # TrpcRouter + 4 routers (invoices/clients/inventory/analytics)
+│       ├── trpc/            # tRPC routers (unused by the web client)
 │       ├── storage/         # S3/R2 file storage
 │       ├── mail/
+│       ├── test/            # access-control integration tests (real PostgreSQL)
 │       └── migrations/      # 40 TypeORM migrations
 └── frontend/
     └── src/
-        ├── api/              # REST clients (axios) for non-tRPC modules
-        ├── utils/trpc.ts     # tRPC client, typed against backend AppRouter
+        ├── api/              # REST clients (axios): the real data layer
         ├── pages/
         ├── components/
         ├── store/            # Zustand
