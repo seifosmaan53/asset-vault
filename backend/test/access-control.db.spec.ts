@@ -39,16 +39,11 @@ jest.mock('@clerk/backend', () => {
   const harness = jest.requireActual('./support/access-control-harness');
   return {
     ...actual,
-    // Mirrors @clerk/backend: resolves { data } for a valid token and { errors } otherwise; it never throws.
-    verifyToken: jest.fn(async (token: string) => {
-      try {
-        return {
-          data: jsonwebtoken.verify(token, harness.TEST_CLERK_SIGNING_SECRET),
-        };
-      } catch (e) {
-        return { errors: [e] };
-      }
-    }),
+    // Mirrors the installed @clerk/backend (3.x): resolves the verified claims and THROWS on any failure.
+    // (The real function is exercised separately in src/auth/clerk-auth.guard.spec.ts.)
+    verifyToken: jest.fn(async (token: string) =>
+      jsonwebtoken.verify(token, harness.TEST_CLERK_SIGNING_SECRET),
+    ),
     createClerkClient: () => ({
       users: {
         getUser: async (id: string) => {
@@ -674,6 +669,51 @@ describe('access control (real app + real PostgreSQL)', () => {
         role: 'owner',
       });
       expect(await membership(aliceOrgId, bob.userId)).toBeUndefined();
+    });
+
+    it('an ADMIN cannot remove an owner, including the sole owner (only an owner can)', async () => {
+      await h
+        .http()
+        .post(`/organizations/${aliceOrgId}/users`)
+        .set(auth(alice.token))
+        .send({ userId: carol.userId, role: 'admin' });
+      expect(await membership(aliceOrgId, carol.userId)).toMatchObject({ isActive: true, role: 'admin' });
+      const r = await h
+        .http()
+        .delete(`/organizations/${aliceOrgId}/users/${alice.userId}`)
+        .set(auth(carol.token));
+      expect(r.status).toBe(403);
+      expect(await membership(aliceOrgId, alice.userId)).toMatchObject({ isActive: true, role: 'owner' });
+      // positive control: the owner can remove the admin
+      const ok = await h
+        .http()
+        .delete(`/organizations/${aliceOrgId}/users/${carol.userId}`)
+        .set(auth(alice.token));
+      expect(ok.status).toBeLessThan(300);
+      expect(await membership(aliceOrgId, carol.userId)).toMatchObject({ isActive: false });
+    });
+
+    it('the sole owner cannot be removed, not even by themselves', async () => {
+      const r = await h
+        .http()
+        .delete(`/organizations/${aliceOrgId}/users/${alice.userId}`)
+        .set(auth(alice.token));
+      expect(r.status).toBe(400);
+      expect(await membership(aliceOrgId, alice.userId)).toMatchObject({ isActive: true });
+    });
+
+    it('the member list shows each member only as id, name and email', async () => {
+      await h.ds.query(`update users set phone = '555-0100', bio = 'private bio text' where id = $1`, [alice.userId]);
+      const r = await h.http().get(`/organizations/${aliceOrgId}/users`).set(auth(alice.token));
+      expect(r.status).toBe(200);
+      const body = JSON.stringify(r.body);
+      expect(body).toContain('alice@access-test.invalid'); // positive control: the member is listed
+      for (const forbidden of ['555-0100', 'private bio text', 'clerkUserId']) {
+        expect(body).not.toContain(forbidden);
+      }
+      for (const m of r.body as Array<{ user?: Record<string, unknown> }>) {
+        expect(Object.keys(m.user ?? {}).sort()).toEqual(['email', 'id', 'name']);
+      }
     });
 
     it('a non-member cannot change a member role or remove a member', async () => {

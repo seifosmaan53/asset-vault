@@ -3,13 +3,15 @@
  *
  * What is REAL here: the whole application module (every controller, every global guard in the
  * order app.module registers them, every service), TypeORM against a real PostgreSQL database
- * built by running the repository's own 40 migrations, and Clerk's token verification path.
+ * built by running the repository's own 40 migrations, and the ClerkAuthGuard itself.
  *
  * What is STUBBED (and why):
- *  - Clerk's *network* calls. verifyToken() is replaced by a function that verifies the token's
- *    HMAC signature against TEST_CLERK_SIGNING_SECRET and rejects everything else, which is the
- *    contract the real verifyToken has with Clerk's keys; users.getUser() reads an in-memory
- *    directory instead of calling Clerk's API.
+ *  - CLERK VERIFICATION IS MOCKED IN THIS SUITE. verifyToken() is replaced by a function that
+ *    verifies the token's HMAC signature against TEST_CLERK_SIGNING_SECRET and throws otherwise
+ *    (the installed @clerk/backend 3.x resolves claims and throws on failure); users.getUser()
+ *    reads an in-memory directory instead of calling Clerk's API. This suite therefore proves the
+ *    application's authorization rules, NOT Clerk's cryptography or the SDK configuration. The
+ *    real SDK is exercised, offline with generated RSA keys, by src/auth/clerk-auth.guard.spec.ts.
  *  - tRPC (module + controller). Its superjson dependency is ESM-only and cannot load under
  *    ts-jest; tRPC is not used by the shipped UI. The stub is a decorated empty controller.
  *

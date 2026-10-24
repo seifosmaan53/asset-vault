@@ -180,8 +180,21 @@ export class OrganizationsService {
       );
     }
 
-    // Prevent removing yourself if you're the only owner
-    if (userId === removedByUserId) {
+    const userOrg = await this.userOrganizationRepository.findOne({
+      where: { organizationId, userId },
+    });
+
+    if (!userOrg || !userOrg.isActive) {
+      throw new NotFoundException('User is not a member of this organization');
+    }
+
+    if (userOrg.role === OrganizationRole.OWNER) {
+      // Only an owner can remove an owner. Previously any admin could remove one, and the
+      // "last owner" check ran only when someone removed THEMSELVES, so an admin could remove
+      // the sole owner and leave the organization with none.
+      if (removerOrg.role !== OrganizationRole.OWNER) {
+        throw new ForbiddenException('Only an owner can remove an owner');
+      }
       const ownerCount = await this.userOrganizationRepository.count({
         where: { organizationId, role: OrganizationRole.OWNER, isActive: true },
       });
@@ -190,14 +203,6 @@ export class OrganizationsService {
           'Cannot remove the last owner from organization',
         );
       }
-    }
-
-    const userOrg = await this.userOrganizationRepository.findOne({
-      where: { organizationId, userId },
-    });
-
-    if (!userOrg) {
-      throw new NotFoundException('User is not a member of this organization');
     }
 
     userOrg.isActive = false;
@@ -229,8 +234,13 @@ export class OrganizationsService {
       const target = await this.userOrganizationRepository.findOne({
         where: { organizationId, userId },
       });
-      if (role === OrganizationRole.OWNER || target?.role === OrganizationRole.OWNER) {
-        throw new ForbiddenException('Only an owner can grant or change the owner role');
+      if (
+        role === OrganizationRole.OWNER ||
+        target?.role === OrganizationRole.OWNER
+      ) {
+        throw new ForbiddenException(
+          'Only an owner can grant or change the owner role',
+        );
       }
     }
 
@@ -274,11 +284,20 @@ export class OrganizationsService {
       throw new NotFoundException('Organization not found or access denied');
     }
 
-    return this.userOrganizationRepository.find({
+    const members = await this.userOrganizationRepository.find({
       where: { organizationId, isActive: true },
       relations: ['user'],
       order: { createdAt: 'ASC' },
     });
+
+    // A member sees who else is in the organization (id, name, email) and nothing else. The full
+    // user record carries phone, address, bio and the Clerk id, none of which a colleague needs.
+    return members.map((m) => ({
+      ...m,
+      user: m.user
+        ? ({ id: m.user.id, name: m.user.name, email: m.user.email } as User)
+        : m.user,
+    }));
   }
 
   async getUserRole(
