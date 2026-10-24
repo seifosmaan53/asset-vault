@@ -153,7 +153,8 @@ Tests come in three kinds, and the difference matters:
 | Kind | Command (from `backend/`) | Database | What it covers |
 |---|---|---|---|
 | Unit tests | `npm test` | **Mocked** repositories (no PostgreSQL) | Service and utility logic |
-| Access-control tests | `npm run test:integration` | **Real PostgreSQL**, schema built from the repo's own migrations | Authentication, per-user ownership, users, storage keys, organization membership. The real application is booted; only Clerk's network calls and the ESM-only tRPC module are stubbed (`backend/test/support/access-control-harness.ts`) |
+| Access-control tests | `npm run test:integration` | **Real PostgreSQL**, schema built from the repo's own migrations | Authentication, per-user ownership, users, storage keys, organization membership. The real application is booted. **Clerk token verification is mocked here**: `verifyToken` is replaced by an HMAC check and the Clerk user lookup by an in-memory directory, so this suite proves the application's authorization rules, not Clerk's cryptography. The ESM-only tRPC module and the headless-Chrome PDF service are also stubbed (`backend/test/support/access-control-harness.ts`) |
+| Clerk SDK configuration test | `npm test` (`src/auth/clerk-auth.guard.spec.ts`) | none | The guard against the **real** `@clerk/backend` `verifyToken`, using an RSA key pair generated in the test (offline via `CLERK_JWT_KEY`) and an intercepted JWKS request. Checks that valid tokens are accepted and that wrong-key, algorithm-confusion, `alg: none`, expired, not-yet-valid, tampered and subject-less tokens are rejected before any Clerk user lookup. No Clerk account, network or paid call is involved |
 | Frontend tests | `npm test` (from `frontend/`) | n/a | Component and utility tests (Vitest) |
 
 ```bash
@@ -182,7 +183,7 @@ cd frontend && npm test
 
 **Model.** Asset Vault is a per-user application. Every business record (client, store, inventory item, invoice, template, API key, settings) carries the id of the user who created it, and every query filters on the authenticated user's id taken from the verified session, never from the request. A request that references another user's record gets the same 404 as one that does not exist.
 
-- **Authentication:** Clerk. The bearer token's signature and expiry are verified on every request (`verifyToken`), then the account is re-checked against Clerk's API.
+- **Authentication:** Clerk. The bearer token's signature and expiry are verified on every request (`verifyToken`), then the account is re-checked against Clerk's API. Set `CLERK_JWT_KEY` (the instance's PEM public key) to verify tokens without a JWKS network call; otherwise the SDK fetches and caches the instance's keys using `CLERK_SECRET_KEY`. Verification fails closed: any error, missing subject or unreachable key set is a 401.
 - **Roles:** every account is created as `OWNER` of its own data. There is no invitation or staff-management flow, so `@Roles(...)` guards on routes distinguish nothing in practice. Role is not user-editable.
 - **Subscriptions:** `SubscriptionGuard` denies business routes unless the account has an active or trialing subscription; `QuotaGuard` enforces plan limits on invoice creation.
 - **Accounts (`/users`):** these routes only ever act on the caller's own account, and identity or privilege fields (email, role, password) cannot be changed through them.
@@ -195,11 +196,21 @@ cd frontend && npm test
 - Not deployed anywhere, and not hardened for the public internet: no WAF, no audit of the Stripe and Clerk webhook handlers beyond signature checks, and `npm audit` findings remain (CI reports them without gating).
 - Multipart file upload is currently rejected by the global content-negotiation interceptor ("Content-Type must be application/json"), so uploads do not work through the API as shipped.
 - The API-key feature creates keys but nothing authenticates requests with them.
+- The IP allow/deny middleware (`ip-filter.middleware.ts`) is never registered, so the IP-filtering environment variables have no effect.
+- Adding a member to an organization by user id does not ask that user for consent. The caller must already be an owner or admin of the organization, and members are shown to each other only as id, name and email, but there is no invitation or acceptance step.
+- Token verification is covered by tests against the real Clerk SDK with locally generated keys; it has not been exercised against a live Clerk instance in this review.
 - `JwtAuthGuard` and `passport-jwt` are unused leftovers from the pre-Clerk auth system.
 - The organization-context decorators (`@OrganizationId()`) are deprecated and always return `null`; call sites remain in two controllers.
 - The `users` page and API client in `frontend/src` are not routed or linked from the UI.
 - The unit suite uses mocked repositories; the integration tests cover access control, not business logic such as totals, taxes or stock arithmetic against a real database.
 - Docker Compose configuration is verified by reading, not by running it in this review.
+
+**Deployment and recovery.** These fixes are merged into the repository; the application was not deployed as part of this work and no deployment of it is known. If you deploy it and a release fails, do **not** treat redeploying the code from before this change as a rollback: that code accepted unsigned tokens and exposed other accounts' data, so it restores the vulnerabilities. Keep access restricted instead:
+1. Keep the failed release out of service (stop it, or leave the load balancer or DNS pointing away from it) rather than serving it half-configured.
+2. Fix forward. The usual causes are configuration: `CLERK_SECRET_KEY` unset (the API refuses to start, which is the intended fail-closed behavior), a wrong key, or a Clerk outage. Set `CLERK_JWT_KEY` to verify tokens without reaching Clerk's key endpoint.
+3. If service must be restored before a fix is ready, restore a build that contains the token-verification fix, or serve a maintenance response. Never serve a build older than this change.
+4. After any incident, rotate `CLERK_SECRET_KEY` if it may have been exposed, and review access logs for the exposure window.
+5. Schema migrations are forward-only; take a database backup before applying them.
 
 ---
 
@@ -238,7 +249,7 @@ npm run dev
 
 ## Environment Variables
 
-`backend/.env.example` and `frontend/.env.example` now list every variable the code reads, generated from the Joi schema in `src/app.module.ts`, with each one marked required or optional. **`CLERK_SECRET_KEY` (backend) and `VITE_CLERK_PUBLISHABLE_KEY` (frontend) are both required** — the API exits at boot with a config validation error without the first, and the frontend renders a configuration screen instead of the UI without the second. Stripe, SMTP, AWS and IP-filtering keys are all optional; those features stay dormant when unset.
+`backend/.env.example` and `frontend/.env.example` now list every variable the code reads, generated from the Joi schema in `src/app.module.ts`, with each one marked required or optional. **`CLERK_SECRET_KEY` (backend) and `VITE_CLERK_PUBLISHABLE_KEY` (frontend) are both required** — the API exits at boot with a config validation error without the first, and the frontend renders a configuration screen instead of the UI without the second. Stripe, SMTP and AWS keys are optional; those features stay dormant when unset. The IP-filtering variables currently do nothing (see Known limitations).
 
 ### Backend (`backend/.env`)
 ```env
