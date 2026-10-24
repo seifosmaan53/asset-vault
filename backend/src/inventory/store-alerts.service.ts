@@ -183,19 +183,14 @@ export class StoreAlertsService {
     userId: string,
     organizationId?: string | null,
   ): Promise<StoreAlert[]> {
-    // FIX Issue #43: Verify store belongs to organization before querying alerts
-    if (organizationId) {
-      const store = await this.storeRepository.findOne({
-        where: { id: storeId },
-      });
-      if (!store) {
-        throw new NotFoundException(`Store with ID "${storeId}" not found`);
-      }
-      // Verify organization access
-      // Organizations removed - verify user access only
-      if (store.userId !== userId) {
-        throw new NotFoundException(`Store with ID "${storeId}" not found`);
-      }
+    // The store must belong to the caller. This used to run only `if (organizationId)`, and organizationId
+    // is always null (data is per-user), so the check never executed and a foreign store id quietly
+    // returned an empty list instead of the same 404 as a missing store.
+    const store = await this.storeRepository.findOne({
+      where: { id: storeId },
+    });
+    if (!store || store.userId !== userId) {
+      throw new NotFoundException(`Store with ID "${storeId}" not found`);
     }
 
     return this.storeAlertRepository.find({

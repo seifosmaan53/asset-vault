@@ -1,6 +1,7 @@
 import {
   Injectable,
   NotFoundException,
+  ForbiddenException,
   BadRequestException,
   Logger,
 } from '@nestjs/common';
@@ -102,6 +103,34 @@ export class OrganizationsService {
     role: OrganizationRole = OrganizationRole.STAFF,
     addedByUserId?: string,
   ): Promise<UserOrganization> {
+    // Authorise the caller FIRST, before anything about the target is read or changed. This used to
+    // run only on the "new member" path, so the "reactivate a previously removed member" branch
+    // returned early and let ANY signed-in account re-add someone to ANY organization, with any role.
+    // addedByUserId is optional only for trusted server-side callers (e.g. creating a user's own
+    // first organization); every HTTP caller passes it.
+    if (addedByUserId) {
+      const adderOrg = await this.userOrganizationRepository.findOne({
+        where: { organizationId, userId: addedByUserId, isActive: true },
+      });
+
+      if (
+        !adderOrg ||
+        (adderOrg.role !== OrganizationRole.OWNER &&
+          adderOrg.role !== OrganizationRole.ADMIN)
+      ) {
+        // Same response whether the organization exists or not, so ids cannot be probed.
+        throw new NotFoundException('Organization not found or access denied');
+      }
+
+      // Nobody can grant a role above their own: an ADMIN cannot create an OWNER.
+      if (
+        role === OrganizationRole.OWNER &&
+        adderOrg.role !== OrganizationRole.OWNER
+      ) {
+        throw new ForbiddenException('Only an owner can grant the owner role');
+      }
+    }
+
     // Check if user is already in organization
     const existing = await this.userOrganizationRepository.findOne({
       where: { organizationId, userId },
@@ -118,23 +147,6 @@ export class OrganizationsService {
       existing.role = role;
       existing.joinedAt = new Date();
       return this.userOrganizationRepository.save(existing);
-    }
-
-    // Verify the person adding has permission (if provided)
-    if (addedByUserId) {
-      const adderOrg = await this.userOrganizationRepository.findOne({
-        where: { organizationId, userId: addedByUserId, isActive: true },
-      });
-
-      if (
-        !adderOrg ||
-        (adderOrg.role !== OrganizationRole.OWNER &&
-          adderOrg.role !== OrganizationRole.ADMIN)
-      ) {
-        throw new BadRequestException(
-          'Only owners and admins can add users to organization',
-        );
-      }
     }
 
     const userOrg = this.userOrganizationRepository.create({
@@ -168,8 +180,21 @@ export class OrganizationsService {
       );
     }
 
-    // Prevent removing yourself if you're the only owner
-    if (userId === removedByUserId) {
+    const userOrg = await this.userOrganizationRepository.findOne({
+      where: { organizationId, userId },
+    });
+
+    if (!userOrg || !userOrg.isActive) {
+      throw new NotFoundException('User is not a member of this organization');
+    }
+
+    if (userOrg.role === OrganizationRole.OWNER) {
+      // Only an owner can remove an owner. Previously any admin could remove one, and the
+      // "last owner" check ran only when someone removed THEMSELVES, so an admin could remove
+      // the sole owner and leave the organization with none.
+      if (removerOrg.role !== OrganizationRole.OWNER) {
+        throw new ForbiddenException('Only an owner can remove an owner');
+      }
       const ownerCount = await this.userOrganizationRepository.count({
         where: { organizationId, role: OrganizationRole.OWNER, isActive: true },
       });
@@ -178,14 +203,6 @@ export class OrganizationsService {
           'Cannot remove the last owner from organization',
         );
       }
-    }
-
-    const userOrg = await this.userOrganizationRepository.findOne({
-      where: { organizationId, userId },
-    });
-
-    if (!userOrg) {
-      throw new NotFoundException('User is not a member of this organization');
     }
 
     userOrg.isActive = false;
@@ -208,9 +225,23 @@ export class OrganizationsService {
       (updaterOrg.role !== OrganizationRole.OWNER &&
         updaterOrg.role !== OrganizationRole.ADMIN)
     ) {
-      throw new BadRequestException(
-        'Only owners and admins can update user roles',
-      );
+      throw new NotFoundException('Organization not found or access denied');
+    }
+
+    // Only an owner can grant the owner role or change an owner's role. Otherwise an admin could
+    // promote themselves (or anyone) to owner, or strip the real owner of control.
+    if (updaterOrg.role !== OrganizationRole.OWNER) {
+      const target = await this.userOrganizationRepository.findOne({
+        where: { organizationId, userId },
+      });
+      if (
+        role === OrganizationRole.OWNER ||
+        target?.role === OrganizationRole.OWNER
+      ) {
+        throw new ForbiddenException(
+          'Only an owner can grant or change the owner role',
+        );
+      }
     }
 
     // Prevent changing role of last owner
@@ -253,11 +284,20 @@ export class OrganizationsService {
       throw new NotFoundException('Organization not found or access denied');
     }
 
-    return this.userOrganizationRepository.find({
+    const members = await this.userOrganizationRepository.find({
       where: { organizationId, isActive: true },
       relations: ['user'],
       order: { createdAt: 'ASC' },
     });
+
+    // A member sees who else is in the organization (id, name, email) and nothing else. The full
+    // user record carries phone, address, bio and the Clerk id, none of which a colleague needs.
+    return members.map((m) => ({
+      ...m,
+      user: m.user
+        ? ({ id: m.user.id, name: m.user.name, email: m.user.email } as User)
+        : m.user,
+    }));
   }
 
   async getUserRole(

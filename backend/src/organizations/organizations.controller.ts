@@ -13,7 +13,6 @@ import {
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { OrganizationsService } from './organizations.service';
 import { OrganizationRole } from './entities/organization-role.enum';
-import { OrganizationOptional } from './organization-optional.decorator';
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { ApiTags } from '@nestjs/swagger';
@@ -62,7 +61,6 @@ interface UpdateUserRoleDto {
 @ApiTags('organizations')
 @Controller('organizations')
 @UseGuards(ClerkAuthGuard)
-@OrganizationOptional()
 export class OrganizationsController {
   constructor(private readonly organizationsService: OrganizationsService) {}
 

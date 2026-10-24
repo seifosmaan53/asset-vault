@@ -9,8 +9,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { createClerkClient } from '@clerk/backend';
-import * as jwt from 'jsonwebtoken';
+import { createClerkClient, verifyToken } from '@clerk/backend';
 import { IS_PUBLIC_KEY } from './public.decorator';
 import { UsersService } from '../users/users.service';
 import { OrganizationsService } from '../organizations/organizations.service';
@@ -20,6 +19,9 @@ import { RequestUser } from './interfaces/request-user.interface';
 export class ClerkAuthGuard implements CanActivate {
   private readonly logger = new Logger(ClerkAuthGuard.name);
   private clerkClient: ReturnType<typeof createClerkClient>;
+  private readonly secretKey: string;
+  /** Optional PEM public key (CLERK_JWT_KEY); lets verification run without a JWKS network call. */
+  private readonly jwtKey?: string;
 
   constructor(
     private reflector: Reflector,
@@ -34,6 +36,8 @@ export class ClerkAuthGuard implements CanActivate {
         'CLERK_SECRET_KEY is not defined in environment variables',
       );
     }
+    this.secretKey = secretKey;
+    this.jwtKey = this.configService.get<string>('CLERK_JWT_KEY') || undefined;
     this.clerkClient = createClerkClient({ secretKey });
   }
 
@@ -59,34 +63,48 @@ export class ClerkAuthGuard implements CanActivate {
     const token = authHeader.substring(7);
 
     try {
-      // FIX Issue #169: Validate token on every request - no caching
-      // Decode token to extract claims (safe operation, doesn't verify signature)
-      const decoded = jwt.decode(token, { complete: false }) as any;
+      // Verify the token's SIGNATURE (and expiry/not-before) against the Clerk instance's keys before
+      // trusting any claim in it. The previous version used jwt.decode(), which does not verify
+      // anything, then looked the user up by the unverified `sub`: anyone able to craft a JWT with a
+      // known Clerk user id was authenticated as that user. verifyToken() fetches and caches the
+      // instance JWKS (or uses CLERK_JWT_KEY if set, which makes it networkless).
+      const verified = await verifyToken(token, {
+        secretKey: this.secretKey,
+        ...(this.jwtKey ? { jwtKey: this.jwtKey } : {}),
+      });
 
-      if (!decoded || !decoded.sub) {
-        throw new UnauthorizedException('Invalid token format');
+      // Result shape depends on the SDK major version: @clerk/backend 3.x resolves the verified claims
+      // directly and THROWS on any failure (caught below, so it is a rejection); 2.x resolved
+      // { data } or { errors } without throwing. Accept either, and treat anything that is not a clean
+      // claims object with a subject as a rejection. (Reading only `.data` rejected every valid token
+      // on 3.x; this is covered by clerk-auth.guard.spec.ts, which runs the real SDK.)
+      const result = verified as unknown as {
+        errors?: unknown;
+        data?: unknown;
+        sub?: unknown;
+      } | null;
+      const claims = (
+        result && !result.errors
+          ? 'data' in result && result.data
+            ? result.data
+            : result
+          : undefined
+      ) as { sub?: unknown } | undefined;
+      const sub =
+        typeof claims?.sub === 'string' && claims.sub.length > 0
+          ? claims.sub
+          : undefined;
+      if (!sub) {
+        this.logger.warn(
+          'Rejected token: signature or claims failed verification',
+        );
+        throw new UnauthorizedException('Invalid or expired token');
       }
+      const decoded = { sub };
 
-      // FIX Issue #169: Check token expiration
-      if (decoded.exp) {
-        const expirationTime = decoded.exp * 1000; // Convert to milliseconds
-        const now = Date.now();
-        if (now >= expirationTime) {
-          this.logger.warn(
-            `Token expired for user ${decoded.sub}. Expired at: ${new Date(expirationTime).toISOString()}`,
-          );
-          throw new UnauthorizedException('Token has expired');
-        }
-      }
-
-      // FIX Issue #169: Verify token with Clerk's API on every request
-      // This ensures:
-      // 1. User exists in Clerk
-      // 2. User hasn't been deleted
-      // 3. Token hasn't been revoked
-      // 4. User account is still active
-      // Note: Clerk's backend SDK uses the secret key for API authentication
-      // The JWT token itself is verified by calling Clerk's API, which validates the token
+      // Verify with Clerk's API on every request. Signature verification proves the token was issued
+      // by Clerk; this additionally ensures the user still exists, is not banned or locked, and that a
+      // deleted or suspended account cannot keep using an unexpired token.
       const clerkUser = await this.clerkClient.users.getUser(decoded.sub);
 
       if (!clerkUser) {

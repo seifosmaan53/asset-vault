@@ -26,7 +26,6 @@ import {
 } from './dto/auth-response.dto';
 import { Public } from './public.decorator';
 import { RequestUser } from './interfaces/request-user.interface';
-import { OrganizationOptional } from '../organizations/organization-optional.decorator';
 import { ClerkAuthGuard } from './clerk-auth.guard';
 
 // Extend Express Request to include our user type
@@ -36,7 +35,6 @@ interface AuthenticatedRequest extends Request {
 
 @ApiTags('auth')
 @Controller('auth')
-@OrganizationOptional()
 export class AuthController {
   constructor(private authService: AuthService) {}
 

@@ -504,8 +504,12 @@ export class StoreService {
       // Invalidate stores analytics cache when store is deleted
       await this.cacheManager.del('stores-analytics');
     } catch (error) {
-      // Rollback transaction on any error
-      await queryRunner.rollbackTransaction();
+      // Rollback on any error, but only if a transaction is still open: several branches above roll
+      // back explicitly before throwing (e.g. the ownership denial), and a second rollback raises
+      // TransactionNotStartedError, which turned a clean 404 into a 500 and hid the real reason.
+      if (queryRunner.isTransactionActive) {
+        await queryRunner.rollbackTransaction();
+      }
 
       // Re-throw NotFoundException and BadRequestException as-is
       if (

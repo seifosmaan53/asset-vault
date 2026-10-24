@@ -72,6 +72,29 @@ export class StorageService {
     this.s3Client = new S3Client(s3Config);
   }
 
+  /** Reduce a caller-supplied folder name to one safe path segment. */
+  static sanitizeFolder(folder: string | undefined): string {
+    const cleaned = (folder ?? 'uploads')
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]/g, '')
+      .slice(0, 40);
+    return cleaned.length > 0 ? cleaned : 'uploads';
+  }
+
+  /**
+   * Keys are `{folder}/{ownerUserId}/{uuid}.{ext}`. A key belongs to a user only if its SECOND
+   * segment equals that user's id; anything else (extra segments, traversal, a different id) does not.
+   */
+  static isKeyOwnedBy(key: string, userId: string | undefined): boolean {
+    if (!userId || typeof key !== 'string') return false;
+    const parts = key.split('/');
+    return (
+      parts.length === 3 &&
+      parts.every((p) => p.length > 0 && p !== '.' && p !== '..') &&
+      parts[1] === userId
+    );
+  }
+
   /**
    * Upload file to S3/R2
    */
@@ -86,12 +109,19 @@ export class StorageService {
       throw new BadRequestException('No file provided');
     }
 
-    // Generate unique file key
-    const fileExtension = file.originalname.split('.').pop() || 'bin';
+    // Generate unique file key. The folder is caller-supplied, so it is reduced to a single safe
+    // path segment (no slashes, dots-only segments or other characters): otherwise a caller could
+    // write into another user's prefix with e.g. folder=uploads/<victimId>/x.
+    const safeFolder = StorageService.sanitizeFolder(folder);
+    const rawExt = (file.originalname.split('.').pop() || 'bin').toLowerCase();
+    const fileExtension = /^[a-z0-9]{1,10}$/.test(rawExt) ? rawExt : 'bin';
     const fileName = `${uuidv4()}.${fileExtension}`;
-    const key = userId
-      ? `${folder}/${userId}/${fileName}`
-      : `${folder}/${fileName}`;
+    if (!userId) {
+      // Every key is stored under its owner's prefix; an upload with no owner would create an
+      // object nobody could later be authorised to read or delete.
+      throw new BadRequestException('Authenticated user required for uploads');
+    }
+    const key = `${safeFolder}/${userId}/${fileName}`;
 
     try {
       const command = new PutObjectCommand({

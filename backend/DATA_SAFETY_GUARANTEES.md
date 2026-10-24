@@ -1,5 +1,8 @@
 # Data Safety Guarantees
 
+> **Historical document — superseded (2026-10-24).** This file records the state of the code when it was written, when records were also filtered by `organizationId`. The application is now scoped **per user** (no business data is partitioned by organization) and authentication verifies Clerk token signatures. It is kept as a record, **not** as a description of current behaviour. For the current access model, its limits, and how it is tested, see the repository README ("Security model and known limitations") and `backend/test/access-control.db.spec.ts`.
+
+
 ## 🛡️ Zero Data Loss Protection
 
 This document outlines all data safety measures implemented to ensure **NO DATA IS EVER LOST**.
