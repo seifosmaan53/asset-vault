@@ -73,10 +73,22 @@ export class ClerkAuthGuard implements CanActivate {
         ...(this.jwtKey ? { jwtKey: this.jwtKey } : {}),
       });
 
-      // The SDK reports failure as { errors } rather than throwing; anything but a clean { data }
-      // with a subject is a rejection.
+      // Result shape depends on the SDK major version: @clerk/backend 3.x resolves the verified claims
+      // directly and THROWS on any failure (caught below, so it is a rejection); 2.x resolved
+      // { data } or { errors } without throwing. Accept either, and treat anything that is not a clean
+      // claims object with a subject as a rejection. (Reading only `.data` rejected every valid token
+      // on 3.x; this is covered by clerk-auth.guard.spec.ts, which runs the real SDK.)
+      const result = verified as unknown as {
+        errors?: unknown;
+        data?: unknown;
+        sub?: unknown;
+      } | null;
       const claims = (
-        verified && !verified.errors ? verified.data : undefined
+        result && !result.errors
+          ? 'data' in result && result.data
+            ? result.data
+            : result
+          : undefined
       ) as { sub?: unknown } | undefined;
       const sub =
         typeof claims?.sub === 'string' && claims.sub.length > 0
