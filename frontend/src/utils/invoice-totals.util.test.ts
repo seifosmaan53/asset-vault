@@ -53,7 +53,8 @@ describe('the invoice form computes what the API stores', () => {
     expect(validateInvoiceItems([submittedMoneyFields({ quantity: 1, unitPrice: '' })])).toEqual([]);
     expect(validateInvoiceItems([submittedMoneyFields({ quantity: '', unitPrice: 5 })])[0].message)
       .toBe('items[0].quantity must be at least 1');
-    // NaN is sent as null by JSON: the API reports it missing.
+    // NaN is sent as null by JSON. Both reject it; the API's DTO check answers first,
+    // with class-validator's message, so here only the verdict is the API's.
     expect(validateInvoiceItems([submittedMoneyFields({ quantity: NaN, unitPrice: 5 })])[0].message)
       .toBe('items[0].quantity is required');
   });

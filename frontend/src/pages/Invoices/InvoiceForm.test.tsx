@@ -362,7 +362,7 @@ describe('InvoiceForm', () => {
       });
     });
 
-    it('an invoice loaded for editing shows the API totals and can be saved (numeric(12,4) strings)', async () => {
+    it('an invoice loaded for editing shows the API totals and no money blockers (numeric(12,4) strings)', async () => {
       // As GET /invoices/:id returns it: decimal columns arrive as strings.
       const mockInvoice = {
         id: 'invoice-123',
