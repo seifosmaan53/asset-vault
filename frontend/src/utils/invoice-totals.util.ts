@@ -30,15 +30,27 @@ export interface InvoiceFormMoneyFields {
 }
 
 /**
- * The money fields of a form line exactly as the invoice form submits them
- * (an empty tax or discount rate is sent as 0). Totals and validation shown in
- * the form use this, so they describe what the API receives.
+ * A value as the API's validation sees it after the form sent it: JSON turns
+ * NaN and Infinity into null, and the API's ValidationPipe
+ * (enableImplicitConversion, number DTO fields) converts strings with Number().
+ * So a price loaded from the API as "12.5000" (numeric(12,4)) is 12.5 there.
+ */
+function asTheApiReceives(value: unknown): unknown {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string') return Number(value);
+  return value;
+}
+
+/**
+ * The money fields of a form line as the API receives them when the form
+ * submits (an empty tax or discount rate is sent as 0). Totals and validation
+ * shown in the form use this, so they describe what the API computes.
  */
 export function submittedMoneyFields(item: InvoiceFormMoneyFields | null | undefined): InvoiceItemMoneyInput {
   return {
-    quantity: item?.quantity,
-    unitPrice: item?.unitPrice,
-    taxRate: item?.taxRate || 0,
-    discountRate: item?.discountRate || 0,
+    quantity: asTheApiReceives(item?.quantity),
+    unitPrice: asTheApiReceives(item?.unitPrice),
+    taxRate: asTheApiReceives(item?.taxRate || 0),
+    discountRate: asTheApiReceives(item?.discountRate || 0),
   };
 }

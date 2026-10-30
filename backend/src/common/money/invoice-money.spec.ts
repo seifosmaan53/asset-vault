@@ -29,6 +29,7 @@ import { INVOICE_MONEY_CASES } from './invoice-money.cases';
 function legacyCompute(
   items: ReadonlyArray<object>,
   invoiceDiscount?: number,
+  taxPolicy: 'afterDiscount' | 'beforeDiscount' = 'afterDiscount',
 ): InvoiceTotalsResult {
   const roundCents = (x: number) => (x >= 0 ? Math.round(x) : -Math.round(-x));
   if (!items || items.length === 0) {
@@ -76,7 +77,9 @@ function legacyCompute(
         : 0;
     const s = quantity * unitPriceCents;
     const d = roundCents(s * (discountRate / 100));
-    const t = roundCents((s - d) * (taxRate / 100));
+    const t = roundCents(
+      (taxPolicy === 'afterDiscount' ? s - d : s) * (taxRate / 100),
+    );
     lines.push({
       lineSubtotalCents: s,
       lineDiscountCents: d,
@@ -116,9 +119,10 @@ function legacyCompute(
 function legacyOutcome(
   items: ReadonlyArray<object>,
   invoiceDiscount?: number,
+  taxPolicy: 'afterDiscount' | 'beforeDiscount' = 'afterDiscount',
 ): { error: string } | { totals: InvoiceTotalsResult } {
   try {
-    return { totals: legacyCompute(items, invoiceDiscount) };
+    return { totals: legacyCompute(items, invoiceDiscount, taxPolicy) };
   } catch (e) {
     if (e instanceof BadRequestException) return { error: e.message };
     throw e;
@@ -172,6 +176,10 @@ const ODD_VALUES: readonly unknown[] = [
   '12.',
   '.5',
   '12.345',
+  '12.5000',
+  '17.50',
+  '8.875',
+  '0.0000001',
   '-1',
   '1e3',
   '1,000',
@@ -183,6 +191,8 @@ const ODD_VALUES: readonly unknown[] = [
   2.5,
   0.1,
   10.005,
+  8.875,
+  1e-7,
   100,
   100.01,
   150,
@@ -416,6 +426,25 @@ describe('invoice money (shared by the API and the web app)', () => {
       }
     });
 
+    it('exact: rates with up to four decimals and tiny rates printed in exponent form (20,000 lines)', () => {
+      const r = rng(5);
+      for (let n = 0; n < 20000; n++) {
+        const cents = Math.floor(r() * 1e9);
+        // k / 10000 percent, or a tiny rate such as 3e-7 (Number#toString uses an exponent)
+        const tiny = r() < 0.2;
+        const k = tiny ? 1 + Math.floor(r() * 9) : Math.floor(r() * 1000001);
+        const rate = tiny ? k * 1e-7 : k / 10000;
+        const scale = tiny ? 10n ** 9n : 10n ** 6n; // percent -> fraction of one
+        const exact = (BigInt(cents) * BigInt(k) * 2n + scale) / (2n * scale);
+        const result = computeInvoiceTotalsCents(
+          [{ quantity: 1, unitPrice: cents / 100, taxRate: rate }],
+          undefined,
+          r() < 0.5 ? 'beforeDiscount' : 'afterDiscount',
+        );
+        expect(result.lines[0].lineTaxCents).toBe(Number(exact));
+      }
+    });
+
     it('invariants: amounts are integers, discount within subtotal, totals are the sums of the lines', () => {
       const r = rng(2);
       for (let n = 0; n < 20000; n++) {
@@ -453,13 +482,16 @@ describe('invoice money (shared by the API and the web app)', () => {
       const r = rng(3);
       let rejected = 0;
       for (let n = 0; n < 30000; n++) {
-        const items = Array.from({ length: 1 + Math.floor(r() * 3) }, () =>
-          oddItem(r),
+        // Sometimes no lines at all (the invoice discount is then not checked).
+        const items = Array.from(
+          { length: r() < 0.05 ? 0 : 1 + Math.floor(r() * 3) },
+          () => oddItem(r),
         );
         const invoiceDiscount =
-          r() < 0.1 ? (pick(r, ODD_VALUES) as number) : undefined;
-        const before = legacyOutcome(items, invoiceDiscount);
-        const issues = validateInvoiceItems(items, invoiceDiscount);
+          r() < 0.15 ? (pick(r, ODD_VALUES) as number) : undefined;
+        const taxPolicy = r() < 0.3 ? 'beforeDiscount' : 'afterDiscount';
+        const before = legacyOutcome(items, invoiceDiscount, taxPolicy);
+        const issues = validateInvoiceItems(items, invoiceDiscount, taxPolicy);
         if ('error' in before) {
           rejected++;
           expect(issues[0]?.message).toBe(before.error);

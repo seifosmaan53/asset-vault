@@ -362,6 +362,35 @@ describe('InvoiceForm', () => {
       });
     });
 
+    it('an invoice loaded for editing shows the API totals and can be saved (numeric(12,4) strings)', async () => {
+      // As GET /invoices/:id returns it: decimal columns arrive as strings.
+      const mockInvoice = {
+        id: 'invoice-123',
+        clientId: '1',
+        type: 'invoice',
+        status: 'draft',
+        issueDate: new Date().toISOString(),
+        currency: 'USD',
+        items: [
+          { id: 'line-1', description: 'Loaded line', quantity: 2, unitPrice: '12.5000', taxRate: '17.50', discountRate: '0.00' },
+        ],
+      };
+      vi.mocked(useInvoice).mockReturnValue({ data: mockInvoice, isLoading: false } as any);
+
+      render(
+        <EditRouteWrapper>
+          <InvoiceForm />
+        </EditRouteWrapper>,
+      );
+
+      // 2 x 12.50 = 25.00; 17.5% tax = 4.375 -> 4.38; total 29.38 (line and summary)
+      await waitFor(() => {
+        expect(screen.getAllByText('$29.38')).toHaveLength(2);
+      });
+      expect(screen.getByText('$4.38')).toBeInTheDocument();
+      expect(screen.queryByText(/must have at most 2 decimal places/)).not.toBeInTheDocument();
+    });
+
     it('should show store stock warnings when quantity exceeds store stock', async () => {
       // Mock store stock hook to return low stock
       vi.mock('../../hooks/useStoreStock', () => ({

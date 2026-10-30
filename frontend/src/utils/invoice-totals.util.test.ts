@@ -41,6 +41,23 @@ describe('the invoice form computes what the API stores', () => {
     expect(JSON.parse(JSON.stringify(shown))).toEqual(shown);
   });
 
+  it('validates values as the API receives them: strings from a loaded invoice, empty fields', () => {
+    // An invoice loaded from the API: numeric(12,4) and decimal(5,2) columns arrive as strings;
+    // the API's ValidationPipe converts them to numbers before its rules run.
+    const loaded = { quantity: 2, unitPrice: '12.5000', taxRate: '17.50', discountRate: '0.00' };
+    expect(submittedMoneyFields(loaded)).toEqual({ quantity: 2, unitPrice: 12.5, taxRate: 17.5, discountRate: 0 });
+    const { totals, issues } = previewInvoiceTotalsCents([submittedMoneyFields(loaded)]);
+    expect(issues).toEqual([]);
+    expect(totals.invoice.totalCents).toBe(2938); // 2500 + 437.5 -> 438
+    // A cleared price is sent as "" and arrives as 0 (accepted); a cleared quantity arrives as 0.
+    expect(validateInvoiceItems([submittedMoneyFields({ quantity: 1, unitPrice: '' })])).toEqual([]);
+    expect(validateInvoiceItems([submittedMoneyFields({ quantity: '', unitPrice: 5 })])[0].message)
+      .toBe('items[0].quantity must be at least 1');
+    // NaN is sent as null by JSON: the API reports it missing.
+    expect(validateInvoiceItems([submittedMoneyFields({ quantity: NaN, unitPrice: 5 })])[0].message)
+      .toBe('items[0].quantity is required');
+  });
+
   it('submits an empty rate as 0, and previews exactly that', () => {
     expect(submittedMoneyFields({ quantity: 1, unitPrice: 5, taxRate: NaN, discountRate: undefined }))
       .toEqual({ quantity: 1, unitPrice: 5, taxRate: 0, discountRate: 0 });

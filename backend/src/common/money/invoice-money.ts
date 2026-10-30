@@ -265,6 +265,21 @@ function evaluate(
   invoiceDiscount: unknown,
   taxPolicy: TaxPolicy,
 ): InvoiceTotalsPreview {
+  // No lines: zero totals, and (as before) the invoice-level discount is not checked.
+  if (!Array.isArray(items) || items.length === 0) {
+    return {
+      totals: {
+        lines: [],
+        invoice: {
+          subtotalCents: 0,
+          discountCents: 0,
+          taxCents: 0,
+          totalCents: 0,
+        },
+      },
+      issues: [],
+    };
+  }
   const fieldIssues: InvoiceMoneyIssue[] = [];
   const amountIssues: InvoiceMoneyIssue[] = [];
   const lines: InvoiceLineTotalsCents[] = [];
@@ -278,7 +293,8 @@ function evaluate(
     }
   };
 
-  (items ?? []).forEach((item, i) => {
+  const inputs: ReadonlyArray<InvoiceItemMoneyInput | null | undefined> = items;
+  inputs.forEach((item, i) => {
     const quantity = checkNumber(item?.quantity, `items[${i}].quantity`, {
       integer: true,
       min: 1,
