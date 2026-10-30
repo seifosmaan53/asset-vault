@@ -194,6 +194,33 @@ describe('InvoiceForm', () => {
     });
   });
 
+  it('shows the totals the API computes, including an exact half cent of tax', async () => {
+    render(
+      <TestWrapper>
+        <InvoiceForm />
+      </TestWrapper>,
+    );
+
+    // 1 x 1.80 at 17.5% tax: 31.5 cents rounds to 32 (the API's rule); total 2.12.
+    const priceInput = screen.getByLabelText(/unit price/i);
+    const taxInput = screen.getByLabelText(/tax %/i);
+    await userEvent.clear(priceInput);
+    await userEvent.type(priceInput, '1.80');
+    await userEvent.clear(taxInput);
+    await userEvent.type(taxInput, '17.5');
+
+    await waitFor(() => {
+      expect(screen.getAllByText('$2.12').length).toBeGreaterThan(0);
+    });
+    // Line total and the summary (which used to stay at the values before the last keystroke).
+    await waitFor(() => {
+      expect(screen.getAllByText('$2.12')).toHaveLength(2);
+    });
+    expect(screen.getByText('$1.80')).toBeInTheDocument(); // subtotal
+    expect(screen.getByText('$0.32')).toBeInTheDocument(); // tax
+    expect(screen.queryByText('$2.11')).not.toBeInTheDocument();
+  });
+
   it('should show stock warning when quantity exceeds available stock', async () => {
     // Mock inventory select to return item with low stock
     vi.mock('../../components/inventory/InventorySelect', () => ({

@@ -2,8 +2,10 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# Build context: the repository root (see docker-compose.yml). Source, and the
+# invoice-money module shared with the API, are mounted as volumes.
 # Copy package files
-COPY package*.json ./
+COPY frontend/package*.json ./
 
 # Install dependencies
 RUN npm ci

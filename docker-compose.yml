@@ -53,8 +53,10 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      # Repository root: the image includes backend/src/common/money/invoice-money.ts,
+      # the invoice-money module shared with the API (see /.dockerignore).
+      context: .
+      dockerfile: frontend/Dockerfile
     container_name: asset-vault-frontend
     ports:
       - "80:80"
@@ -65,8 +67,8 @@ services:
 
   frontend-dev:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: frontend/Dockerfile.dev
     container_name: asset-vault-frontend-dev
     working_dir: /app
     ports:
@@ -74,6 +76,8 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+      # The invoice-money module shared with the API (the `@invoice-money` alias).
+      - ./backend/src/common/money:/backend/src/common/money:ro
     environment:
       - CHOKIDAR_USEPOLLING=true
       - CHOKIDAR_INTERVAL=150

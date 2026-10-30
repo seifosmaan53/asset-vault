@@ -1,0 +1,15 @@
+# Used by the frontend images, whose build context is the repository root so they
+# can include the invoice-money module shared with the API
+# (backend/src/common/money/invoice-money.ts). The backend image builds from ./backend.
+*
+!frontend/
+!backend/src/common/money/invoice-money.ts
+frontend/node_modules
+frontend/dist
+frontend/coverage
+frontend/.env
+frontend/.env.*
+frontend/**/*.test.ts
+frontend/**/*.test.tsx
+frontend/**/*.log
+frontend/.DS_Store
