@@ -130,9 +130,6 @@ with a message.
 |---|---|---|
 | `TRUST_PROXY` | none (empty) | Which peers may set `X-Forwarded-For` / `-Proto` / `-Host`. Empty, `false` or `0`: none, the TCP peer is the client and forwarded headers are ignored. A number *n*: the *n* hops in front of the API. A comma list of IPs, CIDR ranges and/or `loopback`, `linklocal`, `uniquelocal`: peers with those addresses. `true` / `*` are refused. Compose sets `1`: the API's only peer is the proxy, because the API port is not published. If you publish the API port, use the proxy's address instead of a hop count. Decides `req.secure` (HTTPS enforcement), `req.ip` (rate limiting is per client IP, so with no trusted proxy every client behind a proxy shares one limit) and `req.hostname`. |
 | `API_PUBLIC_URL` | `FRONTEND_URL` | The production HTTP→HTTPS redirect goes to `https://<this host>` + the request path. It is never built from `Host` or `X-Forwarded-Host`. Set it when the API has its own host name. |
-| `SMTP_TEST_LIMIT_PER_MINUTE` / `SMTP_TEST_LIMIT_PER_HOUR` | 5 / 20 | `POST /user-settings/test-email` (SMTP connection test) per verified user. **Per process**: the throttler keeps counts in memory, so N replicas allow up to N× these numbers; a shared store would need a shared `ThrottlerModule` storage. |
-| `SMTP_TEST_IP_LIMIT_PER_MINUTE` | 20 | The same endpoint per client address, as `TRUST_PROXY` sees it (forwarded headers from untrusted peers are ignored). Per process. |
-| `SMTP_TEST_MAX_CONCURRENT` / `SMTP_TEST_TIMEOUT_MS` | 8 / 10000 | Connection tests in flight at once in this process (one per user; excess is 429 without a connection) and the whole-test deadline (1000–120000 ms) after which the socket is destroyed. |
 | `FRONTEND_URL` | `https://localhost` in Compose | The **only** origin CORS allows in production (exact match: scheme, host and port; browsers omit default ports, so `https://localhost`, not `https://localhost:443`). |
 | `SHUTDOWN_TIMEOUT_MS` | `8000` | Graceful-shutdown bound, 1000–120000. |
 
@@ -160,6 +157,18 @@ Compose sets `stop_grace_period: 15s`. Whatever runs the container must allow lo
 `SHUTDOWN_TIMEOUT_MS`, or it will SIGKILL (exit 137) mid-drain. Logs:
 `Shutdown: SIGTERM received; ...`, `Shutdown: HTTP server drained after N ms; ...`,
 `Shutdown: complete in N ms; exiting 0.` (or `... forcing exit 1.`).
+
+## SMTP connection-test limits
+
+`POST /user-settings/test-email` connects to a server the user names, so it is limited separately.
+Read by `MailService` and the endpoint's guards; set them in the root `.env` (Compose forwards
+them to the backend) or in the backend's environment. An invalid value stops the API at startup.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `SMTP_TEST_LIMIT_PER_MINUTE` / `SMTP_TEST_LIMIT_PER_HOUR` | 5 / 20 | `POST /user-settings/test-email` (SMTP connection test) per verified user. **Per process**: the throttler keeps counts in memory, so N replicas allow up to N× these numbers; a shared store would need a shared `ThrottlerModule` storage. |
+| `SMTP_TEST_IP_LIMIT_PER_MINUTE` | 20 | The same endpoint per client address, as `TRUST_PROXY` sees it (forwarded headers from untrusted peers are ignored). Per process. |
+| `SMTP_TEST_MAX_CONCURRENT` / `SMTP_TEST_TIMEOUT_MS` | 8 / 10000 | Connection tests in flight at once in this process (one per user; excess is 429 without a connection) and the whole-test deadline (1000–120000 ms) after which the socket is destroyed. |
 
 ## Hot-reload frontend (dev profile)
 

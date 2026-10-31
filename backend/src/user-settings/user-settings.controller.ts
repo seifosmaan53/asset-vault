@@ -169,10 +169,13 @@ export class UserSettingsController {
   // MailService also caps tests in flight. All counts are per process; see .env.example.
   @Throttle({
     default: {
-      limit: positiveIntFromEnv(
-        'SMTP_TEST_IP_LIMIT_PER_MINUTE',
-        SMTP_TEST_LIMITS.perIpPerMinute,
-      ),
+      // A function, read per request: a value computed at import time would miss .env, which
+      // ConfigModule loads after this module is imported.
+      limit: () =>
+        positiveIntFromEnv(
+          'SMTP_TEST_IP_LIMIT_PER_MINUTE',
+          SMTP_TEST_LIMITS.perIpPerMinute,
+        ),
       ttl: 60000,
     },
   })

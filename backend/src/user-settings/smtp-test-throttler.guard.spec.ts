@@ -5,6 +5,7 @@ import {
   SmtpTestThrottlerGuard,
   smtpTestThrottlers,
 } from './smtp-test-throttler.guard';
+import { UserSettingsController } from './user-settings.controller';
 
 describe('positiveIntFromEnv', () => {
   const name = 'SMTP_TEST_SPEC_VALUE';
@@ -82,5 +83,37 @@ describe('SmtpTestThrottlerGuard tracker', () => {
     await expect(guard.track(req)).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
+  });
+});
+
+// Review finding: the per-address limit was computed when the controller module was imported,
+// before ConfigModule loads .env, so a value set in .env was silently ignored.
+function isLimitResolver(value: unknown): value is () => number {
+  return typeof value === 'function';
+}
+
+describe('POST /user-settings/test-email per-address limit', () => {
+  afterEach(() => {
+    delete process.env.SMTP_TEST_IP_LIMIT_PER_MINUTE;
+  });
+
+  it('is read when a request arrives, not when the module is imported', () => {
+    // The controller module is imported at the top of this file, before the variable is set.
+    const handler: unknown = Object.getOwnPropertyDescriptor(
+      UserSettingsController.prototype,
+      'testEmail',
+    )?.value;
+    expect(typeof handler).toBe('function');
+    if (typeof handler !== 'function') return;
+    const limit: unknown = Reflect.getMetadata(
+      'THROTTLER:LIMITdefault',
+      handler,
+    );
+    expect(isLimitResolver(limit)).toBe(true);
+    if (!isLimitResolver(limit)) return;
+    process.env.SMTP_TEST_IP_LIMIT_PER_MINUTE = '3';
+    expect(limit()).toBe(3);
+    delete process.env.SMTP_TEST_IP_LIMIT_PER_MINUTE;
+    expect(limit()).toBe(SMTP_TEST_LIMITS.perIpPerMinute);
   });
 });
