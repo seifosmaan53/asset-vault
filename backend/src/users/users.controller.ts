@@ -13,6 +13,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import type { AuthenticatedRequest } from './interfaces/authenticated-request.interface';
 import { UsersService } from './users.service';
 import { ApiTags } from '@nestjs/swagger';
 import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
@@ -50,13 +51,13 @@ export class UsersController {
 
   /** Returns the caller's own account only (kept as an array for client compatibility). */
   @Get()
-  async findAll(@Request() req) {
+  async findAll(@Request() req: AuthenticatedRequest) {
     const me = await this.usersService.findById(req.user.userId);
     return me ? [me] : [];
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string, @Request() req) {
+  async findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     // The id in the URL is never proof of access. Another account's id gets the same answer as an
     // id that does not exist, so account ids cannot be probed.
     if (id !== req.user.userId) {
@@ -81,7 +82,7 @@ export class UsersController {
   async update(
     @Param('id') id: string,
     @Body() updateDto: UpdateOwnUserDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     if (id !== req.user.userId) {
       throw new NotFoundException('User not found');
@@ -99,7 +100,7 @@ export class UsersController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @Request() req) {
+  remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     if (id !== req.user.userId) {
       throw new NotFoundException('User not found');
     }
