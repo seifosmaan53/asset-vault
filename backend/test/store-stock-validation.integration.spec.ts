@@ -1,5 +1,4 @@
-import type { TestingModule } from '@nestjs/testing';
-import { Test } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
 import { StoreStockValidatorService } from '../src/inventory/store-stock-validator.service';
@@ -12,7 +11,11 @@ import { InvoiceItem } from '../src/invoices/entities/invoice-item.entity';
 import { StoreItemSettingsService } from '../src/inventory/store-item-settings.service';
 import { StoreService } from '../src/inventory/store.service';
 import { InventoryService } from '../src/inventory/inventory.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
+import { StockMovement } from '../src/inventory/entities/stock-movement.entity';
+import { UserSettingsService } from '../src/user-settings/user-settings.service';
+import { MailService } from '../src/mail/mail.service';
+import { InvoicePdfService } from '../src/invoices/invoice-pdf.service';
 
 /**
  * Integration tests for store stock validation in invoice workflows
@@ -20,9 +23,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 describe('Store Stock Validation Integration', () => {
   let storeStockValidator: StoreStockValidatorService;
   let invoicesService: InvoicesService;
-  let storeItemSettingsService: StoreItemSettingsService;
   let storeService: StoreService;
-  let inventoryService: InventoryService;
 
   let storeRepository: Repository<Store>;
   let inventoryRepository: Repository<InventoryItem>;
@@ -99,28 +100,23 @@ describe('Store Stock Validation Integration', () => {
           useValue: createMockRepository(),
         },
         {
-          provide: getRepositoryToken(
-            require('../src/inventory/entities/stock-movement.entity')
-              .StockMovement,
-          ),
+          provide: getRepositoryToken(StockMovement),
           useValue: createMockRepository(),
         },
         {
-          provide: require('../src/user-settings/user-settings.service')
-            .UserSettingsService,
+          provide: UserSettingsService,
           useValue: {
             getSettings: jest.fn().mockResolvedValue({}),
           },
         },
         {
-          provide: require('../src/mail/mail.service').MailService,
+          provide: MailService,
           useValue: {
             sendMail: jest.fn(),
           },
         },
         {
-          provide: require('../src/invoices/invoice-pdf.service')
-            .InvoicePdfService,
+          provide: InvoicePdfService,
           useValue: {
             generateInvoicePdf: jest.fn(),
           },
@@ -132,11 +128,7 @@ describe('Store Stock Validation Integration', () => {
       StoreStockValidatorService,
     );
     invoicesService = module.get<InvoicesService>(InvoicesService);
-    storeItemSettingsService = module.get<StoreItemSettingsService>(
-      StoreItemSettingsService,
-    );
     storeService = module.get<StoreService>(StoreService);
-    inventoryService = module.get<InventoryService>(InventoryService);
 
     storeRepository = module.get<Repository<Store>>(getRepositoryToken(Store));
     inventoryRepository = module.get<Repository<InventoryItem>>(

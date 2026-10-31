@@ -6,26 +6,38 @@
  * Every test asserts the SECURE behaviour. They were first run against the unfixed code, where the
  * ones marked "regression" failed, and pass after the fix.
  */
+import { Readable } from 'node:stream';
+import type * as ClerkBackend from '@clerk/backend';
+import type * as NestCommon from '@nestjs/common';
+import type * as Jwt from 'jsonwebtoken';
 import {
   addClerkUser,
   bootHarness,
   cleanupSynthetic,
   clerkDirectory,
   forgedToken,
-  Harness,
+  type Harness,
   provisionSubscribedUser,
   rows,
-  type Body,
   signedToken,
   TEST_CLERK_SIGNING_SECRET,
 } from './support/access-control-harness';
+import { at, idOf, list, maybe, text } from './support/json';
+import { StorageService } from '../src/storage/storage.service';
+
+/** The parts of the harness the @clerk/backend mock factory reads. */
+interface HarnessForMock {
+  TEST_CLERK_SIGNING_SECRET: typeof TEST_CLERK_SIGNING_SECRET;
+  clerkDirectory: typeof clerkDirectory;
+}
 
 // superjson (via tRPC) is ESM-only and cannot load under ts-jest; tRPC is not part of this surface.
 jest.mock('../src/trpc/trpc.module', () => ({
   TrpcModule: class TrpcModule {},
 }));
 jest.mock('../src/trpc/trpc.controller', () => {
-  const { Controller } = jest.requireActual('@nestjs/common');
+  const { Controller } =
+    jest.requireActual<typeof NestCommon>('@nestjs/common');
   class TrpcController {}
   Controller('trpc-stub')(TrpcController);
   return { TrpcController };
@@ -34,23 +46,32 @@ jest.mock('../src/trpc/trpc.controller', () => {
 // Stand-in for Clerk: verifyToken checks the HMAC signature (like the real one checks Clerk's keys);
 // users.getUser reads the in-memory directory.
 jest.mock('@clerk/backend', () => {
-  const actual = jest.requireActual('@clerk/backend');
-  const jsonwebtoken = jest.requireActual('jsonwebtoken');
-  const harness = jest.requireActual('./support/access-control-harness');
+  const actual = jest.requireActual<typeof ClerkBackend>('@clerk/backend');
+  const jsonwebtoken = jest.requireActual<typeof Jwt>('jsonwebtoken');
+  const harness = jest.requireActual<HarnessForMock>(
+    './support/access-control-harness',
+  );
   return {
     ...actual,
     // Mirrors the installed @clerk/backend (3.x): resolves the verified claims and THROWS on any failure.
     // (The real function is exercised separately in src/auth/clerk-auth.guard.spec.ts.)
-    verifyToken: jest.fn(async (token: string) =>
-      jsonwebtoken.verify(token, harness.TEST_CLERK_SIGNING_SECRET),
+    // new Promise(): a throw inside the executor becomes a rejection, exactly as in an async fn.
+    verifyToken: jest.fn(
+      (token: string) =>
+        new Promise((resolve) =>
+          resolve(
+            jsonwebtoken.verify(token, harness.TEST_CLERK_SIGNING_SECRET),
+          ),
+        ),
     ),
     createClerkClient: () => ({
       users: {
-        getUser: async (id: string) => {
-          const u = harness.clerkDirectory.get(id);
-          if (!u) throw new Error('user not found');
-          return u;
-        },
+        getUser: (id: string) =>
+          new Promise((resolve) => {
+            const u = harness.clerkDirectory.get(id);
+            if (!u) throw new Error('user not found');
+            resolve(u);
+          }),
       },
     }),
   };
@@ -86,7 +107,7 @@ describe('access control (real app + real PostgreSQL)', () => {
       .post('/clients')
       .set(auth(alice.token))
       .send({ name: 'Alice Client', email: 'client@access-test.invalid' });
-    aliceClientId = c.body.id;
+    aliceClientId = idOf(c.body);
     const s = await h
       .http()
       .post('/inventory/stores')
@@ -97,7 +118,7 @@ describe('access control (real app + real PostgreSQL)', () => {
         code: 'ALICE-ST',
         address: '1 Test St',
       });
-    aliceStoreId = s.body.id ?? s.body.data?.id;
+    aliceStoreId = idOf(s.body);
     const i = await h
       .http()
       .post('/inventory/items')
@@ -111,7 +132,7 @@ describe('access control (real app + real PostgreSQL)', () => {
         reorderLevel: 1,
         status: 'active',
       });
-    aliceItemId = i.body.id ?? i.body.data?.id;
+    aliceItemId = idOf(i.body);
   }, 120000);
 
   afterAll(async () => {
@@ -165,10 +186,11 @@ describe('access control (real app + real PostgreSQL)', () => {
         .http()
         .get('/clients')
         .set(auth(forgedToken('user_ghost_t')));
-      const rows = await h.ds.query(
+      const found = await rows(
+        h,
         `select 1 from users where "clerkUserId" = 'user_ghost_t'`,
       );
-      expect(rows.length).toBe(0);
+      expect(found.length).toBe(0);
     });
 
     it('rejects an expired but correctly signed token', async () => {
@@ -187,7 +209,7 @@ describe('access control (real app + real PostgreSQL)', () => {
         .get(`/clients/${aliceClientId}`)
         .set(auth(alice.token));
       expect(r.status).toBe(200);
-      expect(r.body.id).toBe(aliceClientId);
+      expect(at(r.body, 'id')).toBe(aliceClientId);
     });
 
     it("another user cannot read Alice's client by id", async () => {
@@ -206,7 +228,7 @@ describe('access control (real app + real PostgreSQL)', () => {
         .set(auth(bob.token))
         .send({ name: 'Hijacked' });
       expect([403, 404]).toContain(r.status);
-      const row = await h.ds.query('select name from clients where id = $1', [
+      const row = await rows(h, 'select name from clients where id = $1', [
         aliceClientId,
       ]);
       expect(row[0].name).toBe('Alice Client');
@@ -218,7 +240,8 @@ describe('access control (real app + real PostgreSQL)', () => {
         .delete(`/clients/${aliceClientId}`)
         .set(auth(bob.token));
       expect([403, 404]).toContain(r.status);
-      const row = await h.ds.query(
+      const row = await rows(
+        h,
         'select "deletedAt" from clients where id = $1',
         [aliceClientId],
       );
@@ -282,7 +305,8 @@ describe('access control (real app + real PostgreSQL)', () => {
       expect([403, 404]).toContain(i.status);
       expect(
         (
-          await h.ds.query(
+          await rows(
+            h,
             'select 1 from stores where id=$1 and "deletedAt" is null',
             [aliceStoreId],
           )
@@ -290,7 +314,7 @@ describe('access control (real app + real PostgreSQL)', () => {
       ).toBe(1);
       expect(
         (
-          await h.ds.query('select 1 from inventory_items where id=$1', [
+          await rows(h, 'select 1 from inventory_items where id=$1', [
             aliceItemId,
           ])
         ).length,
@@ -299,7 +323,8 @@ describe('access control (real app + real PostgreSQL)', () => {
 
     it('a forged userId in the body is rejected or ignored, never honoured (ownership comes from the token)', async () => {
       const aliceClientsBefore = (
-        await h.ds.query(
+        await rows(
+          h,
           'select count(*)::int n from clients where "userId" = $1',
           [alice.userId],
         )
@@ -319,14 +344,16 @@ describe('access control (real app + real PostgreSQL)', () => {
         expect(JSON.stringify(created.body)).toMatch(/userId/);
       } else {
         expect([200, 201]).toContain(created.status);
-        const row = await h.ds.query(
+        const row = await rows(
+          h,
           'select "userId" from clients where id = $1',
-          [created.body.id],
+          [at(created.body, 'id')],
         );
         expect(row[0].userId).toBe(bob.userId);
       }
       const aliceClientsAfter = (
-        await h.ds.query(
+        await rows(
+          h,
           'select count(*)::int n from clients where "userId" = $1',
           [alice.userId],
         )
@@ -356,11 +383,12 @@ describe('access control (real app + real PostgreSQL)', () => {
           dueDate: new Date(Date.now() + 86400000).toISOString(),
         });
       expect(r.status).toBeGreaterThanOrEqual(400);
-      const rows = await h.ds.query(
+      const found = await rows(
+        h,
         `select 1 from invoices where "userId" = $1 and ("storeId" = $2 or "clientId" = $3)`,
         [bob.userId, aliceStoreId, aliceClientId],
       );
-      expect(rows.length).toBe(0);
+      expect(found.length).toBe(0);
     });
 
     // The test above sends a store too, and the store check alone rejects it. Found by the
@@ -431,7 +459,7 @@ describe('access control (real app + real PostgreSQL)', () => {
         .http()
         .post('/invoices')
         .set(auth(bob.token))
-        .send(withItem(bobClient.body.id ?? bobClient.body.data?.id));
+        .send(withItem(idOf(bobClient.body)));
       expect(r.status).toBe(400);
       expect(JSON.stringify(r.body)).not.toMatch(/Alice Item/);
       const leaked = await rows(
@@ -450,8 +478,7 @@ describe('access control (real app + real PostgreSQL)', () => {
         .set(auth(alice.token))
         .send(invoiceFor(aliceClientId));
       expect(created.status).toBe(201);
-      const body = created.body as Body;
-      const id = body.id ?? (body.data as { id?: string } | undefined)?.id;
+      const id = idOf(created.body);
 
       const r = await h
         .http()
@@ -462,11 +489,9 @@ describe('access control (real app + real PostgreSQL)', () => {
         });
       expect(r.status).toBe(404);
 
-      const after = await rows<{ total: string }>(
-        h,
-        `select total from invoices where id = $1`,
-        [id],
-      );
+      const after = await rows(h, `select total from invoices where id = $1`, [
+        id,
+      ]);
       expect(Number(after[0].total)).toBe(1);
     });
   });
@@ -476,7 +501,7 @@ describe('access control (real app + real PostgreSQL)', () => {
       const r = await h.http().get('/users').set(auth(bob.token));
       expect(r.status).toBe(200);
       expect(r.body).toHaveLength(1);
-      expect(r.body[0].id).toBe(bob.userId);
+      expect(at(r.body, 0, 'id')).toBe(bob.userId);
       expect(JSON.stringify(r.body)).not.toContain('alice@access-test.invalid');
     });
 
@@ -507,11 +532,9 @@ describe('access control (real app + real PostgreSQL)', () => {
         .set(auth(bob.token))
         .send({ name: 'Hijacked' });
       expect(r.status).toBe(404);
-      const row = await rows<{ name: string }>(
-        h,
-        'select name from users where id = $1',
-        [alice.userId],
-      );
+      const row = await rows(h, 'select name from users where id = $1', [
+        alice.userId,
+      ]);
       expect(row[0].name).not.toBe('Hijacked');
     });
 
@@ -522,12 +545,13 @@ describe('access control (real app + real PostgreSQL)', () => {
         .set(auth(bob.token))
         .send({ name: 'Bob Renamed' });
       expect(r.status).toBe(200);
-      expect(r.body.name).toBe('Bob Renamed');
+      expect(at(r.body, 'name')).toBe('Bob Renamed');
     });
 
     it('cannot escalate privilege or change identity fields on their own account', async () => {
       const before = (
-        await h.ds.query(
+        await rows(
+          h,
           'select email, role, "clerkUserId" from users where id = $1',
           [bob.userId],
         )
@@ -546,7 +570,8 @@ describe('access control (real app + real PostgreSQL)', () => {
         expect(r.status).toBe(400); // unknown / privileged fields are rejected outright, not silently dropped
       }
       const after = (
-        await h.ds.query(
+        await rows(
+          h,
           'select email, role, "clerkUserId" from users where id = $1',
           [bob.userId],
         )
@@ -632,7 +657,10 @@ describe('access control (real app + real PostgreSQL)', () => {
     let carol: { clerkId: string; token: string; userId: string };
     beforeAll(async () => {
       const orgs = await h.http().get('/organizations').set(auth(alice.token));
-      aliceOrgId = (orgs.body[0] ?? orgs.body.data?.[0]).id;
+      aliceOrgId = text(
+        at(at(orgs.body, 0) ?? maybe(at(orgs.body, 'data'), 0), 'id'),
+        'organization id',
+      );
       carol = await provisionSubscribedUser(
         h,
         'user_carol_t',
@@ -660,9 +688,13 @@ describe('access control (real app + real PostgreSQL)', () => {
         [aliceOrgId, bob.userId],
       );
     });
-    const membership = async (orgId: string, userId: string) =>
+    const membership = async (
+      orgId: string,
+      userId: string,
+    ): Promise<Record<string, unknown> | undefined> =>
       (
-        await h.ds.query(
+        await rows(
+          h,
           'select role, "isActive" from user_organizations where "organizationId"=$1 and "userId"=$2',
           [orgId, userId],
         )
@@ -707,11 +739,8 @@ describe('access control (real app + real PostgreSQL)', () => {
       expect(del.status).toBeGreaterThanOrEqual(400);
       expect(del.status).toBeLessThan(500);
       expect(
-        (
-          await h.ds.query('select 1 from organizations where id=$1', [
-            aliceOrgId,
-          ])
-        ).length,
+        (await rows(h, 'select 1 from organizations where id=$1', [aliceOrgId]))
+          .length,
       ).toBe(1);
       const orgs = await h.http().get('/organizations').set(auth(bob.token));
       expect(JSON.stringify(orgs.body)).not.toContain(aliceOrgId);
@@ -784,20 +813,28 @@ describe('access control (real app + real PostgreSQL)', () => {
         .post(`/organizations/${aliceOrgId}/users`)
         .set(auth(alice.token))
         .send({ userId: carol.userId, role: 'admin' });
-      expect(await membership(aliceOrgId, carol.userId)).toMatchObject({ isActive: true, role: 'admin' });
+      expect(await membership(aliceOrgId, carol.userId)).toMatchObject({
+        isActive: true,
+        role: 'admin',
+      });
       const r = await h
         .http()
         .delete(`/organizations/${aliceOrgId}/users/${alice.userId}`)
         .set(auth(carol.token));
       expect(r.status).toBe(403);
-      expect(await membership(aliceOrgId, alice.userId)).toMatchObject({ isActive: true, role: 'owner' });
+      expect(await membership(aliceOrgId, alice.userId)).toMatchObject({
+        isActive: true,
+        role: 'owner',
+      });
       // positive control: the owner can remove the admin
       const ok = await h
         .http()
         .delete(`/organizations/${aliceOrgId}/users/${carol.userId}`)
         .set(auth(alice.token));
       expect(ok.status).toBeLessThan(300);
-      expect(await membership(aliceOrgId, carol.userId)).toMatchObject({ isActive: false });
+      expect(await membership(aliceOrgId, carol.userId)).toMatchObject({
+        isActive: false,
+      });
     });
 
     it('the sole owner cannot be removed, not even by themselves', async () => {
@@ -806,20 +843,32 @@ describe('access control (real app + real PostgreSQL)', () => {
         .delete(`/organizations/${aliceOrgId}/users/${alice.userId}`)
         .set(auth(alice.token));
       expect(r.status).toBe(400);
-      expect(await membership(aliceOrgId, alice.userId)).toMatchObject({ isActive: true });
+      expect(await membership(aliceOrgId, alice.userId)).toMatchObject({
+        isActive: true,
+      });
     });
 
     it('the member list shows each member only as id, name and email', async () => {
-      await h.ds.query(`update users set phone = '555-0100', bio = 'private bio text' where id = $1`, [alice.userId]);
-      const r = await h.http().get(`/organizations/${aliceOrgId}/users`).set(auth(alice.token));
+      await h.ds.query(
+        `update users set phone = '555-0100', bio = 'private bio text' where id = $1`,
+        [alice.userId],
+      );
+      const r = await h
+        .http()
+        .get(`/organizations/${aliceOrgId}/users`)
+        .set(auth(alice.token));
       expect(r.status).toBe(200);
       const body = JSON.stringify(r.body);
       expect(body).toContain('alice@access-test.invalid'); // positive control: the member is listed
       for (const forbidden of ['555-0100', 'private bio text', 'clerkUserId']) {
         expect(body).not.toContain(forbidden);
       }
-      for (const m of r.body as Array<{ user?: Record<string, unknown> }>) {
-        expect(Object.keys(m.user ?? {}).sort()).toEqual(['email', 'id', 'name']);
+      for (const m of list(r.body)) {
+        expect(Object.keys(at(m, 'user') ?? {}).sort()).toEqual([
+          'email',
+          'id',
+          'name',
+        ]);
       }
     });
 
@@ -858,28 +907,47 @@ describe('access control (real app + real PostgreSQL)', () => {
   describe('file storage keys', () => {
     // The real S3 client is replaced by an in-memory one so these tests exercise the ownership
     // decision instead of passing because storage is unconfigured (which a first draft did).
-    let storage: any;
+    let storage: StorageService;
     const objects = new Map<string, Buffer>();
+    // bucketName and s3Client are private; the test replaces them on the live instance.
+    const setPrivate = (key: 'bucketName' | 's3Client', value: unknown) =>
+      Reflect.set(storage, key, value);
+    // An upload as multer hands it over; uploadFile reads originalname, buffer, mimetype, size.
+    const upload = (originalname: string): Express.Multer.File => ({
+      fieldname: 'file',
+      originalname,
+      encoding: '7bit',
+      mimetype: 'image/png',
+      size: 1,
+      buffer: Buffer.from('x'),
+      stream: Readable.from([]),
+      destination: '',
+      filename: '',
+      path: '',
+    });
     beforeAll(() => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { StorageService } = require('../src/storage/storage.service');
       storage = h.app.get(StorageService);
-      storage.bucketName = 'test-bucket';
-      storage.s3Client = { send: jest.fn(async () => ({})) };
+      setPrivate('bucketName', 'test-bucket');
+      setPrivate('s3Client', { send: jest.fn(() => Promise.resolve({})) });
       jest
         .spyOn(storage, 'getSignedUrl')
-        .mockImplementation(async (k: string) => `https://signed.test/${k}`);
+        .mockImplementation((k: string) =>
+          Promise.resolve(`https://signed.test/${k}`),
+        );
       jest
         .spyOn(storage, 'deleteFile')
-        .mockImplementation(async (k: string) => void objects.delete(k));
-      jest
-        .spyOn(storage, 'getFileMetadata')
-        .mockImplementation(async (k: string) => ({
+        .mockImplementation((k: string) =>
+          Promise.resolve(void objects.delete(k)),
+        );
+      jest.spyOn(storage, 'getFileMetadata').mockImplementation((k: string) =>
+        Promise.resolve({
           key: k,
           url: 'u',
           size: 1,
           contentType: 'x',
-        }));
+          uploadedAt: new Date(0),
+        }),
+      );
       objects.set(`uploads/${alice.userId}/a.png`, Buffer.from('a'));
     });
     const enc = (k: string) => encodeURIComponent(k);
@@ -928,25 +996,23 @@ describe('access control (real app + real PostgreSQL)', () => {
       // NOTE: multipart upload through HTTP is currently rejected by ContentNegotiationInterceptor
       // ("Content-Type must be application/json"), so the decision is exercised on the service,
       // which is where the key is built.
-      const sent: any[] = [];
-      storage.s3Client = {
-        send: jest.fn(async (c: any) => (sent.push(c.input), {})),
-      };
+      const sent: unknown[] = [];
+      setPrivate('s3Client', {
+        send: jest.fn((c: { input: unknown }) => {
+          sent.push(c.input);
+          return Promise.resolve({});
+        }),
+      });
       for (const folder of [
         `uploads/${alice.userId}/x`,
         '../../etc',
         'a/b',
         '',
-        undefined as any,
+        undefined,
         '%2e%2e',
       ]) {
         const meta = await storage.uploadFile({
-          file: {
-            originalname: 'evil.PnG',
-            buffer: Buffer.from('x'),
-            mimetype: 'image/png',
-            size: 1,
-          },
+          file: upload('evil.PnG'),
           folder,
           userId: bob.userId,
         });
@@ -963,12 +1029,7 @@ describe('access control (real app + real PostgreSQL)', () => {
     it('refuses an upload with no authenticated owner', async () => {
       await expect(
         storage.uploadFile({
-          file: {
-            originalname: 'a.png',
-            buffer: Buffer.from('x'),
-            mimetype: 'image/png',
-            size: 1,
-          },
+          file: upload('a.png'),
           folder: 'uploads',
           userId: undefined,
         }),
