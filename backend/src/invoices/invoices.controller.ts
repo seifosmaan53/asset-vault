@@ -42,10 +42,13 @@ import { QuotaGuard } from '../subscriptions/quota.guard';
 import { errorMessage, errorStack } from './utils/error-details.util';
 // Organizations removed - OrganizationId decorator no longer needed
 
-/** Every route here sits behind ClerkAuthGuard, which sets `user` before the handler runs. */
-interface AuthenticatedRequest extends ExpressRequest {
+/**
+ * The parts of the request these handlers read. Every route sits behind ClerkAuthGuard,
+ * which sets `user` before the handler runs.
+ */
+export type AuthenticatedRequest = Pick<ExpressRequest, 'url' | 'method'> & {
   user: RequestUser;
-}
+};
 
 @ApiTags('invoices')
 @ApiBearerAuth('Bearer')
