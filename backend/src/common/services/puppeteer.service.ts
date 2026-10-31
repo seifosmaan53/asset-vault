@@ -78,7 +78,7 @@ export class PuppeteerService implements OnModuleInit, OnModuleDestroy {
     // For best performance, use arm64 Node.js.
     // If pre-warm fails, it's not critical - browser will launch on first PDF request
     // Bug #86: Enhanced error logging with full error details
-    this.browserLaunchPromise = this.launchBrowser().catch((error) => {
+    this.browserLaunchPromise = this.launchBrowser().catch((error: unknown) => {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;

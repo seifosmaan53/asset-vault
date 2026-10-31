@@ -10,6 +10,7 @@ import { tap } from 'rxjs/operators';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { Reflector } from '@nestjs/core';
+import type { Request } from 'express';
 import { MetricsService } from '../services/metrics.service';
 
 /**
@@ -79,7 +80,7 @@ export class MetricsCacheInterceptor implements NestInterceptor {
    * Generate cache key based on request
    */
   protected trackBy(context: ExecutionContext): string | undefined {
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<Request>();
     const { url, method } = request;
 
     // Generate a simple cache key based on URL and method

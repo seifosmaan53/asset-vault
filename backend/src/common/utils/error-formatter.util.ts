@@ -2,6 +2,7 @@
 
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { ErrorCode, getErrorCode } from './error-codes.util';
+import { readStringProperty } from './read-property.util';
 
 /**
  * Error Formatter Utility
@@ -24,12 +25,12 @@ export class ErrorFormatter {
     path?: string;
     message: string;
     errors?: Record<string, string[]>;
-    details?: any;
+    details?: string;
   } {
     let status = statusCode || HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'An error occurred';
     let errors: Record<string, string[]> | undefined;
-    let details: any;
+    let details: string | undefined;
 
     if (error instanceof HttpException) {
       status = error.getStatus();
@@ -89,12 +90,13 @@ export class ErrorFormatter {
   /**
    * Format database errors
    */
-  static formatDatabaseError(error: any): {
+  static formatDatabaseError(error: unknown): {
     message: string;
     errorCode: ErrorCode;
-    details?: any;
+    details?: string;
   } {
-    const errorMessage = error?.message || 'Database error';
+    const errorMessage =
+      readStringProperty(error, 'message') || 'Database error';
 
     // Check for specific database error types
     if (errorMessage.includes('deadlock')) {

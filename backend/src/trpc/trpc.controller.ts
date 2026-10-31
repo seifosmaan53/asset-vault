@@ -14,7 +14,8 @@ import { TrpcRouter } from './trpc.router';
 import { TrpcService } from './trpc.service';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { createContext } from './trpc.context';
-import { errorField, readProperty } from './error-fields';
+import { errorField } from './error-fields';
+import { readProperty } from '../common/utils/read-property.util';
 import { ApiTags } from '@nestjs/swagger';
 
 /** A tRPC caller procedure: takes the raw input, resolves to the procedure's output. */
