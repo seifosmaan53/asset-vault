@@ -589,7 +589,12 @@ export function validateUUID(
     return '';
   }
 
-  const str = String(value).trim();
+  // Only strings can be UUIDs. String() on an array or an object with its own toString could
+  // otherwise produce a valid-looking UUID (e.g. ['<uuid>']).
+  if (typeof value !== 'string') {
+    throw new BadRequestException(`${fieldName} must be a valid UUID`);
+  }
+  const str = value.trim();
   const uuidRegex =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -616,7 +621,10 @@ export function validateUUIDV4(
     return '';
   }
 
-  const str = String(value).trim();
+  if (typeof value !== 'string') {
+    throw new BadRequestException(`${fieldName} must be a valid UUID v4`);
+  }
+  const str = value.trim();
   // UUID v4: version 4 (4 in position 13), variant bits (8, 9, a, or b in position 17)
   const uuidV4Regex =
     /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

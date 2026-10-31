@@ -3,6 +3,8 @@ import {
   validateEmail,
   validatePhone,
   validateString,
+  validateUUID,
+  validateUUIDV4,
 } from './edge-case-protection.util';
 import { validateCurrencyCode } from '../../invoices/utils/currency.util';
 
@@ -127,5 +129,32 @@ describe('validateString', () => {
         'phone must be a string',
       );
     });
+  });
+});
+
+describe('validateUUID / validateUUIDV4', () => {
+  const uuid = '3f2504e0-4f89-41d3-9a0c-0305e82c3301';
+
+  it('accept a UUID string (trimmed)', () => {
+    expect(validateUUID(` ${uuid} `, 'id')).toBe(uuid);
+    expect(validateUUIDV4(uuid, 'id')).toBe(uuid);
+  });
+
+  it('reject arrays and objects that would stringify to a UUID', () => {
+    for (const value of [[uuid], { toString: () => uuid }]) {
+      expect(badRequest(() => validateUUID(value, 'id')).message).toBe(
+        'id must be a valid UUID',
+      );
+      expect(badRequest(() => validateUUIDV4(value, 'id')).message).toBe(
+        'id must be a valid UUID v4',
+      );
+    }
+  });
+
+  it('keep the missing-value rules', () => {
+    expect(badRequest(() => validateUUID(undefined, 'id')).message).toBe(
+      'id is required',
+    );
+    expect(validateUUID(null, 'id', false)).toBe('');
   });
 });
