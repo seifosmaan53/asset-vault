@@ -149,13 +149,19 @@ export class StoreService {
     }
   }
 
+  /**
+   * List the caller's stores (never soft-deleted ones).
+   *
+   * `activeOnly` filters on the `stores.active` column, the same flag the rest of the API treats as
+   * "active": store alerts only scan `store.active = true`, and a client cannot be deleted while it
+   * has an active store. The UI no longer offers a status toggle (create and update always write
+   * `true`), but rows created before that change, imported, or edited directly in the database can
+   * still hold `false`, and the documented `?activeOnly=true` must not return them.
+   */
   async findAll(
     userId: string,
     activeOnly: boolean | undefined,
   ): Promise<Store[]> {
-    // Fix Issue #1: Use query builder instead of 'as any' type assertion
-    // Org-shared visibility + safe legacy.
-    // activeOnly parameter is ignored - all stores are always active now
     const query = this.storeRepository
       .createQueryBuilder('store')
       .leftJoinAndSelect('store.client', 'client')
@@ -163,7 +169,9 @@ export class StoreService {
       // CRITICAL: Exclude soft-deleted stores (TypeORM @DeleteDateColumn doesn't auto-filter in query builder)
       .andWhere('store.deletedAt IS NULL');
 
-    // All stores are always active - no need to filter by active status
+    if (activeOnly === true) {
+      query.andWhere('store.active = :active', { active: true });
+    }
 
     return query.orderBy('store.name', 'ASC').getMany();
   }

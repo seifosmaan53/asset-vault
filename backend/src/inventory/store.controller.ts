@@ -62,7 +62,8 @@ export class StoreController {
     name: 'activeOnly',
     required: false,
     type: Boolean,
-    description: 'Filter to show only active stores',
+    description:
+      'When "true", return only stores whose `active` flag is true. Absent or any other value returns every store that is not deleted.',
   })
   @ApiResponse({ status: 200, description: 'List of stores' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
