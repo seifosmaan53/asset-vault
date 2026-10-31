@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import type { AuthenticatedRequest } from '../users/interfaces/authenticated-request.interface';
 import {
   ApiTags,
   ApiOperation,
@@ -80,7 +81,7 @@ export class InventoryController {
     description: 'List of inventory items retrieved successfully',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async findAll(@Request() req, @Query() filters: any) {
+  async findAll(@Request() req: AuthenticatedRequest, @Query() filters: any) {
     // Organizations removed - data is user-scoped
     // Parse boolean query parameters correctly
     const parsedFilters: any = {};
@@ -121,7 +122,7 @@ export class InventoryController {
   })
   @ApiResponse({ status: 404, description: 'Inventory item not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async findOne(@Param('id') id: string, @Request() req) {
+  async findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     // Organizations removed - data is user-scoped
     return this.inventoryService.findOne(id, req.user.userId);
   }
@@ -137,7 +138,10 @@ export class InventoryController {
   })
   @ApiResponse({ status: 400, description: 'Bad request - validation failed' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async create(@Body() createDto: CreateInventoryItemDto, @Request() req) {
+  async create(
+    @Body() createDto: CreateInventoryItemDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
     // Organizations removed - data is user-scoped
     const result = await this.inventoryService.create(
       req.user.userId,
@@ -164,7 +168,7 @@ export class InventoryController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async bulkCreate(
     @Body() bulkDto: BulkCreateInventoryItemsDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     // Organizations removed - data is user-scoped
     const result = await this.inventoryService.bulkCreate(
@@ -190,7 +194,7 @@ export class InventoryController {
   async update(
     @Param('id') id: string,
     @Body() updateDto: UpdateInventoryItemDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     // Organizations removed - data is user-scoped
     const result = await this.inventoryService.update(
@@ -218,7 +222,7 @@ export class InventoryController {
     description: 'Forbidden - insufficient permissions',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async remove(@Param('id') id: string, @Request() req) {
+  async remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     // Organizations removed - data is user-scoped
     return this.inventoryService.remove(id, req.user.userId);
   }
@@ -235,7 +239,7 @@ export class InventoryController {
   })
   @ApiResponse({ status: 404, description: 'Inventory item not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  getMovements(@Param('id') id: string, @Request() req) {
+  getMovements(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     // Organizations removed - data is user-scoped
     return this.inventoryService.getMovements(id, req.user.userId);
   }
@@ -260,7 +264,7 @@ export class InventoryController {
   createMovement(
     @Param('id') id: string,
     @Body() createDto: CreateStockMovementDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     // Organizations removed - data is user-scoped
     const result = this.inventoryService.createMovement(
@@ -281,7 +285,7 @@ export class InventoryController {
     description: 'Inventory statistics retrieved successfully',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  getStats(@Request() req) {
+  getStats(@Request() req: AuthenticatedRequest) {
     // Organizations removed - data is user-scoped
     return this.inventoryService.getStats(req.user.userId);
   }
@@ -296,7 +300,7 @@ export class InventoryController {
     description: 'Low stock items retrieved successfully',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  getLowStock(@Request() req) {
+  getLowStock(@Request() req: AuthenticatedRequest) {
     // Organizations removed - data is user-scoped
     return this.inventoryService.getLowStock(req.user.userId);
   }
@@ -313,7 +317,10 @@ export class InventoryController {
   })
   @ApiResponse({ status: 404, description: 'Inventory item not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  getLinkedInvoices(@Param('id') id: string, @Request() req) {
+  getLinkedInvoices(
+    @Param('id') id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     // Organizations removed - data is user-scoped
     return this.inventoryService.getLinkedInvoices(id, req.user.userId);
   }
@@ -337,7 +344,7 @@ export class InventoryController {
   })
   async bulkDelete(
     @Body() bulkDeleteDto: BulkDeleteInventoryDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     // Organizations removed - data is user-scoped
     const result = await this.inventoryService.bulkRemove(
@@ -366,7 +373,10 @@ export class InventoryController {
     description: 'Bad request - invalid file format or validation failed',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async import(@UploadedFile() file: Express.Multer.File, @Request() req) {
+  async import(
+    @UploadedFile() file: Express.Multer.File,
+    @Request() req: AuthenticatedRequest,
+  ) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }

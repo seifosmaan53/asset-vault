@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import type { AuthenticatedRequest } from '../users/interfaces/authenticated-request.interface';
 import {
   ApiTags,
   ApiOperation,
@@ -46,7 +47,7 @@ export class ClientsController {
     description: 'List of clients retrieved successfully',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  findAll(@Request() req, @Query() filters?: any) {
+  findAll(@Request() req: AuthenticatedRequest, @Query() filters?: any) {
     // Organizations removed - data is user-scoped
     return this.clientsService.findAll(req.user.userId, filters);
   }
@@ -60,7 +61,7 @@ export class ClientsController {
   @ApiResponse({ status: 200, description: 'Client retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Client not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  findOne(@Param('id') id: string, @Request() req) {
+  findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     // Organizations removed - data is user-scoped
     return this.clientsService.findOne(id, req.user.userId);
   }
@@ -73,7 +74,10 @@ export class ClientsController {
   @ApiResponse({ status: 201, description: 'Client created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request - validation error' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  create(@Body() createClientDto: CreateClientDto, @Request() req) {
+  create(
+    @Body() createClientDto: CreateClientDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
     // Organizations removed - data is user-scoped
     const result = this.clientsService.create(req.user.userId, createClientDto);
     return result;
@@ -91,7 +95,7 @@ export class ClientsController {
   update(
     @Param('id') id: string,
     @Body() updateClientDto: UpdateClientDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     // Organizations removed - data is user-scoped
     const result = this.clientsService.update(
@@ -121,7 +125,7 @@ export class ClientsController {
     status: 403,
     description: 'Forbidden - Admin/Owner access required',
   })
-  async remove(@Param('id') id: string, @Request() req) {
+  async remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     // Organizations removed - data is user-scoped
     await this.clientsService.remove(id, req.user.userId);
     return { message: 'Client deleted successfully' };
@@ -146,7 +150,7 @@ export class ClientsController {
   })
   async bulkDelete(
     @Body() bulkDeleteDto: BulkDeleteClientsDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     // Organizations removed - data is user-scoped
     const result = await this.clientsService.bulkRemove(
@@ -175,7 +179,10 @@ export class ClientsController {
     description: 'Bad request - invalid file format or validation failed',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async import(@UploadedFile() file: Express.Multer.File, @Request() req) {
+  async import(
+    @UploadedFile() file: Express.Multer.File,
+    @Request() req: AuthenticatedRequest,
+  ) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }

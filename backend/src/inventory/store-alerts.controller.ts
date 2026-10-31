@@ -8,6 +8,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import type { AuthenticatedRequest } from '../users/interfaces/authenticated-request.interface';
 import {
   ApiTags,
   ApiOperation,
@@ -32,7 +33,7 @@ export class StoreAlertsController {
   @ApiResponse({ status: 200, description: 'List of store alerts' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getAlerts(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Query('storeId') storeId?: string,
     @Query('resolved') resolved?: string,
   ) {
@@ -54,7 +55,10 @@ export class StoreAlertsController {
   })
   @ApiResponse({ status: 200, description: 'List of store alerts' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getStoreAlerts(@Param('storeId') storeId: string, @Request() req) {
+  async getStoreAlerts(
+    @Param('storeId') storeId: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     // FIX Issue #43: Add organization context validation
     // Organizations removed - organizationId is always null, data is user-scoped
     return this.storeAlertsService.getStoreAlerts(storeId, req.user.userId);
@@ -68,7 +72,10 @@ export class StoreAlertsController {
   @ApiResponse({ status: 200, description: 'Alert resolved successfully' })
   @ApiResponse({ status: 404, description: 'Alert not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async markAlertResolved(@Param('id') id: string, @Request() req) {
+  async markAlertResolved(
+    @Param('id') id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     const result = await this.storeAlertsService.markAlertResolved(
       id,
       req.user.userId,
@@ -84,7 +91,7 @@ export class StoreAlertsController {
   })
   @ApiResponse({ status: 200, description: 'Alert check completed' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async checkAlerts(@Request() req) {
+  async checkAlerts(@Request() req: AuthenticatedRequest) {
     return this.storeAlertsService.checkStoreAlerts(req.user.userId);
   }
 }

@@ -12,6 +12,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import type { AuthenticatedRequest } from '../users/interfaces/authenticated-request.interface';
 import {
   ApiTags,
   ApiOperation,
@@ -52,7 +53,7 @@ export class StoreItemSettingsController {
   })
   createOrUpdate(
     @Body() createDto: CreateStoreItemSettingsDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     // Organizations removed - data is user-scoped
     const result = this.storeItemSettingsService.createOrUpdate(
@@ -72,7 +73,10 @@ export class StoreItemSettingsController {
     description: 'List of item settings for the store',
   })
   @ApiResponse({ status: 404, description: 'Store not found' })
-  findByStore(@Param('storeId') storeId: string, @Request() req) {
+  findByStore(
+    @Param('storeId') storeId: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     // Organizations removed - data is user-scoped
     return this.storeItemSettingsService.findByStore(storeId, req.user.userId);
   }
@@ -87,7 +91,10 @@ export class StoreItemSettingsController {
     description: 'List of store settings for the item',
   })
   @ApiResponse({ status: 404, description: 'Inventory item not found' })
-  findByItem(@Param('itemId') itemId: string, @Request() req) {
+  findByItem(
+    @Param('itemId') itemId: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     // Organizations removed - data is user-scoped
     return this.storeItemSettingsService.findByItem(itemId, req.user.userId);
   }
@@ -102,7 +109,7 @@ export class StoreItemSettingsController {
   update(
     @Param('id') id: string,
     @Body() updateDto: UpdateStoreItemSettingsDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     // Organizations removed - data is user-scoped
     const result = this.storeItemSettingsService.update(
@@ -127,7 +134,7 @@ export class StoreItemSettingsController {
   updateStock(
     @Param('id') id: string,
     @Body() updateStockDto: UpdateStockDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     // Organizations removed - data is user-scoped
     const result = this.storeItemSettingsService.update(id, req.user.userId, {
@@ -150,7 +157,7 @@ export class StoreItemSettingsController {
     @Param('storeId') storeId: string,
     @Param('itemId') itemId: string,
     @Body() updateStockDto: UpdateStockDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     // Organizations removed - data is user-scoped
     const result = this.storeItemSettingsService.updateStock(
@@ -172,7 +179,10 @@ export class StoreItemSettingsController {
     description: 'Stock report generated successfully',
   })
   @ApiResponse({ status: 404, description: 'Store not found' })
-  getStoreStockReport(@Param('storeId') storeId: string, @Request() req) {
+  getStoreStockReport(
+    @Param('storeId') storeId: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     // Organizations removed - data is user-scoped
     return this.storeItemSettingsService.getStoreStockReport(
       storeId,
@@ -194,7 +204,7 @@ export class StoreItemSettingsController {
     status: 403,
     description: 'Forbidden - Admin/Owner access required',
   })
-  delete(@Param('id') id: string, @Request() req) {
+  delete(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.storeItemSettingsService.delete(id, req.user.userId);
   }
 
@@ -218,7 +228,7 @@ export class StoreItemSettingsController {
   deleteByStoreAndItem(
     @Param('storeId') storeId: string,
     @Param('itemId') itemId: string,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     // Organizations removed - data is user-scoped
     return this.storeItemSettingsService.deleteByStoreAndItem(

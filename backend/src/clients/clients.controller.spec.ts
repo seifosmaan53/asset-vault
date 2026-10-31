@@ -3,6 +3,8 @@ import { ClientsController } from './clients.controller';
 import { ClientsService } from './clients.service';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import type { ExecutionContext } from '@nestjs/common';
+import type { AuthenticatedRequest } from '../users/interfaces/authenticated-request.interface';
+import { UserRole } from '../users/entities/user.entity';
 
 /* The override targeted AuthGuard('jwt') — the Passport guard this controller used
    before authentication moved to Clerk. Nest therefore tried to construct the REAL
@@ -11,6 +13,14 @@ import type { ExecutionContext } from '@nestjs/common';
    this a controller unit test rather than an auth-stack integration test. */
 describe('ClientsController', () => {
   let controller: ClientsController;
+
+  const authReq: AuthenticatedRequest = {
+    user: {
+      userId: 'user-123',
+      email: 'user@example.com',
+      role: UserRole.OWNER,
+    },
+  };
 
   const mockClientsService = {
     findAll: jest.fn(),
@@ -22,8 +32,10 @@ describe('ClientsController', () => {
 
   const mockAuthGuard = {
     canActivate: (context: ExecutionContext) => {
-      const request = context.switchToHttp().getRequest();
-      request.user = { userId: 'user-123' };
+      const request = context
+        .switchToHttp()
+        .getRequest<Partial<AuthenticatedRequest>>();
+      request.user = authReq.user;
       return true;
     },
   };
@@ -57,9 +69,7 @@ describe('ClientsController', () => {
       ];
       mockClientsService.findAll.mockResolvedValue(mockClients);
 
-      const result = await controller.findAll({
-        user: { userId: 'user-123' },
-      } as any);
+      const result = await controller.findAll(authReq);
 
       expect(result).toEqual(mockClients);
       // findAll gained a second `filters` argument (search / date range); it is
@@ -76,9 +86,7 @@ describe('ClientsController', () => {
       const mockClient = { id: 'client-1', name: 'Client 1' };
       mockClientsService.findOne.mockResolvedValue(mockClient);
 
-      const result = await controller.findOne('client-1', {
-        user: { userId: 'user-123' },
-      } as any);
+      const result = await controller.findOne('client-1', authReq);
 
       expect(result).toEqual(mockClient);
       expect(mockClientsService.findOne).toHaveBeenCalledWith(
@@ -94,9 +102,7 @@ describe('ClientsController', () => {
       const mockClient = { id: 'client-1', ...createDto };
       mockClientsService.create.mockResolvedValue(mockClient);
 
-      const result = await controller.create(createDto, {
-        user: { userId: 'user-123' },
-      } as any);
+      const result = await controller.create(createDto, authReq);
 
       expect(result).toEqual(mockClient);
       expect(mockClientsService.create).toHaveBeenCalledWith(
@@ -112,9 +118,7 @@ describe('ClientsController', () => {
       const mockClient = { id: 'client-1', ...updateDto };
       mockClientsService.update.mockResolvedValue(mockClient);
 
-      const result = await controller.update('client-1', updateDto, {
-        user: { userId: 'user-123' },
-      } as any);
+      const result = await controller.update('client-1', updateDto, authReq);
 
       expect(result).toEqual(mockClient);
       expect(mockClientsService.update).toHaveBeenCalledWith(
@@ -129,9 +133,7 @@ describe('ClientsController', () => {
     it('should delete a client', async () => {
       mockClientsService.remove.mockResolvedValue(undefined);
 
-      await controller.remove('client-1', {
-        user: { userId: 'user-123' },
-      } as any);
+      await controller.remove('client-1', authReq);
 
       expect(mockClientsService.remove).toHaveBeenCalledWith(
         'client-1',

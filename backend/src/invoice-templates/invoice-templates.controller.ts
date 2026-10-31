@@ -10,6 +10,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import type { AuthenticatedRequest } from '../users/interfaces/authenticated-request.interface';
 import {
   ApiTags,
   ApiOperation,
@@ -37,7 +38,7 @@ export class InvoiceTemplatesController {
     description: 'List of templates retrieved successfully',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  findAll(@Request() req) {
+  findAll(@Request() req: AuthenticatedRequest) {
     return this.templatesService.findAll(req.user.userId);
   }
 
@@ -53,7 +54,7 @@ export class InvoiceTemplatesController {
   })
   @ApiResponse({ status: 404, description: 'No default template found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  findDefault(@Request() req) {
+  findDefault(@Request() req: AuthenticatedRequest) {
     return this.templatesService.findDefault(req.user.userId);
   }
 
@@ -66,7 +67,7 @@ export class InvoiceTemplatesController {
   @ApiResponse({ status: 200, description: 'Template retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Template not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  findOne(@Param('id') id: string, @Request() req) {
+  findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.templatesService.findOne(id, req.user.userId);
   }
 
@@ -78,7 +79,10 @@ export class InvoiceTemplatesController {
   @ApiResponse({ status: 201, description: 'Template created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request - validation error' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  create(@Body() createDto: CreateInvoiceTemplateDto, @Request() req) {
+  create(
+    @Body() createDto: CreateInvoiceTemplateDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.templatesService.create(req.user.userId, createDto);
   }
 
@@ -94,7 +98,7 @@ export class InvoiceTemplatesController {
   update(
     @Param('id') id: string,
     @Body() updateDto: UpdateInvoiceTemplateDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.templatesService.update(id, req.user.userId, updateDto);
   }
@@ -108,7 +112,7 @@ export class InvoiceTemplatesController {
   @ApiResponse({ status: 200, description: 'Template deleted successfully' })
   @ApiResponse({ status: 404, description: 'Template not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async remove(@Param('id') id: string, @Request() req) {
+  async remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     await this.templatesService.remove(id, req.user.userId);
     return { message: 'Template deleted successfully' };
   }
