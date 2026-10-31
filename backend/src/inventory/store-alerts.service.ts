@@ -265,26 +265,12 @@ export class StoreAlertsService {
         alertsByStore.get(alert.storeId)!.push(alert);
       }
 
-      // Load store and inventory item details
+      // Load store details
       for (const [storeId, storeAlerts] of alertsByStore) {
         const store = await this.storeRepository.findOne({
           where: { id: storeId },
         });
         if (!store) continue;
-
-        const alertDetails = await Promise.all(
-          storeAlerts.map(async (alert) => {
-            const item = await this.inventoryItemRepository.findOne({
-              where: { id: alert.inventoryItemId },
-            });
-            return {
-              itemName: item?.name || 'Unknown Item',
-              currentStock: alert.currentStock,
-              minQty: alert.minQty,
-              alertType: alert.alertType,
-            };
-          }),
-        );
 
         // Get user email
         const user = await this.userRepository.findOne({

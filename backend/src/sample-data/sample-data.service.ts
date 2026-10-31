@@ -866,16 +866,7 @@ export class SampleDataService {
     // Sample inventory: SKUs matching pattern "ITEM-####"
     // Sample invoices: We'll delete all invoices for this user (since they're all sample)
 
-    // Get all user data - include soft-deleted invoices too
-    const allInvoices = await this.invoiceRepository
-      .createQueryBuilder('invoice')
-      .withDeleted() // Include soft-deleted invoices
-      .where(
-        'invoice.userId = :userId', // Organizations removed - filter by userId only
-        { userId },
-      )
-      .getMany();
-
+    // Get all user data
     const allClients = await this.clientRepository
       .createQueryBuilder('client')
       .where(
