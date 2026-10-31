@@ -22,7 +22,12 @@
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+
+    /* Invoice money module shared with the API (see vite.config.ts) */
+    "paths": {
+      "@invoice-money/*": ["../backend/src/common/money/*"]
+    }
   },
   "include": ["src"]
 }

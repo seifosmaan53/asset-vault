@@ -49,7 +49,13 @@ import { useStoreStocks } from '../../hooks/useStoreStock';
 import InventorySelect from '../../components/inventory/InventorySelect';
 import type { InventoryItem } from '../../types/inventory';
 import type { Invoice, InvoiceItem } from '../../types/invoice';
-import { computeInvoiceTotalsCents, invoiceTotalsToMoney, centsToMoney, validateInvoiceItems } from '../../utils/invoice-totals.util';
+import {
+  centsToMoney,
+  invoiceTotalsToMoney,
+  previewInvoiceTotalsCents,
+  submittedMoneyFields,
+  validateInvoiceItems,
+} from '../../utils/invoice-totals.util';
 import { formatCurrency } from '../../utils/formatters';
 import { formatDate } from '../../utils/dates';
 import { getErrorMessage } from '../../utils/errorHandling';
@@ -343,24 +349,19 @@ const InvoiceForm = () => {
     }
   }, [issueDate, paymentTermsDays, isEdit, setValue]);
 
-  // FIX #101: Use shared calculation utility that matches backend exactly
+  // Line total from the shared invoice-money module (the API's own arithmetic);
+  // a line the API would reject shows 0 and is listed in totalsBlockers.
   const calculateLineTotal = (item: InvoiceItemForm) => {
-    if (!item || item.quantity === undefined || item.unitPrice === undefined) {
-      return 0;
-    }
-    // Use shared utility for consistent calculation
-    const totalsResult = computeInvoiceTotalsCents([{
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-      discountRate: item.discountRate || 0,
-      taxRate: item.taxRate || 0,
-    }]);
-    return centsToMoney(totalsResult.lines[0]?.lineTotalCents || 0);
+    const { totals } = previewInvoiceTotalsCents([submittedMoneyFields(item)]);
+    return centsToMoney(totals.lines[0]?.lineTotalCents || 0);
   };
 
   // FIX #101: Use shared calculation utility that matches backend exactly
-  // FIX #147: Use useMemo to prevent stale closure - recalculate when watchedItems change
-  const totals = useMemo(() => {
+  /* Computed on every render, not memoized on watchedItems: react-hook-form's
+     watch('items') returns the same array while its values change in place, so a
+     memo keyed on it kept showing the totals from before the last keystroke
+     (only adding or removing a line refreshed them). It is a few integer sums. */
+  const totals = (() => {
     if (!watchedItems || !Array.isArray(watchedItems) || watchedItems.length === 0) {
       return {
         subtotal: 0,
@@ -372,24 +373,9 @@ const InvoiceForm = () => {
       };
     }
 
-    // Filter out invalid items and convert to format expected by utility
-    const validItems = watchedItems
-      .filter((item) => 
-        item && 
-        item.quantity !== undefined && 
-        item.quantity !== null && 
-        item.unitPrice !== undefined && 
-        item.unitPrice !== null
-      )
-      .map((item) => ({
-        quantity: Number(item.quantity) || 0,
-        unitPrice: Number(item.unitPrice) || 0,
-        discountRate: Number(item.discountRate) || 0,
-        taxRate: Number(item.taxRate) || 0,
-      }));
-
-    // Use shared utility for consistent calculation (matches backend exactly)
-    const totalsResult = computeInvoiceTotalsCents(validItems);
+    // The shared invoice-money module (the API's own arithmetic) on the values
+    // the form submits; lines the API would reject count as 0 (see totalsBlockers).
+    const totalsResult = previewInvoiceTotalsCents(watchedItems.map(submittedMoneyFields)).totals;
     const calculatedTotals = invoiceTotalsToMoney(totalsResult);
 
     // Calculate overall percentages for display
@@ -408,16 +394,12 @@ const InvoiceForm = () => {
       overallDiscountPercent: Math.round(overallDiscountPercent * 100) / 100,
       overallTaxPercent: Math.round(overallTaxPercent * 100) / 100,
     };
-  }, [watchedItems]);
+  })();
 
-  /* The totals above are computed leniently so the form stays responsive while
-     someone is mid-keystroke. The backend is stricter and will reject some of
-     those inputs outright, so ask the shared validator what the API would say.
-     Without this, the form happily shows a total and then fails on submit. */
-  const totalsBlockers = useMemo(
-    () => validateInvoiceItems(watchedItems as Parameters<typeof validateInvoiceItems>[0]),
-    [watchedItems],
-  );
+  /* The totals above never throw, so the form stays responsive while someone is
+     mid-keystroke. These are the reasons the API would reject the values the form
+     submits (the same module and messages); submit stays disabled until there are none. */
+  const totalsBlockers = validateInvoiceItems((watchedItems ?? []).map(submittedMoneyFields));
 
   // FIX #148: Batch setValue calls to prevent multiple re-renders
   const handleInventorySelect = (index: number, item: InventoryItem | null) => {
@@ -563,38 +545,9 @@ const InvoiceForm = () => {
       }
 
       // FIX #187, #192, #193, #194, #195: Enhanced validation matching backend
+      // FIX #195: lines without a description (or over 1000 chars) are not submitted.
       const validItems = data.items.filter(
-        (item) => {
-          // FIX #195: Validate description length (max 1000 chars)
-          if (!item.description || item.description.trim() === '' || item.description.length > 1000) {
-            return false;
-          }
-          // FIX #187: Quantity must be integer >= 1 (not just > 0)
-          const quantity = Number(item.quantity);
-          if (!Number.isInteger(quantity) || quantity < 1 || quantity > 1000000) {
-            return false;
-          }
-          // FIX #194: Unit price must be >= 0 and have upper bound
-          const unitPrice = Number(item.unitPrice);
-          if (unitPrice < 0 || unitPrice > 999999999.99) {
-            return false;
-          }
-          // FIX #192: Tax rate must be 0-100 (not negative)
-          if (item.taxRate !== undefined && (item.taxRate < 0 || item.taxRate > 100)) {
-            return false;
-          }
-          // FIX #193: Discount rate must be 0-100
-          if (item.discountRate !== undefined && (item.discountRate < 0 || item.discountRate > 100)) {
-            return false;
-          }
-          // FIX #193: Discount cannot exceed subtotal (prevent backend rejection)
-          const subtotal = quantity * unitPrice;
-          const discountAmount = (subtotal * (item.discountRate || 0)) / 100;
-          if (discountAmount > subtotal) {
-            return false;
-          }
-          return true;
-        }
+        (item) => !!item.description && item.description.trim() !== '' && item.description.length <= 1000,
       );
 
       if (validItems.length === 0) {
@@ -602,17 +555,15 @@ const InvoiceForm = () => {
         return;
       }
 
-      // Check for invalid tax or discount rates
-      const invalidItems = data.items.filter(
-        (item) =>
-          (item.taxRate !== undefined && (item.taxRate < 0 || item.taxRate > 100)) ||
-          (item.discountRate !== undefined && (item.discountRate < 0 || item.discountRate > 100))
-      );
-
-      if (invalidItems.length > 0) {
-        showToast('Tax rate and discount rate must be between 0 and 100', 'error');
+      // Money rules: the shared invoice-money module, the API's own validation
+      // (submit is normally disabled already while any of these apply).
+      const submittedMoney = validItems.map(submittedMoneyFields);
+      const moneyIssues = validateInvoiceItems(submittedMoney);
+      if (moneyIssues.length > 0) {
+        showToast(moneyIssues[0].message, 'error');
         return;
       }
+      const submittedLines = previewInvoiceTotalsCents(submittedMoney).totals.lines;
 
       // FIX #188, #197: Date validation with UTC handling to match backend
       if (data.dueDate && data.issueDate) {
@@ -655,14 +606,10 @@ const InvoiceForm = () => {
       const invoiceData = {
         ...data,
         type: 'invoice' as const, // Always set to invoice (no estimates)
-        items: validItems.map((item) => {
-          // Calculate lineTotal for frontend preview (backend will recalculate)
-          const subtotal = item.quantity * item.unitPrice;
-          const discount = (subtotal * (item.discountRate || 0)) / 100;
-          const afterDiscount = subtotal - discount;
-          const tax = (afterDiscount * (item.taxRate || 0)) / 100;
-          const lineTotal = Math.round((afterDiscount + tax) * 100) / 100;
-          
+        items: validItems.map((item, index) => {
+          // The API recalculates; this is the same module's line total.
+          const lineTotal = centsToMoney(submittedLines[index].lineTotalCents);
+
           return {
             inventoryItemId: item.inventoryItemId,
             description: item.description.trim(),

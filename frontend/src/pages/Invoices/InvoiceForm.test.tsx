@@ -194,6 +194,33 @@ describe('InvoiceForm', () => {
     });
   });
 
+  it('shows the totals the API computes, including an exact half cent of tax', async () => {
+    render(
+      <TestWrapper>
+        <InvoiceForm />
+      </TestWrapper>,
+    );
+
+    // 1 x 1.80 at 17.5% tax: 31.5 cents rounds to 32 (the API's rule); total 2.12.
+    const priceInput = screen.getByLabelText(/unit price/i);
+    const taxInput = screen.getByLabelText(/tax %/i);
+    await userEvent.clear(priceInput);
+    await userEvent.type(priceInput, '1.80');
+    await userEvent.clear(taxInput);
+    await userEvent.type(taxInput, '17.5');
+
+    await waitFor(() => {
+      expect(screen.getAllByText('$2.12').length).toBeGreaterThan(0);
+    });
+    // Line total and the summary (which used to stay at the values before the last keystroke).
+    await waitFor(() => {
+      expect(screen.getAllByText('$2.12')).toHaveLength(2);
+    });
+    expect(screen.getByText('$1.80')).toBeInTheDocument(); // subtotal
+    expect(screen.getByText('$0.32')).toBeInTheDocument(); // tax
+    expect(screen.queryByText('$2.11')).not.toBeInTheDocument();
+  });
+
   it('should show stock warning when quantity exceeds available stock', async () => {
     // Mock inventory select to return item with low stock
     vi.mock('../../components/inventory/InventorySelect', () => ({
@@ -333,6 +360,35 @@ describe('InvoiceForm', () => {
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: /edit invoice/i })).toBeInTheDocument();
       });
+    });
+
+    it('an invoice loaded for editing shows the API totals and no money blockers (numeric(12,4) strings)', async () => {
+      // As GET /invoices/:id returns it: decimal columns arrive as strings.
+      const mockInvoice = {
+        id: 'invoice-123',
+        clientId: '1',
+        type: 'invoice',
+        status: 'draft',
+        issueDate: new Date().toISOString(),
+        currency: 'USD',
+        items: [
+          { id: 'line-1', description: 'Loaded line', quantity: 2, unitPrice: '12.5000', taxRate: '17.50', discountRate: '0.00' },
+        ],
+      };
+      vi.mocked(useInvoice).mockReturnValue({ data: mockInvoice, isLoading: false } as any);
+
+      render(
+        <EditRouteWrapper>
+          <InvoiceForm />
+        </EditRouteWrapper>,
+      );
+
+      // 2 x 12.50 = 25.00; 17.5% tax = 4.375 -> 4.38; total 29.38 (line and summary)
+      await waitFor(() => {
+        expect(screen.getAllByText('$29.38')).toHaveLength(2);
+      });
+      expect(screen.getByText('$4.38')).toBeInTheDocument();
+      expect(screen.queryByText(/must have at most 2 decimal places/)).not.toBeInTheDocument();
     });
 
     it('should show store stock warnings when quantity exceeds store stock', async () => {

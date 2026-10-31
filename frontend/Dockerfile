@@ -1,15 +1,18 @@
 FROM node:18-alpine AS builder
 
+# Build context: the repository root (see docker-compose.yml and /.dockerignore),
+# so the invoice-money module shared with the API can be included.
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY frontend/package*.json ./
 
 # Install dependencies
 RUN npm ci
 
-# Copy source code
-COPY . .
+# Copy source code, and the shared module where the `@invoice-money` alias expects it (../backend/...)
+COPY frontend/ ./
+COPY backend/src/common/money/invoice-money.ts /backend/src/common/money/invoice-money.ts
 
 # Build the application
 RUN npm run build
@@ -21,7 +24,7 @@ FROM nginx:alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expose port
 EXPOSE 80
