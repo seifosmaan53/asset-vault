@@ -56,6 +56,10 @@ import {
   errorStack,
   errorStringField,
 } from './utils/error-details.util';
+import type {
+  InvoiceListFilters,
+  InvoicePageParams,
+} from './utils/invoice-list-query.util';
 import {
   type SerializedSettings,
   settingNumber,
@@ -123,24 +127,7 @@ export class InvoicesService {
 
   async findAll(
     userId: string,
-    filters?: {
-      status?: string;
-      type?: string;
-      search?: string;
-      storeId?: string;
-      issueDateFrom?: string;
-      issueDateTo?: string;
-      dueDateFrom?: string;
-      dueDateTo?: string;
-      paidDateFrom?: string;
-      paidDateTo?: string;
-      createdAtFrom?: string;
-      createdAtTo?: string;
-      totalMin?: number;
-      totalMax?: number;
-      subtotalMin?: number;
-      subtotalMax?: number;
-    },
+    filters?: InvoiceListFilters,
   ): Promise<Invoice[]> {
     try {
       // Validate userId
@@ -328,26 +315,7 @@ export class InvoicesService {
 
   async findPaged(
     userId: string,
-    params?: {
-      page?: number;
-      limit?: number;
-      status?: string;
-      type?: string;
-      search?: string;
-      storeId?: string;
-      issueDateFrom?: string;
-      issueDateTo?: string;
-      dueDateFrom?: string;
-      dueDateTo?: string;
-      paidDateFrom?: string;
-      paidDateTo?: string;
-      createdAtFrom?: string;
-      createdAtTo?: string;
-      totalMin?: number;
-      totalMax?: number;
-      subtotalMin?: number;
-      subtotalMax?: number;
-    },
+    params?: InvoicePageParams,
   ): Promise<PaginatedResponse<Invoice>> {
     const pageRaw = Number(params?.page ?? 1);
     const limitRaw = Number(params?.limit ?? this.DEFAULT_PAGE_SIZE);

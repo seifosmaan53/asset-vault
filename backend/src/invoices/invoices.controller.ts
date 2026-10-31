@@ -26,6 +26,11 @@ import {
 } from '@nestjs/swagger';
 import { InvoicesService } from './invoices.service';
 import { CreateInvoiceDto, UpdateInvoiceDto } from './dto';
+import { SendInvoiceEmailDto } from './dto/send-invoice-email.dto';
+import {
+  readInvoiceListFilters,
+  readInvoicePageParams,
+} from './utils/invoice-list-query.util';
 import {
   CreateInvoiceResponseDto,
   UpdateInvoiceResponseDto,
@@ -86,7 +91,11 @@ export class InvoicesController {
     description: 'List of invoices retrieved successfully',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async findAll(@Request() req: AuthenticatedRequest, @Query() filters: any) {
+  async findAll(
+    @Request() req: AuthenticatedRequest,
+    @Query() query: Record<string, unknown>,
+  ) {
+    const filters = readInvoiceListFilters(query);
     try {
       // Validate user is authenticated
       if (!req.user || !req.user.userId) {
@@ -173,9 +182,15 @@ export class InvoicesController {
     status: 200,
     description: 'Paged invoices retrieved successfully with pagination links',
   })
-  getPaged(@Request() req: AuthenticatedRequest, @Query() query: any) {
+  getPaged(
+    @Request() req: AuthenticatedRequest,
+    @Query() query: Record<string, unknown>,
+  ) {
     // Organizations removed - data is user-scoped
-    return this.invoicesService.findPaged(req.user.userId, query);
+    return this.invoicesService.findPaged(
+      req.user.userId,
+      readInvoicePageParams(query),
+    );
   }
 
   @Get('stats')
@@ -352,7 +367,7 @@ export class InvoicesController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async send(
     @Param('id') id: string,
-    @Body() emailOptions: any,
+    @Body() emailOptions: SendInvoiceEmailDto,
     @Request() req: AuthenticatedRequest,
   ) {
     // Organizations removed - data is user-scoped
