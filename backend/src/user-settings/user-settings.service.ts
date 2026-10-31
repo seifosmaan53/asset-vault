@@ -455,6 +455,30 @@ export class UserSettingsService {
       showInvoiceNumberOnPDF: settings.showInvoiceNumberOnPDF ?? true,
       showPaymentInstructions: settings.showPaymentInstructions ?? true,
       invoiceFooterText: settings.invoiceFooterText || '',
+      // The fields from here to backupTime/exportFormats below were accepted and saved but
+      // never returned, so the settings page and the invoice PDF never saw them.
+      invoiceHeaderText: settings.invoiceHeaderText || '',
+      showInvoiceWatermark: settings.showInvoiceWatermark ?? false,
+      invoiceWatermarkText: settings.invoiceWatermarkText || '',
+      additionalTaxRates: settings.additionalTaxRates || '',
+      defaultClientPaymentMethod: settings.defaultClientPaymentMethod || '',
+      defaultClientCreditLimit:
+        settings.defaultClientCreditLimit == null
+          ? null
+          : Number(settings.defaultClientCreditLimit),
+      defaultClientCurrency: settings.defaultClientCurrency || '',
+      inventoryUnitConversion: settings.inventoryUnitConversion || '',
+      notificationFrequency: settings.notificationFrequency || '',
+      quietHoursStart: settings.quietHoursStart || '',
+      quietHoursEnd: settings.quietHoursEnd || '',
+      fontSize: settings.fontSize || 'medium',
+      compactMode: settings.compactMode ?? false,
+      autoBackup: settings.autoBackup ?? true,
+      backupRetentionDays: settings.backupRetentionDays ?? 7,
+      allowDataExport: settings.allowDataExport ?? true,
+      backupSchedule: settings.backupSchedule || '',
+      backupTime: settings.backupTime || '',
+      exportFormats: settings.exportFormats || '',
       dateFormat: settings.dateFormat || 'MM/DD/YYYY',
       timeFormat: settings.timeFormat || '12',
       timezone: settings.timezone || 'America/New_York',
