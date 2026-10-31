@@ -46,9 +46,9 @@ jobs:
       TZ: UTC
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '20'
           cache: npm
@@ -95,9 +95,9 @@ jobs:
     name: Frontend (build + tests)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '20'
           cache: npm
@@ -146,7 +146,7 @@ jobs:
       DUMMY_PK: pk_test_ZHVtbXkuY2xlcmsuYWNjb3VudHMuZGV2JA==
       MONEY_MARKER: 'must be a decimal number (no exponent'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build the builder stage and inspect its context
         run: |
@@ -248,7 +248,7 @@ jobs:
       CLERK_SECRET_KEY: sk_test_ci_not_a_real_key
       VITE_CLERK_PUBLISHABLE_KEY: pk_test_ZHVtbXkuY2xlcmsuYWNjb3VudHMuZGV2JA==
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build the backend image
         run: |
@@ -318,9 +318,9 @@ jobs:
       FRONTEND_ORIGIN: http://localhost:4173
       TZ: UTC
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '20'
           cache: npm
@@ -399,8 +399,8 @@ jobs:
     name: Dependency audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '20'
       # Reported, not gating: a transitive advisory in a dev dependency should not
@@ -430,7 +430,7 @@ jobs:
       DB: asset_vault_release
       LAST: WidenInvoiceItemRatePrecision1761000000000
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build the backend image and start a disposable PostgreSQL
         run: |
