@@ -274,7 +274,7 @@ export class InvoicesService {
         );
         if (allInvoices.length > 0) {
           this.logger.warn(
-            `[DIAGNOSTIC] Sample invoice: id=${allInvoices[0].id}, userId=${allInvoices[0].userId}, deletedAt=${allInvoices[0].deletedAt}`,
+            `[DIAGNOSTIC] Sample invoice: id=${allInvoices[0].id}, userId=${allInvoices[0].userId}, deletedAt=${String(allInvoices[0].deletedAt)}`,
           );
         }
       }
@@ -2303,7 +2303,7 @@ export class InvoicesService {
       // Check if invoice is already soft-deleted (idempotent operation)
       if (anyInvoice.deletedAt) {
         this.logger.debug(
-          `Invoice ${id} is already soft-deleted (deletedAt: ${anyInvoice.deletedAt}), returning early (idempotent)`,
+          `Invoice ${id} is already soft-deleted (deletedAt: ${String(anyInvoice.deletedAt)}), returning early (idempotent)`,
         );
         await queryRunner.rollbackTransaction();
         await queryRunner.release();
@@ -2722,7 +2722,7 @@ export class InvoicesService {
 
       updatedCount++;
       this.logger.log(
-        `Updated invoice ${invoice.number} with paidAt: ${paidAtDate}`,
+        `Updated invoice ${invoice.number} with paidAt: ${String(paidAtDate)}`,
       );
     }
 
