@@ -82,6 +82,19 @@ function recomputeLineTotal(item: {
   return line.lineTotalCents / 100;
 }
 
+/**
+ * Row of the getStats() aggregate query. node-postgres returns COUNT (bigint) and numeric
+ * sums as strings; COALESCE makes the sums non-null.
+ */
+interface InvoiceStatsRow {
+  totalCount: string;
+  sentCount: string;
+  overdueCount: string;
+  totalUnpaid: string;
+  totalOverdue: string;
+  totalAmount: string;
+}
+
 /** The `id` of the first row a raw `INSERT ... RETURNING "id"` query gave back, if any. */
 function firstReturnedId(result: unknown): string | undefined {
   if (!Array.isArray(result)) {
@@ -2687,14 +2700,16 @@ export class InvoicesService {
       .where('invoice.userId = :userId', { userId })
       .andWhere('invoice.deletedAt IS NULL')
       .select([
-        'COUNT(*) as totalCount',
-        "COUNT(CASE WHEN invoice.status = 'sent' THEN 1 END) as sentCount",
-        "COUNT(CASE WHEN invoice.status = 'overdue' THEN 1 END) as overdueCount",
-        "COALESCE(SUM(CASE WHEN invoice.status IN ('sent', 'overdue') THEN invoice.total ELSE 0 END), 0) as totalUnpaid",
-        "COALESCE(SUM(CASE WHEN invoice.status = 'overdue' THEN invoice.total ELSE 0 END), 0) as totalOverdue",
-        'COALESCE(SUM(invoice.total), 0) as totalAmount',
+        // Aliases are quoted: PostgreSQL folds an unquoted alias to lower case, so
+        // `as totalCount` came back as "totalcount" and every figure read as 0.
+        'COUNT(*) as "totalCount"',
+        `COUNT(CASE WHEN invoice.status = 'sent' THEN 1 END) as "sentCount"`,
+        `COUNT(CASE WHEN invoice.status = 'overdue' THEN 1 END) as "overdueCount"`,
+        `COALESCE(SUM(CASE WHEN invoice.status IN ('sent', 'overdue') THEN invoice.total ELSE 0 END), 0) as "totalUnpaid"`,
+        `COALESCE(SUM(CASE WHEN invoice.status = 'overdue' THEN invoice.total ELSE 0 END), 0) as "totalOverdue"`,
+        'COALESCE(SUM(invoice.total), 0) as "totalAmount"',
       ])
-      .getRawOne<Record<string, string | undefined>>();
+      .getRawOne<InvoiceStatsRow>();
 
     // DIAGNOSTIC: Log the raw stats
     this.logger.log(
@@ -2719,8 +2734,8 @@ export class InvoicesService {
       .andWhere('invoice.paidAt IS NOT NULL')
       .andWhere('invoice.paidAt >= :startOfMonth', { startOfMonth })
       .andWhere('invoice.paidAt <= :endOfMonth', { endOfMonth })
-      .select('COALESCE(SUM(invoice.total), 0) as monthlyTotal')
-      .getRawOne<Record<string, string | undefined>>();
+      .select('COALESCE(SUM(invoice.total), 0) as "monthlyTotal"')
+      .getRawOne<{ monthlyTotal: string }>();
 
     // Issue #61: Null safety - ensure all values are numbers
     // Map to frontend expected format
