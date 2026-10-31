@@ -5,6 +5,7 @@ import { TrpcService } from '../trpc.service';
 import { TRPCError } from '@trpc/server';
 import { Injectable } from '@nestjs/common';
 import { InventoryService } from '../../inventory/inventory.service';
+import { errorMessage, errorStatus } from '../error-fields';
 
 @Injectable()
 export class InventoryRouter {
@@ -21,8 +22,8 @@ export class InventoryRouter {
         .query(async ({ input, ctx }) => {
           try {
             return await this.inventoryService.findOne(input.id, ctx.user.id);
-          } catch (error: any) {
-            if (error.status === 404) {
+          } catch (error: unknown) {
+            if (errorStatus(error) === 404) {
               throw new TRPCError({
                 code: 'NOT_FOUND',
                 message: 'Inventory item not found',
@@ -30,7 +31,7 @@ export class InventoryRouter {
             }
             throw new TRPCError({
               code: 'INTERNAL_SERVER_ERROR',
-              message: error.message || 'Failed to fetch inventory item',
+              message: errorMessage(error, 'Failed to fetch inventory item'),
             });
           }
         }),

@@ -5,6 +5,7 @@ import { TrpcService } from '../trpc.service';
 import { TRPCError } from '@trpc/server';
 import { Injectable } from '@nestjs/common';
 import { InvoicesService } from '../../invoices/invoices.service';
+import { errorMessage, errorStatus } from '../error-fields';
 
 // Zod schemas matching DTOs
 const InvoiceItemSchema = z.object({
@@ -107,8 +108,8 @@ export class InvoicesRouter {
         .query(async ({ input, ctx }) => {
           try {
             return await this.invoicesService.findOne(input.id, ctx.user.id);
-          } catch (error: any) {
-            if (error.status === 404) {
+          } catch (error: unknown) {
+            if (errorStatus(error) === 404) {
               throw new TRPCError({
                 code: 'NOT_FOUND',
                 message: 'Invoice not found',
@@ -116,7 +117,7 @@ export class InvoicesRouter {
             }
             throw new TRPCError({
               code: 'INTERNAL_SERVER_ERROR',
-              message: error.message || 'Failed to fetch invoice',
+              message: errorMessage(error, 'Failed to fetch invoice'),
             });
           }
         }),
@@ -127,10 +128,10 @@ export class InvoicesRouter {
         .mutation(async ({ input, ctx }) => {
           try {
             return await this.invoicesService.create(ctx.user.id, input);
-          } catch (error: any) {
+          } catch (error: unknown) {
             throw new TRPCError({
               code: 'BAD_REQUEST',
-              message: error.message || 'Failed to create invoice',
+              message: errorMessage(error, 'Failed to create invoice'),
             });
           }
         }),
@@ -150,8 +151,8 @@ export class InvoicesRouter {
               ctx.user.id,
               input.data,
             );
-          } catch (error: any) {
-            if (error.status === 404) {
+          } catch (error: unknown) {
+            if (errorStatus(error) === 404) {
               throw new TRPCError({
                 code: 'NOT_FOUND',
                 message: 'Invoice not found',
@@ -159,7 +160,7 @@ export class InvoicesRouter {
             }
             throw new TRPCError({
               code: 'BAD_REQUEST',
-              message: error.message || 'Failed to update invoice',
+              message: errorMessage(error, 'Failed to update invoice'),
             });
           }
         }),
@@ -171,8 +172,8 @@ export class InvoicesRouter {
           try {
             await this.invoicesService.remove(input.id, ctx.user.id);
             return { success: true };
-          } catch (error: any) {
-            if (error.status === 404) {
+          } catch (error: unknown) {
+            if (errorStatus(error) === 404) {
               throw new TRPCError({
                 code: 'NOT_FOUND',
                 message: 'Invoice not found',
@@ -180,7 +181,7 @@ export class InvoicesRouter {
             }
             throw new TRPCError({
               code: 'INTERNAL_SERVER_ERROR',
-              message: error.message || 'Failed to delete invoice',
+              message: errorMessage(error, 'Failed to delete invoice'),
             });
           }
         }),
@@ -199,8 +200,8 @@ export class InvoicesRouter {
               input.id,
               ctx.user.id,
             );
-          } catch (error: any) {
-            if (error.status === 404) {
+          } catch (error: unknown) {
+            if (errorStatus(error) === 404) {
               throw new TRPCError({
                 code: 'NOT_FOUND',
                 message: 'Invoice not found',
@@ -208,7 +209,7 @@ export class InvoicesRouter {
             }
             throw new TRPCError({
               code: 'BAD_REQUEST',
-              message: error.message || 'Failed to duplicate invoice',
+              message: errorMessage(error, 'Failed to duplicate invoice'),
             });
           }
         }),
