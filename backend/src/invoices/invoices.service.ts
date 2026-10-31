@@ -56,6 +56,22 @@ import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { QuotaExceededException } from '../common/exceptions/subscription.exception';
 import { MailService } from '../mail/mail.service';
 
+/** A tax or discount rate as stored: absent = 0, otherwise exactly as validated. */
+function storedRate(rate: unknown): number {
+  return rate === undefined || rate === null ? 0 : Number(rate);
+}
+
+/** One line's total with the shared invoice-money rules (throws 400 if invalid). */
+function recomputeLineTotal(item: {
+  quantity?: unknown;
+  unitPrice?: unknown;
+  taxRate?: unknown;
+  discountRate?: unknown;
+}): number {
+  const [line] = computeInvoiceTotalsCents([item]).lines;
+  return line.lineTotalCents / 100;
+}
+
 @Injectable()
 export class InvoicesService {
   private readonly logger = new Logger(InvoicesService.name);
@@ -796,14 +812,10 @@ export class InvoicesService {
             description: String(item.description || ''),
             quantity: Math.floor(Number(item.quantity)), // Must be integer for database column type 'int'
             unitPrice: Number(Number(item.unitPrice).toFixed(2)), // Use original unitPrice from item
-            taxRate:
-              item.taxRate !== undefined && item.taxRate !== null
-                ? Number(Number(item.taxRate).toFixed(2))
-                : 0,
-            discountRate:
-              item.discountRate !== undefined && item.discountRate !== null
-                ? Number(Number(item.discountRate).toFixed(2))
-                : 0,
+            // Stored as entered: the shared rules allow up to four decimals,
+            // the numeric(7,4) columns hold them, and the totals used them.
+            taxRate: storedRate(item.taxRate),
+            discountRate: storedRate(item.discountRate),
             lineTotal: centsToMoney(lineTotals.lineTotalCents), // Use calculated total from cents function
             invoiceId: String(savedInvoice.id),
           };
@@ -823,18 +835,8 @@ export class InvoicesService {
           this.logger.error(
             `CRITICAL: Item ${index} has invalid lineTotal before insert: ${item.lineTotal}`,
           );
-          // Force recalculate
-          const qty = Number(item.quantity) || 0;
-          const price = Number(item.unitPrice) || 0;
-          const tax = Number(item.taxRate || 0) || 0;
-          const discount = Number(item.discountRate || 0) || 0;
-          const subtotal = qty * price;
-          const disc = (subtotal * discount) / 100;
-          const afterDisc = subtotal - disc;
-          const taxAmount = (afterDisc * tax) / 100;
-          item.lineTotal = Number(
-            (Math.round((afterDisc + taxAmount) * 100) / 100).toFixed(2),
-          );
+          // Force recalculate (shared invoice-money rules)
+          item.lineTotal = recomputeLineTotal(item);
           this.logger.log(
             `Recalculated lineTotal for item ${index}: ${item.lineTotal}`,
           );
@@ -903,16 +905,8 @@ export class InvoicesService {
             finalLineTotal === undefined ||
             isNaN(finalLineTotal)
           ) {
-            // Recalculate lineTotal as a last resort
-            const qty = Number(val.quantity) || 0;
-            const price = Number(val.unitPrice) || 0;
-            const tax = Number(val.taxRate || 0) || 0;
-            const discount = Number(val.discountRate || 0) || 0;
-            const subtotal = qty * price;
-            const disc = (subtotal * discount) / 100;
-            const afterDisc = subtotal - disc;
-            const taxAmount = (afterDisc * tax) / 100;
-            finalLineTotal = Math.round((afterDisc + taxAmount) * 100) / 100;
+            // Recalculate lineTotal as a last resort (shared invoice-money rules)
+            finalLineTotal = recomputeLineTotal(val);
             this.logger.warn(
               `Final safety check: Recalculated lineTotal from ${val.lineTotal} to ${finalLineTotal}`,
             );
@@ -1533,14 +1527,9 @@ export class InvoicesService {
                 : '',
               quantity: quantity, // CRITICAL: Must be integer for database column type 'int'
               unitPrice: Number(Number(unitPrice).toFixed(2)),
-              taxRate:
-                item.taxRate !== undefined && item.taxRate !== null
-                  ? Number(Number(item.taxRate).toFixed(2))
-                  : 0,
-              discountRate:
-                item.discountRate !== undefined && item.discountRate !== null
-                  ? Number(Number(item.discountRate).toFixed(2))
-                  : 0,
+              // Stored as entered (up to four decimals; see create).
+              taxRate: storedRate(item.taxRate),
+              discountRate: storedRate(item.discountRate),
               lineTotal: centsToMoney(lineTotals.lineTotalCents), // Use calculated total from cents function
               invoiceId: id,
             };
@@ -1773,6 +1762,12 @@ export class InvoicesService {
       }
 
       Object.assign(invoice, updateData);
+      /* Lines are written separately (above). `invoice` still holds the lines it was
+         loaded with; saving it through that relation made TypeORM set "invoiceId" to
+         NULL on every line not in the stale list, i.e. on all newly written ones, so any
+         update with items failed (shown as "Invalid inventory item ID"). Save the
+         invoice row only. */
+      delete (invoice as Partial<Invoice>).items;
       const updatedInvoice = await queryRunner.manager.save(Invoice, invoice);
 
       // Reload with items to get fresh data

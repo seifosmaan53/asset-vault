@@ -9,7 +9,10 @@ import { InvoicesService } from '../../invoices/invoices.service';
 // Zod schemas matching DTOs
 const InvoiceItemSchema = z.object({
   inventoryItemId: z.string().uuid().optional(),
-  description: z.string().max(1000),
+  description: z
+    .string()
+    .max(1000)
+    .refine((d) => d.trim().length > 0, 'Description is required'),
   quantity: z.number().min(0),
   unitPrice: z.number().min(0),
   taxRate: z.number().min(0).max(100),

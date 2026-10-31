@@ -76,8 +76,8 @@ export class InvoicePdfService {
         </td>
         <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; text-align: right;">${item.quantity}</td>
         <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; text-align: right;">${this.formatCurrency(item.unitPrice, invoice.currency)}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; text-align: right;">${item.taxRate}%</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; text-align: right;">${item.discountRate || 0}%</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; text-align: right;">${Number(item.taxRate)}%</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; text-align: right;">${Number(item.discountRate || 0)}%</td>
         <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; text-align: right; font-weight: bold;">${this.formatCurrency(item.lineTotal, invoice.currency)}</td>
       </tr>
     `;
