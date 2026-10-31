@@ -132,7 +132,7 @@ describe('UsersService', () => {
         .mockResolvedValueOnce(makeUser({ clerkUserId: undefined }));
       (repo.save as jest.Mock)
         .mockRejectedValueOnce(dup)
-        .mockImplementationOnce((x) => x);
+        .mockImplementationOnce((x: unknown) => x);
 
       const result = await service.createFromClerk(payload);
 
