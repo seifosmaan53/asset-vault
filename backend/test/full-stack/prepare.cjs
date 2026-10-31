@@ -35,8 +35,12 @@ const instance = pair();
 const attacker = pair();
 
 writeFileSync(join(dir, 'jwt-public.pem'), instance.publicKey);
-writeFileSync(join(dir, 'jwt-private.pem'), instance.privateKey, { mode: 0o600 });
-writeFileSync(join(dir, 'attacker-private.pem'), attacker.privateKey, { mode: 0o600 });
+writeFileSync(join(dir, 'jwt-private.pem'), instance.privateKey, {
+  mode: 0o600,
+});
+writeFileSync(join(dir, 'attacker-private.pem'), attacker.privateKey, {
+  mode: 0o600,
+});
 
 // Synthetic users only (reserved .invalid domain). Shape = the fields the guard reads from Clerk's User.
 const user = (id, email, extra = {}) => ({
@@ -49,9 +53,24 @@ const user = (id, email, extra = {}) => ({
   ...extra,
 });
 const directory = {
-  user_fullstack_owner: user('user_fullstack_owner', 'owner@full-stack.invalid'),
-  user_fullstack_other: user('user_fullstack_other', 'other@full-stack.invalid'),
-  user_fullstack_banned: user('user_fullstack_banned', 'banned@full-stack.invalid', { banned: true }),
+  user_fullstack_owner: user(
+    'user_fullstack_owner',
+    'owner@full-stack.invalid',
+  ),
+  user_fullstack_other: user(
+    'user_fullstack_other',
+    'other@full-stack.invalid',
+  ),
+  user_fullstack_banned: user(
+    'user_fullstack_banned',
+    'banned@full-stack.invalid',
+    { banned: true },
+  ),
 };
-writeFileSync(join(dir, 'clerk-directory.json'), JSON.stringify(directory, null, 2));
-console.log(`wrote keys and ${Object.keys(directory).length} synthetic users to ${dir}`);
+writeFileSync(
+  join(dir, 'clerk-directory.json'),
+  JSON.stringify(directory, null, 2),
+);
+console.log(
+  `wrote keys and ${Object.keys(directory).length} synthetic users to ${dir}`,
+);

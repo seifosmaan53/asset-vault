@@ -14,7 +14,7 @@ function findImports(filePath, content) {
   const imports = [];
   const importRegex = /import\s+.*?\s+from\s+['"]([^'"]+)['"]/g;
   const requireRegex = /require\s*\(['"]([^'"]+)['"]\)/g;
-  
+
   let match;
   while ((match = importRegex.exec(content)) !== null) {
     imports.push(match[1]);
@@ -22,7 +22,7 @@ function findImports(filePath, content) {
   while ((match = requireRegex.exec(content)) !== null) {
     imports.push(match[1]);
   }
-  
+
   return imports;
 }
 
@@ -30,7 +30,7 @@ function resolveImport(importPath, fromFile) {
   if (importPath.startsWith('.')) {
     const dir = path.dirname(fromFile);
     let resolved = path.resolve(dir, importPath);
-    
+
     // Try .ts extension
     if (!resolved.endsWith('.ts') && !resolved.endsWith('.tsx')) {
       if (fs.existsSync(resolved + '.ts')) {
@@ -39,7 +39,7 @@ function resolveImport(importPath, fromFile) {
         resolved = path.join(resolved, 'index.ts');
       }
     }
-    
+
     return resolved;
   }
   return null; // External dependency
@@ -53,50 +53,50 @@ function checkFile(filePath, stack = []) {
     }
     return;
   }
-  
+
   if (visited.has(filePath)) {
     return;
   }
-  
+
   if (!fs.existsSync(filePath)) {
     return;
   }
-  
+
   visiting.add(filePath);
   stack.push(filePath);
-  
+
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
     const imports = findImports(filePath, content);
-    
+
     for (const imp of imports) {
       const resolved = resolveImport(imp, filePath);
       if (resolved && resolved.startsWith(srcDir)) {
         checkFile(resolved, [...stack]);
       }
     }
-  } catch (error) {
+  } catch {
     // Skip files that can't be read
   }
-  
+
   visiting.delete(filePath);
   visited.add(filePath);
 }
 
 function findAllTsFiles(dir, fileList = []) {
   const files = fs.readdirSync(dir);
-  
+
   for (const file of files) {
     const filePath = path.join(dir, file);
     const stat = fs.statSync(filePath);
-    
+
     if (stat.isDirectory() && !filePath.includes('node_modules')) {
       findAllTsFiles(filePath, fileList);
     } else if (file.endsWith('.ts') && !file.endsWith('.spec.ts')) {
       fileList.push(filePath);
     }
   }
-  
+
   return fileList;
 }
 
@@ -126,4 +126,3 @@ if (cycles.length > 0) {
   console.log('✅ No circular dependencies found!');
   process.exit(0);
 }
-
