@@ -209,6 +209,9 @@ describe('POST /user-settings/test-email (real app + real PostgreSQL + synthetic
     jest
       .spyOn(MailService.prototype, 'isValidSmtpHost')
       .mockImplementation((host: string) => host === '127.0.0.1');
+    jest
+      .spyOn(MailService.prototype, 'isAllowedSmtpAddress')
+      .mockImplementation((address: string) => address === '127.0.0.1');
     smtp = await startSyntheticSmtp({ user: 'alice', pass: 'right-pass' });
     h = await bootHarness();
     await cleanupSynthetic(h);
