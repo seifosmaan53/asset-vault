@@ -107,10 +107,11 @@ jobs:
         working-directory: ./frontend
         run: npm ci
 
+      # GATING since the error count reached 0 (224 -> 0; no rules disabled). Warnings
+      # (exhaustive-deps, fast-refresh exports, incompatible-library) are reported, not gating.
       - name: Lint
         working-directory: ./frontend
         run: npm run lint
-        continue-on-error: true
 
       - name: Build
         working-directory: ./frontend
