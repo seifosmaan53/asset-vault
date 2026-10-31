@@ -9,6 +9,7 @@ import { InventoryItem } from './entities/inventory-item.entity';
 import { UserSettingsService } from '../user-settings/user-settings.service';
 import { OrganizationsService } from '../organizations/organizations.service';
 import { User } from '../users/entities/user.entity';
+import { errorMessage } from './error-details.util';
 
 @Injectable()
 export class StoreAlertsService {
@@ -45,9 +46,9 @@ export class StoreAlertsService {
     for (const store of stores) {
       try {
         await this.checkStoreAlerts(store.userId);
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.error(
-          `Error checking alerts for store ${store.id}: ${error.message}`,
+          `Error checking alerts for store ${store.id}: ${errorMessage(error)}`,
           error,
         );
       }
@@ -232,7 +233,8 @@ export class StoreAlertsService {
       // For email notifications, we use the first org's settings
       const userOrgs =
         await this.organizationsService.getUserOrganizations(userId);
-      let userSettings: any = {};
+      // serializeSettings output; emailLowStockAlert is the low-stock opt-out.
+      let userSettings: Record<string, unknown> = {};
 
       if (userOrgs.length > 0) {
         try {
@@ -250,9 +252,10 @@ export class StoreAlertsService {
         );
       }
 
-      // Check if email notifications are enabled (default to true if not set)
-      if (userSettings?.emailNotifications === false) {
-        this.logger.log(`Email notifications disabled for user ${userId}`);
+      // The low-stock e-mail opt-out (Settings › Notifications; default on). This read a
+      // nonexistent emailNotifications key, so opting out never stopped these e-mails.
+      if (userSettings?.emailLowStockAlert === false) {
+        this.logger.log(`Low-stock alert e-mails disabled for user ${userId}`);
         return;
       }
 
@@ -286,9 +289,9 @@ export class StoreAlertsService {
           `Store alert: ${storeAlerts.length} item(s) need attention at ${store.name} (email functionality disabled)`,
         );
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
-        `Error sending alert notifications: ${error.message}`,
+        `Error sending alert notifications: ${errorMessage(error)}`,
         error,
       );
     }

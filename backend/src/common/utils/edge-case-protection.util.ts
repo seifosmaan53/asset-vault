@@ -58,7 +58,14 @@ function roundCents(x: number): number {
 
 /**
  * Validate string input (shape, length, pattern)
- * Prevents: null, undefined, empty strings, invalid formats
+ * Prevents: null, undefined, empty strings, invalid formats, objects and arrays
+ *
+ * Accepted input types: strings, plus numbers, booleans and bigints, which are converted with
+ * String() (e.g. 5 -> "5", true -> "true"). null/undefined mean "missing" (error when required,
+ * '' otherwise). Objects, arrays, functions and symbols are rejected with a BadRequestException
+ * ("<field> must be a string"): String() would turn them into "[object Object]" or a joined list
+ * and accept it - which is how a query-string object such as `q[a]=1` or a JSON body `{}` / `[]`
+ * would otherwise slip through as text.
  * Note: Does not sanitize for XSS - use sanitizeString() for HTML output if needed.
  * Note: SQL injection is prevented by parameterized queries/ORM bindings, not string validation.
  */
@@ -93,7 +100,16 @@ export function validateString(
     return '';
   }
 
-  // Convert to string
+  if (
+    typeof value !== 'string' &&
+    typeof value !== 'number' &&
+    typeof value !== 'boolean' &&
+    typeof value !== 'bigint'
+  ) {
+    throw new BadRequestException(`${fieldName} must be a string`);
+  }
+
+  // Convert to string (numbers, booleans and bigints keep their String() form)
   let str = String(value);
 
   // Trim if requested
@@ -573,7 +589,12 @@ export function validateUUID(
     return '';
   }
 
-  const str = String(value).trim();
+  // Only strings can be UUIDs. String() on an array or an object with its own toString could
+  // otherwise produce a valid-looking UUID (e.g. ['<uuid>']).
+  if (typeof value !== 'string') {
+    throw new BadRequestException(`${fieldName} must be a valid UUID`);
+  }
+  const str = value.trim();
   const uuidRegex =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -600,7 +621,10 @@ export function validateUUIDV4(
     return '';
   }
 
-  const str = String(value).trim();
+  if (typeof value !== 'string') {
+    throw new BadRequestException(`${fieldName} must be a valid UUID v4`);
+  }
+  const str = value.trim();
   // UUID v4: version 4 (4 in position 13), variant bits (8, 9, a, or b in position 17)
   const uuidV4Regex =
     /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -1126,7 +1150,12 @@ export function sanitizeString(value: string): string {
  * Ensure transaction safety - validate queryRunner is active
  * Handles both function and property forms of isTransactionActive (TypeORM versions vary)
  */
-export function ensureTransactionActive(queryRunner: any): void {
+export function ensureTransactionActive(
+  queryRunner:
+    | { isTransactionActive: boolean | (() => boolean) }
+    | null
+    | undefined,
+): void {
   if (!queryRunner) {
     throw new InternalServerErrorException(
       'Transaction queryRunner is required but not provided',

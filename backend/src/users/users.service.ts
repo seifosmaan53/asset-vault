@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, UserRole } from './entities/user.entity';
+import { driverErrorField } from '../inventory/error-details.util';
 
 @Injectable()
 export class UsersService {
@@ -44,9 +45,12 @@ export class UsersService {
 
     try {
       return await this.usersRepository.save(user);
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Handle duplicate email constraint violation
-      if (error.code === '23505' && error.constraint === 'UQ_users_email') {
+      if (
+        driverErrorField(error, 'code') === '23505' &&
+        driverErrorField(error, 'constraint') === 'UQ_users_email'
+      ) {
         // Email already exists, try to find and link
         const existingUser = await this.findByEmail(normalizedEmail);
         if (existingUser && !existingUser.clerkUserId) {

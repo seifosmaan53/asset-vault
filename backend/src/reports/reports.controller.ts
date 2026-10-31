@@ -8,6 +8,12 @@ import {
 import { ReportsService } from './reports.service';
 import { ReportFiltersDto } from './dto/report-filters.dto';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import type { Request as ExpressRequest } from 'express';
+import type { RequestUser } from '../auth/interfaces/request-user.interface';
+
+interface AuthenticatedRequest extends ExpressRequest {
+  user: RequestUser;
+}
 
 @ApiTags('reports')
 @ApiBearerAuth('Bearer')
@@ -29,7 +35,7 @@ export class ReportsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getProfitLossReport(
     @Query() filters: ReportFiltersDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.reportsService.generateProfitLossReport(
       req.user.userId,
@@ -49,7 +55,7 @@ export class ReportsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getSalesTrendsReport(
     @Query() filters: ReportFiltersDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.reportsService.generateSalesTrendsReport(
       req.user.userId,
@@ -69,7 +75,7 @@ export class ReportsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getClientSalesReport(
     @Query() filters: ReportFiltersDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.reportsService.generateClientSalesReport(
       req.user.userId,
@@ -80,16 +86,22 @@ export class ReportsController {
   @Get('inventory-valuation')
   @ApiOperation({
     summary: 'Generate Inventory Valuation report',
-    description: 'Generate a report showing current inventory value',
+    description:
+      'Generate a report showing current inventory value (defaultUnitPrice x quantity). Without storeId every item is valued at its overall stock; with storeId only that store is valued, at its store-level quantities.',
   })
   @ApiResponse({
     status: 200,
     description: 'Inventory Valuation report generated successfully',
   })
+  @ApiResponse({ status: 400, description: 'storeId is not a UUID' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({
+    status: 404,
+    description: 'storeId is not one of your stores (or it was deleted)',
+  })
   async getInventoryValuationReport(
     @Query() filters: ReportFiltersDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.reportsService.generateInventoryValuationReport(
       req.user.userId,
@@ -109,7 +121,7 @@ export class ReportsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getInvoiceAgingReport(
     @Query() filters: ReportFiltersDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.reportsService.generateInvoiceAgingReport(
       req.user.userId,
@@ -129,7 +141,7 @@ export class ReportsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getPaymentCollectionReport(
     @Query() filters: ReportFiltersDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.reportsService.generatePaymentCollectionReport(
       req.user.userId,

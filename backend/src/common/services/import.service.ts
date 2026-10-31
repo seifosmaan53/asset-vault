@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 
+/** One imported row: column header -> cell text ('' for an empty cell). */
+export type ImportRow = Record<string, string>;
+
 @Injectable()
 export class ImportService {
   private readonly logger = new Logger(ImportService.name);
@@ -8,7 +11,7 @@ export class ImportService {
   /**
    * Parse CSV file content
    */
-  parseCSV(content: string): any[] {
+  parseCSV(content: string): ImportRow[] {
     try {
       const lines = content.split('\n').filter((line) => line.trim());
       if (lines.length === 0) {
@@ -19,10 +22,10 @@ export class ImportService {
       const headers = this.parseCSVLine(lines[0]);
 
       // Parse rows
-      const rows: any[] = [];
+      const rows: ImportRow[] = [];
       for (let i = 1; i < lines.length; i++) {
         const values = this.parseCSVLine(lines[i]);
-        const row: any = {};
+        const row: ImportRow = {};
         headers.forEach((header, index) => {
           row[header] = values[index] || '';
         });
@@ -39,7 +42,7 @@ export class ImportService {
   /**
    * Parse Excel file buffer
    */
-  async parseExcel(buffer: Buffer): Promise<any[]> {
+  async parseExcel(buffer: Buffer): Promise<ImportRow[]> {
     try {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(buffer);
@@ -49,7 +52,7 @@ export class ImportService {
         return [];
       }
 
-      const rows: any[] = [];
+      const rows: ImportRow[] = [];
       const headers: string[] = [];
 
       // Get headers from first row
@@ -61,7 +64,7 @@ export class ImportService {
       worksheet.eachRow((row, rowNumber) => {
         if (rowNumber === 1) return; // Skip header row
 
-        const rowData: any = {};
+        const rowData: ImportRow = {};
         row.eachCell((cell, colNumber) => {
           const header = headers[colNumber - 1];
           if (header) {

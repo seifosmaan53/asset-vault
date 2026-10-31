@@ -10,7 +10,8 @@ import {
 import { Reflector } from '@nestjs/core';
 import { SubscriptionsService } from './subscriptions.service';
 import { IS_PUBLIC_KEY } from '../auth/public.decorator';
-import { RequestUser } from '../auth/interfaces/request-user.interface';
+import type { Request } from 'express';
+import { readRequestUserId } from './request-user.util';
 
 @Injectable()
 export class SubscriptionGuard implements CanActivate {
@@ -32,8 +33,8 @@ export class SubscriptionGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
-    const user = request.user as RequestUser;
+    const request = context.switchToHttp().getRequest<Request>();
+    const user = readRequestUserId(request.user);
 
     if (!user || !user.userId) {
       // If no user, let other guards handle it

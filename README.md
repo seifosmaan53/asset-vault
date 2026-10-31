@@ -147,7 +147,7 @@ A tRPC layer (four routers, `backend/src/trpc/`) exists on the server but the we
 | Joi | latest | Environment variable validation |
 
 ### Infrastructure
-- Docker Compose (Postgres + backend + frontend, with a `frontend-dev` hot-reload profile)
+- Docker Compose: Caddy TLS reverse proxy in front of the API and the nginx-served web app, plus Postgres (and a `frontend-dev` hot-reload profile)
 - Nginx for production frontend serving
 - 40 TypeORM migrations applied via a custom migration-runner script
 
@@ -212,7 +212,7 @@ cd frontend && npm test
 - The `users` page and API client in `frontend/src` are not routed or linked from the UI.
 - The unit suite uses mocked repositories. Against a real database, the integration tests cover access control and invoice totals, rates and limits (`test/invoice-money.db.spec.ts`), but not stock arithmetic.
 - Every currency is handled with two decimal places (JPY and KWD included). This is an existing limitation, not a deliberate currency policy; see [docs/INVOICE-MONEY.md](docs/INVOICE-MONEY.md).
-- CI builds the Docker images and smoke-tests the frontend image, but the full Compose stack (API with a database and Clerk) is not run.
+- CI runs the Compose stack behind its TLS proxy with dummy Clerk keys (HTTPS, redirects, CORS, migrations, graceful stop), but signing in through a real Clerk instance is not tested.
 
 **Deployment and recovery.** These fixes are merged into the repository; the application was not deployed as part of this work and no deployment of it is known. If you deploy it and a release fails, do **not** treat redeploying the code from before this change as a rollback: that code accepted unsigned tokens and exposed other accounts' data, so it restores the vulnerabilities. Keep access restricted instead:
 1. Keep the failed release out of service (stop it, or leave the load balancer or DNS pointing away from it) rather than serving it half-configured.
@@ -220,6 +220,7 @@ cd frontend && npm test
 3. If service must be restored before a fix is ready, restore a build that contains the token-verification fix, or serve a maintenance response. Never serve a build older than this change.
 4. After any incident, rotate `CLERK_SECRET_KEY` if it may have been exposed, and review access logs for the exposure window.
 5. **Migrations.** Release in this order: back up the database, apply migrations with the production image (`docker run --rm --env-file api.env <backend image> node dist/database/migration-runner.js`), start the API, verify `/api/v1/health`. The API never migrates by itself: it refuses to start (exit 1, naming the pending migrations and that command) while any are pending, and when the database is unreachable. Recovery is restoring the pre-migration backup or fixing forward, **not** reverting: the `down` of `1761000000000` (invoice line rates to `numeric(7,4)`) rounds rates back to two decimals and loses any precision stored since. Exact commands: [docs/operations/MIGRATIONS.md](docs/operations/MIGRATIONS.md); scripted sequence: [docs/operations/release.sh](docs/operations/release.sh).
+6. **Proxy, shutdown, CORS.** Serve the API only behind a TLS proxy that overwrites `X-Forwarded-*`, and name it in `TRUST_PROXY` (default: trust nothing; a hop count or the proxy's addresses; `true` is refused). In production plain HTTP is redirected to `API_PUBLIC_URL` / `FRONTEND_URL`, never to the request's `Host`. CORS allows exactly `FRONTEND_URL`; any other `Origin` gets a 403 JSON. On SIGTERM the API finishes in-flight requests and exits 0 within `SHUTDOWN_TIMEOUT_MS` (default 8000 ms, else exit 1), so give your orchestrator a longer stop grace period. Details: [docs/setup/DOCKER_README.md](docs/setup/DOCKER_README.md#server-settings).
 
 ---
 
@@ -237,9 +238,9 @@ docker compose up -d --build
 The API container exits until the schema is migrated (it logs the pending migrations). Apply them with the image's own runner, then start it again:
 ```bash
 docker compose run --rm backend node dist/database/migration-runner.js
-docker compose up -d backend
+docker compose up -d --wait
 ```
-Open [http://localhost](http://localhost). See [docs/operations/MIGRATIONS.md](docs/operations/MIGRATIONS.md) and [docs/setup/DOCKER_README.md](docs/setup/DOCKER_README.md).
+Open **[https://localhost](https://localhost)**: that is the only browser-usable entry point. A Caddy reverse proxy terminates TLS (with a certificate from its own local CA by default; trust it or accept the warning, see [DOCKER_README](docs/setup/DOCKER_README.md#tls)) and routes `/api/*` to the API and everything else to the web app; `http://localhost` redirects to HTTPS. The API and nginx publish no ports: the API runs in production mode, enforces HTTPS and trusts forwarded headers only from the proxy, so it is not usable directly over plain HTTP. See [docs/operations/MIGRATIONS.md](docs/operations/MIGRATIONS.md) and [docs/setup/DOCKER_README.md](docs/setup/DOCKER_README.md).
 
 ### Option 2 — Local Development
 ```bash
@@ -362,9 +363,11 @@ cd backend && npm run build
 cd backend && npm run start:prod
 ```
 
-Or with Docker:
+Or with Docker, behind the TLS proxy (then open https://localhost; see Quick Start):
 ```bash
-docker compose up -d
+docker compose up -d --build
+docker compose run --rm backend node dist/database/migration-runner.js
+docker compose up -d --wait
 ```
 
 ---

@@ -15,6 +15,15 @@ import {
   sanitizeUrl,
 } from '../common/utils/security.util';
 import { ImportService } from '../common/services/import.service';
+import {
+  errorMessage,
+  driverErrorField,
+} from '../inventory/error-details.util';
+import {
+  type ImportRow,
+  firstFilled,
+  toImportRows,
+} from '../inventory/import-rows.util';
 
 @Injectable()
 export class ClientsService {
@@ -512,7 +521,7 @@ export class ClientsService {
       setImmediate(() => {
         void this.verifyRemovedFromFindAll(id, actorUserId);
       });
-    } catch (error) {
+    } catch (error: unknown) {
       // Rollback transaction on any error, but only if transaction was started
       if (transactionStarted) {
         try {
@@ -532,7 +541,7 @@ export class ClientsService {
 
       // Handle database errors
       this.logger.error(`remove: Error deleting client ${id}`, error);
-      if (error.code === '23503') {
+      if (driverErrorField(error, 'code') === '23503') {
         // Foreign key constraint violation
         throw new NotFoundException(
           'Cannot delete client: has associated records',
@@ -602,13 +611,13 @@ export class ClientsService {
       try {
         await this.remove(id, actorUserId);
         deleted++;
-      } catch (error: any) {
+      } catch (error: unknown) {
         this.logger.warn(
-          `bulkRemove: Failed to delete client ${id}: ${error.message}`,
+          `bulkRemove: Failed to delete client ${id}: ${errorMessage(error)}`,
         );
         failed.push({
           id,
-          reason: error.message || 'Unknown error',
+          reason: errorMessage(error) || 'Unknown error',
         });
       }
     }
@@ -625,29 +634,33 @@ export class ClientsService {
     actorUserId: string,
   ): Promise<{
     created: number;
-    failed: Array<{ row: number; data: any; errors: string[] }>;
+    failed: Array<{ row: number; data: ImportRow; errors: string[] }>;
   }> {
     this.logger.debug(
       `importFromFile: Starting import for user ${actorUserId}`,
     );
 
-    let rows: any[];
+    let rows: ImportRow[];
 
     try {
       // Parse file based on extension
       const ext = file.originalname.split('.').pop()?.toLowerCase();
       if (ext === 'csv') {
-        rows = this.importService.parseCSV(file.buffer.toString('utf-8'));
+        rows = toImportRows(
+          this.importService.parseCSV(file.buffer.toString('utf-8')),
+        );
       } else if (ext === 'xlsx' || ext === 'xls') {
-        rows = await this.importService.parseExcel(file.buffer);
+        rows = toImportRows(await this.importService.parseExcel(file.buffer));
       } else {
         throw new BadRequestException(
           'Unsupported file format. Please upload CSV or Excel file.',
         );
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('importFromFile: Failed to parse file', error);
-      throw new BadRequestException(`Failed to parse file: ${error.message}`);
+      throw new BadRequestException(
+        `Failed to parse file: ${errorMessage(error)}`,
+      );
     }
 
     if (rows.length === 0) {
@@ -656,7 +669,8 @@ export class ClientsService {
       );
     }
 
-    const failed: Array<{ row: number; data: any; errors: string[] }> = [];
+    const failed: Array<{ row: number; data: ImportRow; errors: string[] }> =
+      [];
     let created = 0;
 
     // Process imports in batches to avoid overwhelming the database
@@ -668,17 +682,17 @@ export class ClientsService {
         try {
           // Map common column names to client fields
           const clientData: Partial<Client> = {
-            name: row.name || row.Name || row['Client Name'] || '',
-            email: row.email || row.Email || row['Email Address'] || undefined,
-            phone: row.phone || row.Phone || row['Phone Number'] || undefined,
-            notes:
-              row.notes || row.Notes || row['Additional Notes'] || undefined,
+            name: firstFilled(row, 'name', 'Name', 'Client Name') || '',
+            email: firstFilled(row, 'email', 'Email', 'Email Address'),
+            phone: firstFilled(row, 'phone', 'Phone', 'Phone Number'),
+            notes: firstFilled(row, 'notes', 'Notes', 'Additional Notes'),
             addressJson: {
-              street: row.street || row.Street || row['Street Address'] || '',
-              city: row.city || row.City || '',
-              state: row.state || row.State || '',
-              zip: row.zip || row.ZIP || row['Zip Code'] || '',
-              country: row.country || row.Country || '',
+              street:
+                firstFilled(row, 'street', 'Street', 'Street Address') || '',
+              city: firstFilled(row, 'city', 'City') || '',
+              state: firstFilled(row, 'state', 'State') || '',
+              zip: firstFilled(row, 'zip', 'ZIP', 'Zip Code') || '',
+              country: firstFilled(row, 'country', 'Country') || '',
             },
           };
 
@@ -695,11 +709,11 @@ export class ClientsService {
           // Create client
           await this.create(actorUserId, clientData);
           created++;
-        } catch (error: any) {
+        } catch (error: unknown) {
           failed.push({
             row: i + batch.indexOf(row) + 2,
             data: row,
-            errors: [error.message || 'Unknown error'],
+            errors: [errorMessage(error) || 'Unknown error'],
           });
         }
       }

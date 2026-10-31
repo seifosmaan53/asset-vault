@@ -71,7 +71,8 @@ describe('stored SMTP password', () => {
         path.join(__dirname, '..', 'mail', 'mail.service.ts'),
         'utf8',
       );
-      expect(mail).toContain("this.configService.get('SMTP_PASS')");
+      // Typed or untyped get(): what matters is that the credential comes from configuration.
+      expect(mail).toMatch(/this\.configService\.get(<[^>]+>)?\('SMTP_PASS'\)/);
       expect(MailService).toBeDefined();
     });
 

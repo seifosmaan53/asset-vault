@@ -10,6 +10,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import type { AuthenticatedRequest } from '../users/interfaces/authenticated-request.interface';
 import { ApiKeysService } from './api-keys.service';
 import { CreateApiKeyDto, UpdateApiKeyDto } from './dto';
 import { Roles } from '../auth/roles.decorator';
@@ -23,17 +24,20 @@ export class ApiKeysController {
   constructor(private readonly apiKeysService: ApiKeysService) {}
 
   @Get()
-  findAll(@Request() req) {
+  findAll(@Request() req: AuthenticatedRequest) {
     return this.apiKeysService.findAll(req.user.userId);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @Request() req) {
+  findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.apiKeysService.findOne(id, req.user.userId);
   }
 
   @Post()
-  create(@Body() createDto: CreateApiKeyDto, @Request() req) {
+  create(
+    @Body() createDto: CreateApiKeyDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
     const result = this.apiKeysService.create(req.user.userId, createDto);
     return result;
   }
@@ -42,19 +46,19 @@ export class ApiKeysController {
   update(
     @Param('id') id: string,
     @Body() updateDto: UpdateApiKeyDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     const result = this.apiKeysService.update(id, req.user.userId, updateDto);
     return result;
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @Request() req) {
+  remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.apiKeysService.remove(id, req.user.userId);
   }
 
   @Get(':id/usage')
-  getUsage(@Param('id') id: string, @Request() req) {
+  getUsage(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.apiKeysService.findOne(id, req.user.userId);
   }
 }

@@ -1,0 +1,35 @@
+# Asset Vault TLS reverse proxy: the `proxy` service in docker-compose.yml.
+#
+#   https://<SITE_ADDRESS>/api/*  -> backend:3000  (the API and its Swagger UI at /api/docs)
+#   https://<SITE_ADDRESS>/*      -> frontend:80   (the built web app)
+#   http://<SITE_ADDRESS>/*       -> 308 redirect to https (Caddy's automatic HTTPS)
+#
+# Certificates (docs/setup/DOCKER_README.md, "TLS"):
+#   CADDY_TLS=internal (default): Caddy's own local CA issues a certificate for SITE_ADDRESS
+#     (default localhost). For development and CI only; browsers warn until you trust
+#     /data/caddy/pki/authorities/local/root.crt from the proxy container.
+#   CADDY_TLS=<your e-mail>: a publicly trusted certificate from Let's Encrypt / ZeroSSL via ACME.
+#     SITE_ADDRESS must be a real DNS name pointing at this host, with ports 80 and 443 reachable.
+{
+	# Nothing in the stack uses the admin API.
+	admin off
+	# Do not try to install the local CA into the container's own trust store.
+	skip_install_trust
+}
+
+{$SITE_ADDRESS:localhost} {
+	tls {$CADDY_TLS:internal}
+
+	# Caddy sets X-Forwarded-For / -Proto / -Host itself and ignores any values a client sends
+	# (no trusted_proxies here). The API trusts exactly one hop (TRUST_PROXY=1), i.e. this proxy,
+	# so the forwarded values it acts on are always the ones Caddy wrote.
+	handle /api/* {
+		reverse_proxy backend:3000
+	}
+
+	handle {
+		reverse_proxy frontend:80
+	}
+
+	log
+}

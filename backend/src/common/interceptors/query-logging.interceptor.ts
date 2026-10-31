@@ -12,6 +12,7 @@ import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { DataSource } from 'typeorm';
 import { getDataSourceToken } from '@nestjs/typeorm';
+import type { Request } from 'express';
 
 /**
  * Query Execution Plan Logging Interceptor
@@ -25,7 +26,7 @@ export class QueryLoggingInterceptor implements NestInterceptor {
   constructor(@Inject(getDataSourceToken()) private dataSource: DataSource) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<Request>();
     const startTime = Date.now();
 
     return next.handle().pipe(
@@ -43,11 +44,11 @@ export class QueryLoggingInterceptor implements NestInterceptor {
             // This would require hooking into TypeORM's query execution
           }
         },
-        error: (error) => {
+        error: (error: unknown) => {
           const duration = Date.now() - startTime;
           this.logger.error(
             `Request failed after ${duration}ms: ${request.method} ${request.url}`,
-            error.stack,
+            error instanceof Error ? error.stack : undefined,
           );
         },
       }),

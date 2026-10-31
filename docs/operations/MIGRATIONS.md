@@ -34,7 +34,7 @@ docker run --rm --env-file api.env <backend image> node dist/database/migration-
 `--network <network>` when the database is another container). Equivalents:
 
 ```bash
-docker compose run --rm backend node dist/database/migration-runner.js   # Compose stack
+docker compose run --rm backend node dist/database/migration-runner.js   # Compose stack (behind the proxy)
 npm run migration:run:prod     # inside the image or any compiled build (same file)
 cd backend && npm run migration:run   # source checkout, ts-node (dev dependencies)
 ```
@@ -53,7 +53,9 @@ What it does:
 ## Release order
 
 `docs/operations/release.sh <image> <env file>` performs steps 1–4 and stops at the first
-failure (CI runs it on every pull request; see the `migration-release` job). By hand:
+failure (CI runs it on every pull request; see the `migration-release` job). Its env file must
+set `TRUST_PROXY` to something that trusts loopback (`1`, or e.g. `loopback,<proxy address>`):
+step 4 probes the API from inside its container. By hand:
 
 ### 1. Back up
 
@@ -69,7 +71,12 @@ docker run --rm --env-file api.env -v "$PWD/backups:/backup" postgres:16-alpine 
 ```
 
 Stop the old API before migrating if it must not write during the window (anything written
-after the backup is not in it).
+after the backup is not in it). Stopping is graceful: on SIGTERM (`docker stop`,
+`docker compose stop backend`) the API refuses new connections, lets in-flight requests finish
+for up to `SHUTDOWN_TIMEOUT_MS` (default 8000 ms), closes its database pool and exits 0; past
+the bound it exits 1. Give the container runtime a stop timeout longer than that bound
+(`docker stop -t 15`; Compose sets `stop_grace_period: 15s`), or it SIGKILLs mid-request.
+While the API is stopped the TLS proxy answers `/api/*` with 502.
 
 ### 2. Migrate
 
@@ -82,19 +89,30 @@ release serving (or keep the API down), read the error, then fix forward (below)
 
 ### 3. Start the API
 
-Start the new image as usual (`docker compose up -d backend`, or your orchestrator). If it
-exits 1 with `schema is not current`, step 2 was skipped or ran against a different database.
+Start the new image as usual (`docker compose up -d --wait backend`, or your orchestrator),
+behind the TLS proxy. The schema check runs before anything else, also in the proxied Compose
+stack: if it exits 1 with `schema is not current`, step 2 was skipped or ran against a different
+database, and the proxy keeps answering 502 for `/api/*`.
+
+The API's environment must name the proxy: `TRUST_PROXY` (which peers' `X-Forwarded-*` headers
+are believed; default none, Compose uses `1`), `FRONTEND_URL` (the one CORS origin) and,
+if the API has its own host name, `API_PUBLIC_URL` (where plain HTTP is redirected). See
+[docs/setup/DOCKER_README.md](../setup/DOCKER_README.md#server-settings).
 
 ### 4. Verify
 
 ```bash
-curl -fsS -H 'X-Forwarded-Proto: https' http://<api host>:3000/api/v1/health   # {"status":"ok",…}
+curl -fsS https://<public host>/api/v1/health                 # through the proxy: {"status":"ok",…}
+docker exec <api container> node dist/server/healthcheck.js    # inside the container, same check
 psql … -c 'select name from migrations order by id desc limit 3'
 psql … -c "select column_name, numeric_precision, numeric_scale from information_schema.columns
            where table_name = 'invoice_items' and column_name in ('taxRate', 'discountRate')"
 ```
 
-(In production the API redirects plain HTTP to HTTPS; the header stands in for the TLS proxy.)
+In production the API redirects plain HTTP to HTTPS and believes `X-Forwarded-Proto: https`
+only from a trusted peer, so `curl -H 'X-Forwarded-Proto: https' http://<api host>:3000/…` from
+another machine gets a 301 to the configured origin. The in-container probe connects over
+loopback, which `TRUST_PROXY=1` or a list containing `loopback` trusts. (`release.sh` uses it.)
 For `1761000000000` the last query shows `7, 4` for both columns.
 
 ## Recovery

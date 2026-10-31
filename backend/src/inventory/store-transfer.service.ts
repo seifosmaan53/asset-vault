@@ -12,6 +12,7 @@ import { StockMovement } from './entities/stock-movement.entity';
 import { StoreItemSettingsService } from './store-item-settings.service';
 import { InventoryService } from './inventory.service';
 import { CreateStoreTransferDto } from './dto/store-transfer.dto';
+import { errorMessage } from './error-details.util';
 // Organizations removed - buildOrgScopedWhere no longer needed
 
 @Injectable()
@@ -175,10 +176,10 @@ export class StoreTransferService {
         fromMovement: savedFromMovement,
         toMovement: savedToMovement,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       // Rollback transaction on error
       await queryRunner.rollbackTransaction();
-      this.logger.error(`Stock transfer failed: ${error.message}`, error);
+      this.logger.error(`Stock transfer failed: ${errorMessage(error)}`, error);
       throw error;
     } finally {
       // Release query runner

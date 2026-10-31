@@ -13,7 +13,10 @@ import { createClerkClient, verifyToken } from '@clerk/backend';
 import { IS_PUBLIC_KEY } from './public.decorator';
 import { UsersService } from '../users/users.service';
 import { OrganizationsService } from '../organizations/organizations.service';
-import { RequestUser } from './interfaces/request-user.interface';
+import type {
+  GuardRequest,
+  RequestUser,
+} from './interfaces/request-user.interface';
 
 @Injectable()
 export class ClerkAuthGuard implements CanActivate {
@@ -51,7 +54,7 @@ export class ClerkAuthGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<GuardRequest>();
     const authHeader = request.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -113,7 +116,9 @@ export class ClerkAuthGuard implements CanActivate {
       }
 
       // FIX Issue #169: Additional validation - check if user is banned or deleted
-      if (clerkUser.banned || (clerkUser as any).lockoutExpiresIn) {
+      // `locked` is the SDK's lockout flag (the previous `lockoutExpiresIn` is not a field of
+      // the User resource, so locked accounts were never refused).
+      if (clerkUser.banned || clerkUser.locked) {
         this.logger.warn(`User ${decoded.sub} is banned or locked out`);
         throw new UnauthorizedException('User account is not active');
       }

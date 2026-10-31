@@ -11,6 +11,7 @@ import { UserSettings } from '../user-settings/entities/user-settings.entity';
 import { Store } from '../inventory/entities/store.entity';
 import { StoreItemSettings } from '../inventory/entities/store-item-settings.entity';
 import { ApiKey } from '../api-keys/entities/api-key.entity';
+import { runScript } from './run-script';
 
 config();
 
@@ -206,4 +207,4 @@ async function clearDemoData() {
   }
 }
 
-clearDemoData();
+runScript(clearDemoData);

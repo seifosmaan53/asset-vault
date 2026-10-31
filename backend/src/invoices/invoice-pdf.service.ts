@@ -5,6 +5,11 @@ import { Invoice } from './entities/invoice.entity';
 import { UserSettingsService } from '../user-settings/user-settings.service';
 import { PuppeteerService } from '../common/services/puppeteer.service';
 import { format, parseISO, isValid } from 'date-fns';
+import {
+  type SerializedSettings,
+  settingBoolean,
+  settingString,
+} from './utils/settings-fields.util';
 
 @Injectable()
 export class InvoicePdfService {
@@ -65,7 +70,10 @@ export class InvoicePdfService {
     }
   }
 
-  private buildInvoiceHtml(invoice: Invoice, settings?: any): string {
+  private buildInvoiceHtml(
+    invoice: Invoice,
+    settings?: SerializedSettings,
+  ): string {
     const itemsHtml =
       invoice.items
         ?.map((item) => {
@@ -87,20 +95,23 @@ export class InvoicePdfService {
 
     // Use company info from settings, fallback to user entity
     const companyName =
-      settings?.companyName ||
+      settingString(settings, 'companyName') ||
       invoice.user?.companyName ||
       invoice.user?.name ||
       'Asset Vault';
-    const companyAddress = settings?.companyAddress || '';
-    const companyPhone = settings?.companyPhone || '';
-    const companyEmail = settings?.companyEmail || '';
-    const companyWebsite = settings?.companyWebsite || '';
-    const companyTaxId = settings?.companyTaxId || '';
-    const companyRegistrationNumber = settings?.companyRegistrationNumber || '';
-    const companyVatNumber = settings?.companyVatNumber || '';
+    const companyAddress = settingString(settings, 'companyAddress') || '';
+    const companyPhone = settingString(settings, 'companyPhone') || '';
+    const companyEmail = settingString(settings, 'companyEmail') || '';
+    const companyWebsite = settingString(settings, 'companyWebsite') || '';
+    const companyTaxId = settingString(settings, 'companyTaxId') || '';
+    const companyRegistrationNumber =
+      settingString(settings, 'companyRegistrationNumber') || '';
+    const companyVatNumber = settingString(settings, 'companyVatNumber') || '';
 
     // Use date format from settings
-    const dateFormat = this.getDateFormat(settings?.dateFormat);
+    const dateFormat = this.getDateFormat(
+      settingString(settings, 'dateFormat'),
+    );
     const issueDate = this.formatDate(invoice.issueDate, dateFormat);
     const dueDate = invoice.dueDate
       ? this.formatDate(invoice.dueDate, dateFormat)
@@ -110,10 +121,14 @@ export class InvoicePdfService {
       : null;
 
     // Invoice customization
-    const invoiceHeaderText = settings?.invoiceHeaderText || '';
-    const invoiceFooterText = settings?.invoiceFooterText || '';
-    const showWatermark = settings?.showInvoiceWatermark || false;
-    const watermarkText = settings?.invoiceWatermarkText || 'DRAFT';
+    const invoiceHeaderText =
+      settingString(settings, 'invoiceHeaderText') || '';
+    const invoiceFooterText =
+      settingString(settings, 'invoiceFooterText') || '';
+    const showWatermark =
+      settingBoolean(settings, 'showInvoiceWatermark') || false;
+    const watermarkText =
+      settingString(settings, 'invoiceWatermarkText') || 'DRAFT';
     const showInvoiceNumber = settings?.showInvoiceNumberOnPDF !== false;
 
     const clientAddress = invoice.client?.addressJson

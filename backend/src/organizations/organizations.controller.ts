@@ -10,6 +10,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import type { AuthenticatedRequest } from '../users/interfaces/authenticated-request.interface';
 import { OrganizationsService } from './organizations.service';
 import { OrganizationRole } from './entities/organization-role.enum';
 import { Roles } from '../auth/roles.decorator';
@@ -64,7 +65,10 @@ export class OrganizationsController {
   constructor(private readonly organizationsService: OrganizationsService) {}
 
   @Post()
-  async create(@Request() req, @Body() dto: CreateOrganizationDto) {
+  async create(
+    @Request() req: AuthenticatedRequest,
+    @Body() dto: CreateOrganizationDto,
+  ) {
     const result = await this.organizationsService.create(
       dto.name,
       req.user.userId,
@@ -74,12 +78,12 @@ export class OrganizationsController {
   }
 
   @Get()
-  async findAll(@Request() req) {
+  async findAll(@Request() req: AuthenticatedRequest) {
     return this.organizationsService.findAll(req.user.userId);
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string, @Request() req) {
+  async findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.organizationsService.findOne(id, req.user.userId);
   }
 
@@ -87,7 +91,7 @@ export class OrganizationsController {
   @Roles(UserRole.ADMIN, UserRole.OWNER) // FIX Issue #44: Only ADMIN/OWNER can update organizations
   async update(
     @Param('id') id: string,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: UpdateOrganizationDto,
   ) {
     const result = await this.organizationsService.update(
@@ -100,14 +104,17 @@ export class OrganizationsController {
 
   @Delete(':id')
   @Roles(UserRole.OWNER) // FIX Issue #44: Only OWNER can delete organizations
-  async remove(@Param('id') id: string, @Request() req) {
+  async remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     await this.organizationsService.delete(id, req.user.userId);
     return { message: 'Organization deleted successfully' };
   }
 
   @Get(':id/users')
   @Roles(UserRole.ADMIN, UserRole.OWNER) // FIX Issue #44: Only ADMIN/OWNER can view organization users
-  async getUsers(@Param('id') id: string, @Request() req) {
+  async getUsers(
+    @Param('id') id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.organizationsService.getOrganizationUsers(id, req.user.userId);
   }
 
@@ -115,7 +122,7 @@ export class OrganizationsController {
   @Roles(UserRole.ADMIN, UserRole.OWNER) // FIX Issue #44: Only ADMIN/OWNER can add users to organizations
   async addUser(
     @Param('id') id: string,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: AddUserToOrganizationDto,
   ) {
     const result = await this.organizationsService.addUserToOrganization(
@@ -132,7 +139,7 @@ export class OrganizationsController {
   async updateUserRole(
     @Param('id') id: string,
     @Param('userId') userId: string,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: UpdateUserRoleDto,
   ) {
     const result = await this.organizationsService.updateUserRole(
@@ -149,7 +156,7 @@ export class OrganizationsController {
   async removeUser(
     @Param('id') id: string,
     @Param('userId') userId: string,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     await this.organizationsService.removeUserFromOrganization(
       id,
@@ -160,7 +167,7 @@ export class OrganizationsController {
   }
 
   @Get('user/my-organizations')
-  async getMyOrganizations(@Request() req) {
+  async getMyOrganizations(@Request() req: AuthenticatedRequest) {
     // Ensure user has an organization (creates one if missing)
     // This handles edge cases where guard didn't create it or webhook failed
     await this.organizationsService.ensureUserHasOrganization(req.user.userId);

@@ -26,13 +26,18 @@ const Module = require('node:module');
 const { readFileSync } = require('node:fs');
 
 if (process.env.FULL_STACK_CLERK_STUB !== '1') {
-  throw new Error('clerk-users-stub: refusing to load without FULL_STACK_CLERK_STUB=1');
+  throw new Error(
+    'clerk-users-stub: refusing to load without FULL_STACK_CLERK_STUB=1',
+  );
 }
 if (!/^sk_test_/.test(process.env.CLERK_SECRET_KEY || '')) {
-  throw new Error('clerk-users-stub: refusing to load with a non-test CLERK_SECRET_KEY');
+  throw new Error(
+    'clerk-users-stub: refusing to load with a non-test CLERK_SECRET_KEY',
+  );
 }
 const directoryPath = process.env.FULL_STACK_CLERK_DIRECTORY;
-if (!directoryPath) throw new Error('clerk-users-stub: FULL_STACK_CLERK_DIRECTORY is not set');
+if (!directoryPath)
+  throw new Error('clerk-users-stub: FULL_STACK_CLERK_DIRECTORY is not set');
 
 const lookups = { found: 0, missing: 0 };
 
@@ -60,20 +65,34 @@ Module._load = function load(request, parent, isMain) {
     patched = Object.create(null);
     for (const key of Object.keys(exported)) {
       if (key === 'createClerkClient') continue;
-      Object.defineProperty(patched, key, { enumerable: true, get: () => exported[key] });
+      Object.defineProperty(patched, key, {
+        enumerable: true,
+        get: () => exported[key],
+      });
     }
     Object.defineProperty(patched, 'createClerkClient', {
       enumerable: true,
       value: (options) => {
         const client = exported.createClerkClient(options);
         // Only users.getUser is replaced; the rest of client.users and the client stay real.
-        const users = Object.create(client.users, { getUser: { value: getUser } });
-        return new Proxy(client, { get: (target, prop, receiver) => (prop === 'users' ? users : Reflect.get(target, prop, receiver)) });
+        const users = Object.create(client.users, {
+          getUser: { value: getUser },
+        });
+        return new Proxy(client, {
+          get: (target, prop, receiver) =>
+            prop === 'users' ? users : Reflect.get(target, prop, receiver),
+        });
       },
     });
-    process.stderr.write('[clerk-users-stub] users.getUser() is served from ' + directoryPath + '\n');
+    process.stderr.write(
+      '[clerk-users-stub] users.getUser() is served from ' +
+        directoryPath +
+        '\n',
+    );
     process.on('exit', () =>
-      process.stderr.write(`[clerk-users-stub] lookups: ${lookups.found} found, ${lookups.missing} missing\n`),
+      process.stderr.write(
+        `[clerk-users-stub] lookups: ${lookups.found} found, ${lookups.missing} missing\n`,
+      ),
     );
   }
   return patched;

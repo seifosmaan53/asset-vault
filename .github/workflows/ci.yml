@@ -60,8 +60,9 @@ jobs:
 
       - name: Lint
         working-directory: ./backend
+        # GATING. 0 errors and 0 warnings across src, test, scripts and the CommonJS test
+        # helpers (eslint.config.mjs documents the one narrow exception for plain JS files).
         run: npm run lint -- --max-warnings=0
-        continue-on-error: true
 
       - name: Build
         working-directory: ./backend
@@ -261,8 +262,18 @@ jobs:
         run: |
           docker compose config --quiet
           docker compose config --services
-          test "$(docker compose config --services | sort | tr '\n' ' ')" = 'backend frontend postgres '
+          test "$(docker compose config --services | sort | tr '\n' ' ')" = 'backend frontend postgres proxy '
           test "$(docker compose --profile dev config --services | grep -c frontend-dev)" = 1
+          # Only the TLS proxy publishes ports on all interfaces; PostgreSQL only on loopback.
+          docker compose config --format json > compose.json
+          node -e '
+            const c = require("./compose.json").services;
+            const published = (s) => (c[s].ports || []).map((p) => `${p.host_ip || "0.0.0.0"}:${p.published}`);
+            for (const s of ["backend", "frontend"]) if (published(s).length) throw new Error(`${s} publishes ${published(s)}`);
+            if (published("proxy").sort().join() !== "0.0.0.0:443,0.0.0.0:80") throw new Error(`proxy publishes ${published("proxy")}`);
+            if (published("postgres").some((p) => !p.startsWith("127.0.0.1:"))) throw new Error(`postgres publishes ${published("postgres")}`);
+            console.log("published ports OK:", JSON.stringify(Object.fromEntries(Object.keys(c).map((s) => [s, published(s)]))));
+          '
 
       - name: Start the postgres service
         run: |
@@ -347,6 +358,7 @@ jobs:
             -v "$GITHUB_WORKSPACE/backend/test/full-stack:/full-stack:ro" \
             -v "$RUNNER_TEMP/full-stack/clerk-directory.json:/fs/clerk-directory.json:ro" \
             -e NODE_ENV=production -e PORT=3000 \
+            -e TRUST_PROXY=loopback \
             -e DB_HOST -e DB_PORT -e DB_USERNAME -e DB_PASSWORD -e DB_DATABASE \
             -e CLERK_SECRET_KEY \
             -e CLERK_JWT_KEY="$(cat "$RUNNER_TEMP/full-stack/jwt-public.pem")" \
@@ -448,7 +460,8 @@ jobs:
           DB_DATABASE=$DB
           CLERK_SECRET_KEY=sk_test_ci_not_a_real_key
           NODE_ENV=production
-          FRONTEND_URL=http://localhost
+          FRONTEND_URL=https://localhost
+          TRUST_PROXY=loopback
           EOF
           sed -i 's/^ *//' api.env
           # Helpers for later steps.
@@ -563,8 +576,15 @@ jobs:
           grep -F '"status":"ok"' release.log
           ls -l backups/*.dump
           docker logs av-api 2>&1 | grep -F 'Database schema is current (41 migrations applied).'
-          code=$(curl -sS -o health.json -w '%{http_code}' -H 'X-Forwarded-Proto: https' http://127.0.0.1:3000/api/v1/health)
-          cat health.json; echo; echo "HTTP $code"; test "$code" = 200
+          docker exec av-api node dist/server/healthcheck.js | tee health.json
+          grep -F '"status":"ok"' health.json
+          # From the host the peer is Docker's bridge, which TRUST_PROXY=loopback does not trust:
+          # a forged X-Forwarded-Proto / Host is ignored, and the redirect goes to FRONTEND_URL.
+          curl -sS -o /dev/null -D spoof.headers -H 'X-Forwarded-Proto: https' -H 'Host: evil.example' \
+            -H 'X-Forwarded-Host: evil.example' http://127.0.0.1:3000/api/v1/health
+          cat spoof.headers
+          head -n1 spoof.headers | grep -F ' 301 '
+          grep -Fix 'location: https://localhost/api/v1/health' <(tr -d '\r' < spoof.headers)
           test "$(./sql.sh -c "select count(*) from migrations where name = '$LAST'")" = 1
 
       - name: (f) Rates and totals unchanged across the upgrade
@@ -579,6 +599,7 @@ jobs:
         run: |
           # Stop the API so only the migration command can touch the database between the dumps.
           docker stop av-api
+          test "$(docker inspect -f '{{.State.ExitCode}}' av-api)" = 0
           # pg_dump >= 16.10 brackets its output with \restrict/\unrestrict and a random key per run.
           dump() { docker exec av-pg pg_dump -U postgres -d "$DB" | grep -vE '^\\(un)?restrict '; }
           dump > dump-before.sql
@@ -592,3 +613,255 @@ jobs:
         if: always()
         run: |
           for c in av-api av-api-outdated; do echo "--- $c"; docker logs "$c" 2>&1 | tail -n 40 || true; done
+
+  # GATING. Graceful shutdown of the production API image (src/server/graceful-shutdown.ts), on a
+  # schema built by the repository's migrations in a disposable PostgreSQL service. A request is
+  # held in flight across `docker stop` (SIGTERM to PID 1) by test/server/shutdown-probe.cjs:
+  # it must complete with 200, new connections must be refused, the container must exit 0 within
+  # the bound; a request that never completes must make the API exit 1 at the bound.
+  api-shutdown:
+    name: API graceful shutdown (backend image + PostgreSQL)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: asset_vault_shutdown
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_DATABASE: asset_vault_shutdown
+      CLERK_SECRET_KEY: sk_test_ci_not_a_real_key
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend and apply migrations
+        working-directory: ./backend
+        run: |
+          npm ci
+          npm run migration:run
+
+      - name: Build the API image
+        run: docker build -t av-backend backend
+
+      - name: Helper to start the API container
+        run: |
+          cat > start-api.sh <<'SH'
+          #!/usr/bin/env bash
+          # start-api.sh <name> [extra docker run args...]
+          set -euo pipefail
+          name=$1; shift
+          docker rm -f "$name" > /dev/null 2>&1 || true
+          docker run -d --name "$name" --network host \
+            -e NODE_ENV=production -e PORT=3000 -e TRUST_PROXY=loopback -e FRONTEND_URL=https://localhost \
+            -e DB_HOST -e DB_PORT -e DB_USERNAME -e DB_PASSWORD -e DB_DATABASE -e CLERK_SECRET_KEY \
+            "$@" av-backend > /dev/null
+          for i in $(seq 1 60); do
+            docker exec "$name" node dist/server/healthcheck.js > /dev/null 2>&1 && exit 0
+            if [ "$(docker inspect -f '{{.State.Running}}' "$name")" != true ]; then docker logs "$name"; exit 1; fi
+            sleep 1
+          done
+          docker logs "$name"; exit 1
+          SH
+          chmod +x start-api.sh
+
+      - name: PID 1 is node, and SIGTERM is the stop signal
+        run: |
+          ./start-api.sh av-api
+          docker exec av-api sh -c 'tr "\0" " " < /proc/1/cmdline; echo' | tee pid1.txt
+          grep -qx 'node dist/main ' pid1.txt
+          test "$(docker inspect -f '{{.Config.StopSignal}}' av-api)" = SIGTERM
+          docker logs av-api 2>&1 | grep -F 'Graceful shutdown armed (SIGTERM/SIGINT, bound 8000 ms).'
+
+      - name: In-flight request completes across docker stop; exit 0 under the bound
+        run: |
+          # docker stop -t 30 so that Docker's SIGKILL cannot be what ends the container: the
+          # API's own 8000 ms bound has to.
+          STOP_CMD='docker stop -t 30 av-api > /dev/null' HOLD_MS=2000 \
+            node backend/test/server/shutdown-probe.cjs complete | tee probe-complete.txt
+          code=$(docker inspect -f '{{.State.ExitCode}}' av-api)
+          stop_ms=$(sed -n 's/.*"stopMs":\([0-9]*\).*/\1/p' probe-complete.txt)
+          docker logs av-api 2>&1 | grep -F 'Shutdown:' | tee shutdown-complete.log
+          echo "exit code: $code; docker stop took ${stop_ms} ms (bound 8000 ms)"
+          echo "### Graceful shutdown: in-flight request completed, exit $code, docker stop ${stop_ms} ms (bound 8000 ms)" >> "$GITHUB_STEP_SUMMARY"
+          test "$code" = 0
+          test "$stop_ms" -lt 8000
+          grep -F 'Shutdown: SIGTERM received' shutdown-complete.log
+          grep -F 'Shutdown: complete in' shutdown-complete.log
+          if docker logs av-api 2>&1 | grep -F 'forcing exit 1'; then exit 1; fi
+
+      - name: Idle API stops promptly under plain docker stop (no SIGKILL, exit 0)
+        run: |
+          ./start-api.sh av-api-idle
+          start=$(date +%s%3N)
+          docker stop av-api-idle > /dev/null
+          end=$(date +%s%3N)
+          code=$(docker inspect -f '{{.State.ExitCode}}' av-api-idle)
+          echo "idle stop: exit $code in $((end - start)) ms"
+          echo "### Idle stop: exit $code in $((end - start)) ms" >> "$GITHUB_STEP_SUMMARY"
+          test "$code" = 0
+          test $((end - start)) -lt 5000
+
+      - name: A request that never completes forces exit 1 at the bound
+        run: |
+          ./start-api.sh av-api-hang -e SHUTDOWN_TIMEOUT_MS=3000
+          STOP_CMD='docker stop -t 30 av-api-hang > /dev/null' \
+            node backend/test/server/shutdown-probe.cjs hang | tee probe-hang.txt
+          code=$(docker inspect -f '{{.State.ExitCode}}' av-api-hang)
+          stop_ms=$(sed -n 's/.*"stopMs":\([0-9]*\).*/\1/p' probe-hang.txt)
+          docker logs av-api-hang 2>&1 | grep -F 'Shutdown:'
+          echo "exit code: $code; docker stop took ${stop_ms} ms (bound 3000 ms)"
+          echo "### Forced shutdown: exit $code after ${stop_ms} ms (bound 3000 ms)" >> "$GITHUB_STEP_SUMMARY"
+          test "$code" = 1
+          test "$stop_ms" -ge 3000
+          test "$stop_ms" -lt 5000
+          docker logs av-api-hang 2>&1 | grep -F 'forcing exit 1.'
+
+      - name: Container logs
+        if: always()
+        run: for c in av-api av-api-idle av-api-hang; do echo "--- $c"; docker logs "$c" 2>&1 | tail -n 30 || true; done
+
+  # GATING. The documented Compose stack (docker-compose.yml + deploy/caddy/Caddyfile) exactly as
+  # docs/setup/DOCKER_README.md runs it, with dummy Clerk keys: the API refuses to start before
+  # the migrations, then https://localhost serves the web app and the API through Caddy with a
+  # certificate verified against Caddy's local CA, HTTP is redirected to HTTPS, the API and nginx
+  # are not reachable unproxied, CORS answers through the proxy, and the API stops gracefully.
+  compose-proxy:
+    name: Compose stack behind the TLS proxy
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Root .env (dummy keys) and build
+        run: |
+          printf '%s\n' 'CLERK_SECRET_KEY=sk_test_ci_not_a_real_key' \
+            'VITE_CLERK_PUBLISHABLE_KEY=pk_test_ZHVtbXkuY2xlcmsuYWNjb3VudHMuZGV2JA==' > .env
+          docker compose build
+          docker compose pull proxy postgres
+
+      - name: Before migrations, the API refuses to start (checked first, behind the proxy too)
+        run: |
+          docker compose up -d
+          for i in $(seq 1 90); do
+            [ "$(docker inspect -f '{{.State.Status}}' asset-vault-backend)" = exited ] && break; sleep 1
+          done
+          docker compose ps -a
+          test "$(docker inspect -f '{{.State.Status}}' asset-vault-backend)" = exited
+          test "$(docker inspect -f '{{.State.ExitCode}}' asset-vault-backend)" = 1
+          docker compose logs backend > backend-premigration.log 2>&1
+          grep -F 'Startup aborted: database schema is not current.' backend-premigration.log
+          if grep -F 'Nest application successfully started' backend-premigration.log; then echo 'the API started'; exit 1; fi
+          # Caddy's local CA is created at startup; export its root to verify the certificate.
+          for i in $(seq 1 30); do
+            docker compose cp proxy:/data/caddy/pki/authorities/local/root.crt caddy-root.crt 2> /dev/null && break; sleep 1
+          done
+          openssl x509 -in caddy-root.crt -noout -subject
+          code=$(curl -sS -o /dev/null -w '%{http_code}' --cacert caddy-root.crt https://localhost/api/v1/health)
+          echo "API through the proxy while it is down: HTTP $code"; test "$code" = 502
+
+      - name: Apply migrations and start the stack (documented commands)
+        run: |
+          docker compose run --rm backend node dist/database/migration-runner.js | tee migrate.log
+          grep -F 'Migrations complete' migrate.log || grep -F 'Applied' migrate.log
+          docker compose up -d --wait --wait-timeout 120
+          docker compose ps
+          docker compose logs backend 2>&1 | grep -F 'Database schema is current'
+
+      - name: https://localhost serves the web app (certificate verified)
+        run: |
+          curl -fsS --cacert caddy-root.crt -D web.headers -o index.html https://localhost/
+          head -n1 web.headers
+          grep -q '<div id="root">' index.html
+          code=$(curl -sS -o /dev/null -w '%{http_code}' --cacert caddy-root.crt https://localhost/invoices/create)
+          echo "SPA deep link: HTTP $code"; test "$code" = 200
+          echo '--- the bundle calls the API on the same origin (/api/v1), not http://localhost:3000'
+          docker compose exec -T frontend sh -c 'cat /usr/share/nginx/html/assets/*.js' > bundle.js
+          ls -l bundle.js
+          grep -oE '.{0,20}/api/v1.{0,12}' bundle.js | sort -u | head
+          grep -qE '["`]/api/v1' bundle.js
+
+      - name: The API answers through the proxy
+        run: |
+          curl -fsS --cacert caddy-root.crt https://localhost/api/v1/health | tee health.json; echo
+          grep -F '"status":"ok"' health.json
+          # Forged forwarding headers from the client are replaced by Caddy's own.
+          # A client claiming X-Forwarded-Proto: http would be redirected (301) if Caddy passed it on;
+          # Caddy replaces it with the real scheme, so the API answers 200.
+          code=$(curl -sS --cacert caddy-root.crt -H 'X-Forwarded-Proto: http' -H 'X-Forwarded-Host: evil.example' \
+            -o /dev/null -w '%{http_code}' https://localhost/api/v1/health)
+          echo "forged X-Forwarded-* through the proxy: HTTP $code"; test "$code" = 200
+
+      - name: HTTP is redirected to HTTPS
+        run: |
+          for path in / /api/v1/health; do
+            out=$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' "http://localhost$path")
+            echo "http://localhost$path -> $out"
+            test "$out" = "308 https://localhost$path"
+          done
+
+      - name: The API and the web server are not exposed unproxied
+        run: |
+          for c in asset-vault-backend asset-vault-frontend; do
+            ports=$(docker inspect -f '{{json .NetworkSettings.Ports}}' "$c")
+            echo "$c: $ports"
+            if echo "$ports" | grep -q HostPort; then echo "$c publishes a host port"; exit 1; fi
+          done
+          if curl -sS -m 5 -o /dev/null http://127.0.0.1:3000/api/v1/health; then echo 'API reachable on :3000'; exit 1; fi
+          echo 'API not reachable on the host (expected)'
+
+      - name: CORS through the proxy
+        run: |
+          curl -sS --cacert caddy-root.crt -D allowed.headers -o /dev/null -H 'Origin: https://localhost' https://localhost/api/v1/health
+          tr -d '\r' < allowed.headers > a.h; cat a.h
+          grep -Fix 'access-control-allow-origin: https://localhost' a.h
+          grep -Fix 'access-control-allow-credentials: true' a.h
+          code=$(curl -sS --cacert caddy-root.crt -D evil.headers -o evil.json -w '%{http_code}' -X OPTIONS \
+            -H 'Origin: https://evil.example' -H 'Access-Control-Request-Method: POST' https://localhost/api/v1/clients)
+          tr -d '\r' < evil.headers > e.h; cat e.h evil.json; echo
+          test "$code" = 403
+          if grep -i '^access-control-allow' e.h; then echo 'CORS headers for a disallowed origin'; exit 1; fi
+          grep -F '"Origin not allowed"' evil.json
+
+      - name: docker compose stop backend is graceful
+        run: |
+          start=$(date +%s%3N)
+          docker compose stop backend
+          end=$(date +%s%3N)
+          code=$(docker inspect -f '{{.State.ExitCode}}' asset-vault-backend)
+          echo "compose stop backend: exit $code in $((end - start)) ms"
+          echo "### Compose: docker compose stop backend -> exit $code in $((end - start)) ms" >> "$GITHUB_STEP_SUMMARY"
+          test "$code" = 0
+          docker compose logs backend 2>&1 | grep -F 'Shutdown: complete in'
+          code=$(curl -sS -o /dev/null -w '%{http_code}' --cacert caddy-root.crt https://localhost/api/v1/health)
+          echo "API through the proxy after stop: HTTP $code"; test "$code" = 502
+
+      - name: Logs
+        if: always()
+        run: docker compose logs --no-color 2>&1 | tail -n 150 || true
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v || true

@@ -5,6 +5,7 @@ import { Client } from '../clients/entities/client.entity';
 import { Store } from '../inventory/entities/store.entity';
 import { Invoice } from '../invoices/entities/invoice.entity';
 import { InventoryItem } from '../inventory/entities/inventory-item.entity';
+import { runScript } from './run-script';
 
 config();
 
@@ -88,4 +89,4 @@ async function verifyData() {
   }
 }
 
-verifyData();
+runScript(verifyData);

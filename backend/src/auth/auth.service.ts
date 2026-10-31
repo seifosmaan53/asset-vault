@@ -18,6 +18,51 @@ import { OrganizationsService } from '../organizations/organizations.service';
 import { User } from '../users/entities/user.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
+/** The fields AuthService reads from a Clerk `user.*` webhook payload. */
+interface ClerkUserEventData {
+  id: string;
+  email: string | undefined;
+  firstName: string | undefined;
+  lastName: string | undefined;
+  username: string | undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+/**
+ * Reads the user fields out of an (untrusted) webhook `data` object. Returns null when
+ * there is no usable Clerk user id: every handler looks the user up by that id, and
+ * TypeORM treats `where: { clerkUserId: undefined }` as "no condition", which would
+ * match an arbitrary user.
+ */
+function parseClerkUserEventData(data: unknown): ClerkUserEventData | null {
+  if (!isRecord(data)) return null;
+  const id = optionalString(data.id);
+  if (!id) return null;
+  const emails = data.email_addresses;
+  const firstEmail: unknown = Array.isArray(emails) ? emails[0] : undefined;
+  return {
+    id,
+    email: isRecord(firstEmail)
+      ? optionalString(firstEmail.email_address)
+      : undefined,
+    firstName: optionalString(data.first_name),
+    lastName: optionalString(data.last_name),
+    username: optionalString(data.username),
+  };
+}
+
+function displayName(data: ClerkUserEventData): string {
+  const name = `${data.firstName || ''} ${data.lastName || ''}`.trim();
+  return name || data.username || 'User';
+}
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -57,7 +102,7 @@ export class AuthService {
       // In production, you should always verify webhooks
     }
 
-    let evt: any;
+    let evt: unknown;
 
     if (webhookSecret) {
       const wh = new Webhook(webhookSecret);
@@ -76,21 +121,31 @@ export class AuthService {
       evt = JSON.parse(rawBody.toString());
     }
 
-    const { type, data } = evt;
+    if (!isRecord(evt)) {
+      throw new BadRequestException('Invalid webhook payload');
+    }
+    const type = optionalString(evt.type);
+    const data: unknown = evt.data;
 
     try {
       switch (type) {
         case 'user.created':
-          await this.handleUserCreated(data);
-          break;
         case 'user.updated':
-          await this.handleUserUpdated(data);
+        case 'user.deleted': {
+          const user = parseClerkUserEventData(data);
+          if (!user) {
+            this.logger.warn(
+              `Ignoring ${type} webhook without a Clerk user id`,
+            );
+            break;
+          }
+          if (type === 'user.created') await this.handleUserCreated(user);
+          else if (type === 'user.updated') await this.handleUserUpdated(user);
+          else await this.handleUserDeleted(user);
           break;
-        case 'user.deleted':
-          await this.handleUserDeleted(data);
-          break;
+        }
         default:
-          this.logger.log(`Unhandled webhook event type: ${type}`);
+          this.logger.log(`Unhandled webhook event type: ${String(evt.type)}`);
       }
     } catch (error) {
       this.logger.error(`Error handling webhook event ${type}:`, error);
@@ -100,12 +155,10 @@ export class AuthService {
     return { received: true };
   }
 
-  private async handleUserCreated(data: any) {
+  private async handleUserCreated(data: ClerkUserEventData) {
     const clerkUserId = data.id;
-    const email = data.email_addresses?.[0]?.email_address;
-    const firstName = data.first_name || '';
-    const lastName = data.last_name || '';
-    const name = `${firstName} ${lastName}`.trim() || data.username || 'User';
+    const email = data.email;
+    const name = displayName(data);
 
     if (!email) {
       this.logger.warn(`User created without email: ${clerkUserId}`);
@@ -150,10 +203,11 @@ export class AuthService {
         );
         this.logger.log(`Created pending subscription for user ${user.id}`);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Don't fail user creation if subscription creation fails
+      const message = error instanceof Error ? error.message : String(error);
       this.logger.error(
-        `Failed to create subscription for user ${user.id}: ${error.message}`,
+        `Failed to create subscription for user ${user.id}: ${message}`,
       );
     }
 
@@ -162,12 +216,10 @@ export class AuthService {
     );
   }
 
-  private async handleUserUpdated(data: any) {
+  private async handleUserUpdated(data: ClerkUserEventData) {
     const clerkUserId = data.id;
-    const email = data.email_addresses?.[0]?.email_address;
-    const firstName = data.first_name || '';
-    const lastName = data.last_name || '';
-    const name = `${firstName} ${lastName}`.trim() || data.username || 'User';
+    const email = data.email;
+    const name = displayName(data);
 
     const user = await this.usersService.findByClerkId(clerkUserId);
     if (!user) {
@@ -186,7 +238,7 @@ export class AuthService {
     );
   }
 
-  private async handleUserDeleted(data: any) {
+  private async handleUserDeleted(data: ClerkUserEventData) {
     const clerkUserId = data.id;
     const user = await this.usersService.findByClerkId(clerkUserId);
 

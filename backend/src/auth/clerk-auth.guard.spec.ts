@@ -102,6 +102,31 @@ describe('ClerkAuthGuard with the real Clerk SDK (networkless, CLERK_JWT_KEY)', 
     expect(req.user).toMatchObject({ userId: 'db-user-1' });
   });
 
+  // Regression: the guard read `lockoutExpiresIn`, which the SDK's User does not have, so a
+  // locked account was never refused. The SDK field is `locked`.
+  it.each([
+    ['locked', { locked: true }],
+    ['banned', { banned: true }],
+  ])(
+    'refuses a validly signed token for a %s account',
+    async (_label, flags) => {
+      const { guard, getUser } = makeGuard(env);
+      getUser.mockResolvedValueOnce({
+        id: 'user_real',
+        banned: false,
+        locked: false,
+        emailAddresses: [{ id: 'e1', emailAddress: 'real@unit.test' }],
+        primaryEmailAddressId: 'e1',
+        ...flags,
+      });
+      const { context, req } = ctx(rs256(good.privateKey));
+      await expect(guard.canActivate(context)).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+      expect(req.user).toBeUndefined();
+    },
+  );
+
   const forged: Array<[string, () => string]> = [
     [
       'a token signed by a different RSA key (same kid, same subject)',

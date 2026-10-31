@@ -8,8 +8,10 @@
 #   docs/operations/release.sh <backend image> <api env file>
 #
 # The env file holds the API's runtime variables (DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD,
-# DB_DATABASE, CLERK_SECRET_KEY, NODE_ENV=production, ...). DB_HOST must be reachable from a
-# container on DOCKER_NETWORK.
+# DB_DATABASE, CLERK_SECRET_KEY, NODE_ENV=production, FRONTEND_URL, TRUST_PROXY, ...). DB_HOST must
+# be reachable from a container on DOCKER_NETWORK. Step 4 probes the API from inside its own
+# container over loopback (node dist/server/healthcheck.js), so TRUST_PROXY must trust loopback:
+# a hop count, or a list that includes `loopback` (e.g. TRUST_PROXY=loopback,10.0.0.5).
 #
 # Optional environment:
 #   DOCKER_NETWORK   docker network for every container           (default: bridge)
@@ -17,7 +19,9 @@
 #   PG_CLIENT_IMAGE  image providing pg_dump; its major version must be >= the server's
 #                                                                 (default: postgres:16-alpine)
 #   API_CONTAINER    name of the API container started in step 3  (default: asset-vault-api)
-#   API_PORT         host port published for the API             (default: 3000)
+#   API_PORT         host port published for the API, on 127.0.0.1 only (default: 3000)
+#   STOP_TIMEOUT     seconds docker waits on SIGTERM before SIGKILL (default: 15; must exceed
+#                    the API's SHUTDOWN_TIMEOUT_MS, default 8 s)
 #   HEALTH_TIMEOUT   seconds to wait for /api/v1/health           (default: 90)
 #   SKIP_START=1     stop after the migration (steps 1-2 only)
 set -euo pipefail
@@ -30,6 +34,7 @@ pg_image=${PG_CLIENT_IMAGE:-postgres:16-alpine}
 api_container=${API_CONTAINER:-asset-vault-api}
 api_port=${API_PORT:-3000}
 health_timeout=${HEALTH_TIMEOUT:-90}
+stop_timeout=${STOP_TIMEOUT:-15}
 
 test -f "$env_file" || { echo "release: env file not found: $env_file" >&2; exit 2; }
 mkdir -p "$backup_dir"
@@ -55,24 +60,26 @@ fi
 
 echo "== 3/4 start the API ($api_container on port $api_port)"
 docker rm -f "$api_container" > /dev/null 2>&1 || true
+# Loopback-only port: in production the API is reached through the TLS proxy, never directly.
 docker run -d --name "$api_container" --network "$network" --env-file "$env_file" \
-  -p "$api_port:3000" -e PORT=3000 "$image" > /dev/null
+  --stop-timeout "$stop_timeout" -p "127.0.0.1:$api_port:3000" -e PORT=3000 "$image" > /dev/null
 
 echo "== 4/4 verify GET /api/v1/health"
-# In production the API redirects plain HTTP to HTTPS unless a TLS proxy says otherwise.
+# In production the API redirects plain HTTP to HTTPS unless a TRUSTED proxy says the request
+# was HTTPS. The probe runs inside the container (loopback) and stands in for that proxy.
 for _ in $(seq 1 "$health_timeout"); do
   if ! docker ps -q --filter "name=^${api_container}$" --filter status=running | grep -q .; then
     echo "release: the API container exited" >&2
     docker logs "$api_container" 2>&1 | tail -n 40 >&2
     exit 1
   fi
-  if curl -fsS -H 'X-Forwarded-Proto: https' "http://127.0.0.1:$api_port/api/v1/health"; then
-    echo
+  if docker exec "$api_container" node dist/server/healthcheck.js 2> /dev/null; then
     echo "release complete; pre-release backup: $backup_dir/$backup_file"
     exit 0
   fi
   sleep 1
 done
 echo "release: health check did not pass within ${health_timeout}s" >&2
+docker exec "$api_container" node dist/server/healthcheck.js >&2 || true
 docker logs "$api_container" 2>&1 | tail -n 40 >&2
 exit 1

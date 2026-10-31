@@ -5,11 +5,12 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, QueryRunner } from 'typeorm';
+import { Repository, QueryRunner, type FindOneOptions } from 'typeorm';
 import { StoreItemSettings } from './entities/store-item-settings.entity';
 import { Store } from './entities/store.entity';
 import { InventoryItem } from './entities/inventory-item.entity';
 import { StoreItemSettingsService } from './store-item-settings.service';
+import { errorMessage } from './error-details.util';
 
 export interface StockValidationResult {
   isValid: boolean;
@@ -157,7 +158,7 @@ export class StoreStockValidatorService {
 
       // CRITICAL FIX #60, #93: Get store item settings
       // Only use pessimistic lock if we're inside a transaction (queryRunner provided)
-      const findOptions: any = {
+      const findOptions: FindOneOptions<StoreItemSettings> = {
         where: {
           storeId,
           inventoryItemId,
@@ -230,9 +231,9 @@ export class StoreStockValidatorService {
         warnings,
         availableStock,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
-        `Error validating store stock: ${error.message}`,
+        `Error validating store stock: ${errorMessage(error)}`,
         error,
       );
       throw error;
@@ -301,12 +302,12 @@ export class StoreStockValidatorService {
         if (!validation.isValid) {
           allErrors.push(...validation.errors);
         }
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.error(
-          `Error validating stock for item ${item.inventoryItemId}: ${error.message}`,
+          `Error validating stock for item ${item.inventoryItemId}: ${errorMessage(error)}`,
         );
         allErrors.push(
-          `Failed to validate stock for item "${item.description || item.inventoryItemId}": ${error.message}`,
+          `Failed to validate stock for item "${item.description || item.inventoryItemId}": ${errorMessage(error)}`,
         );
         itemValidations.push({
           inventoryItemId: item.inventoryItemId,
@@ -314,7 +315,7 @@ export class StoreStockValidatorService {
           quantity: item.quantity,
           availableStock: 0,
           isValid: false,
-          error: error.message,
+          error: errorMessage(error),
         });
       }
     }

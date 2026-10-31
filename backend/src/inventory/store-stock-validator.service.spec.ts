@@ -10,19 +10,25 @@ import { NotFoundException, BadRequestException } from '@nestjs/common';
 describe('StoreStockValidatorService', () => {
   let service: StoreStockValidatorService;
 
+  /* Repository lookups resolve to whatever row a test stubs, hence `unknown`.
+     Declared before the repository object so the manager adapters below can call
+     them without the object referring to itself (which typed it as `any`). */
+  const lookupMock = () => jest.fn<Promise<unknown>, [options?: unknown]>();
+  type LookupMock = ReturnType<typeof lookupMock>;
+  const settingsFindOne = lookupMock();
+  const settingsFind = jest.fn<Promise<unknown[]>, []>().mockResolvedValue([]);
+
   const mockStoreItemSettingsRepository = {
-    findOne: jest.fn(),
-    find: jest.fn().mockResolvedValue([]),
+    findOne: settingsFindOne,
+    find: settingsFind,
     /* Outside a transaction the service uses `this.repo.manager`, which the mock did
        not have — hence "Cannot read properties of undefined (reading 'findOne')".
        The manager takes (Entity, options), so this adapts onto the repo-level stub. */
     manager: {
       findOne: jest.fn((_entity: unknown, options: unknown) =>
-        mockStoreItemSettingsRepository.findOne(options),
+        settingsFindOne(options),
       ),
-      find: jest.fn(
-        async () => (await mockStoreItemSettingsRepository.find()) ?? [],
-      ),
+      find: jest.fn(async () => (await settingsFind()) ?? []),
       save: jest.fn((_entity: unknown, data: unknown) => Promise.resolve(data)),
       create: jest.fn((_entity: unknown, data: unknown) => data),
     },
@@ -33,7 +39,7 @@ describe('StoreStockValidatorService', () => {
      every test in this file died on "createQueryBuilder is not a function" — 53 of
      them. Each builder method returns the builder so the chain composes; getOne()
      is what tests stub per-case. */
-  const makeQueryBuilder = (delegate?: jest.Mock) => {
+  const makeQueryBuilder = (delegate?: LookupMock) => {
     const qb: Record<string, jest.Mock> = {};
     /* The builder accumulates the parameters passed to where()/andWhere() and hands
        them to the delegate, so a stub can answer based on WHICH row was asked for
@@ -65,12 +71,12 @@ describe('StoreStockValidatorService', () => {
   let itemQueryBuilder: ReturnType<typeof makeQueryBuilder>;
 
   const mockStoreRepository = {
-    findOne: jest.fn(),
+    findOne: lookupMock(),
     createQueryBuilder: jest.fn(() => storeQueryBuilder),
   };
 
   const mockInventoryItemRepository = {
-    findOne: jest.fn(),
+    findOne: lookupMock(),
     createQueryBuilder: jest.fn(() => itemQueryBuilder),
   };
 
@@ -554,14 +560,15 @@ describe('StoreStockValidatorService', () => {
         { inventoryItemId: 'item-1', quantity: 50, description: 'Item 1' },
       ];
 
-      try {
-        await service.validateAndThrow(storeId, items, userId, 'sale');
-        fail('Should have thrown BadRequestException');
-      } catch (error) {
-        expect(error).toBeInstanceOf(BadRequestException);
-        expect(error.message).toContain('Store stock validation failed');
-        expect(error.message).toContain('Insufficient stock');
-      }
+      const validation = service.validateAndThrow(
+        storeId,
+        items,
+        userId,
+        'sale',
+      );
+      await expect(validation).rejects.toBeInstanceOf(BadRequestException);
+      await expect(validation).rejects.toThrow('Store stock validation failed');
+      await expect(validation).rejects.toThrow('Insufficient stock');
     });
   });
 });

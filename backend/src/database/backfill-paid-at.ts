@@ -2,6 +2,7 @@ import { AppDataSource } from './data-source';
 import { Invoice } from '../invoices/entities/invoice.entity';
 import { IsNull } from 'typeorm';
 import { config } from 'dotenv';
+import { runScript } from './run-script';
 
 config();
 
@@ -69,4 +70,4 @@ async function backfillPaidAtDates() {
   }
 }
 
-backfillPaidAtDates();
+runScript(backfillPaidAtDates);

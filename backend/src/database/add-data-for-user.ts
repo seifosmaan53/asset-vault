@@ -7,7 +7,8 @@ import { User } from '../users/entities/user.entity';
 import { SampleDataService } from '../sample-data/sample-data.service';
 import { AppModule } from '../app.module';
 import { NestFactory } from '@nestjs/core';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { runScript } from './run-script';
+import { readProperty } from '../common/utils/read-property.util';
 
 config();
 
@@ -29,7 +30,8 @@ async function addDataForUser() {
   // Create NestJS application context to use services
   const app = await NestFactory.createApplicationContext(AppModule);
   const sampleDataService = app.get(SampleDataService);
-  const userRepository = app.get(getRepositoryToken(User));
+  // Same repository the getRepositoryToken(User) provider resolves to, but typed.
+  const userRepository = app.get(DataSource).getRepository(User);
 
   try {
     // Find user by email or ID
@@ -83,14 +85,18 @@ async function addDataForUser() {
 
     await app.close();
     process.exit(0);
-  } catch (error: any) {
-    console.error('\n❌ Error adding sample data:', error.message);
-    if (error.stack) {
-      console.error('\nStack trace:', error.stack);
+  } catch (error: unknown) {
+    const stack = readProperty(error, 'stack');
+    console.error(
+      '\n❌ Error adding sample data:',
+      readProperty(error, 'message'),
+    );
+    if (stack) {
+      console.error('\nStack trace:', stack);
     }
     await app.close();
     process.exit(1);
   }
 }
 
-addDataForUser();
+runScript(addDataForUser);
