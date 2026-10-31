@@ -91,6 +91,16 @@ interface ExportData extends Record<string, unknown> {
  *  never leaves the server. Declared once because it is written by the read path and
  *  recognised by the update path — if those two ever disagreed, echoing the placeholder
  *  back would overwrite a working password with a hash of this string. */
+/** Copy one entity field from a partial update onto the entity (keeps the key and value types tied). */
+function copyField<K extends keyof UserSettings>(
+  target: UserSettings,
+  source: Partial<UserSettings>,
+  key: K,
+): void {
+  const value = source[key];
+  if (value !== undefined) target[key] = value;
+}
+
 export const MASKED_SMTP_PASSWORD = '***ENCRYPTED***';
 
 @Injectable()
@@ -169,10 +179,7 @@ export class UserSettingsService {
    * Get raw settings entity (not serialized) for internal use
    * This is needed when we need access to sensitive fields like twoFactorSecret
    */
-  async getRawSettings(
-    userId: string,
-    organizationId: string | null,
-  ): Promise<UserSettings | null> {
+  async getRawSettings(userId: string): Promise<UserSettings | null> {
     let settings = await this.settingsRepository
       .createQueryBuilder('settings')
       .where('settings.userId = :userId', { userId })
@@ -279,9 +286,11 @@ export class UserSettingsService {
         const validFields = Object.keys(
           this.settingsRepository.metadata.propertiesMap,
         );
+        const isEntityField = (key: string): key is keyof UserSettings =>
+          validFields.includes(key);
         Object.keys(sanitizedData).forEach((key) => {
-          if (sanitizedData[key] !== undefined && validFields.includes(key)) {
-            settings[key] = sanitizedData[key];
+          if (isEntityField(key) && sanitizedData[key] !== undefined) {
+            copyField(settings, sanitizedData, key);
           }
         });
       }
@@ -396,10 +405,10 @@ export class UserSettingsService {
       'emailFromName',
       'theme',
       'language',
-    ];
+    ] as const satisfies readonly (keyof UserSettings)[];
 
     // Sensitive fields that should be masked in logs
-    const sensitiveFields = ['smtpPassword'];
+    const sensitiveFields: (keyof UserSettings)[] = ['smtpPassword'];
 
     fieldsToTrack.forEach((field) => {
       const oldValue = oldSettings[field];
@@ -486,12 +495,9 @@ export class UserSettingsService {
 
   /**
    * Export all user data as JSON including stores and store item settings
-   * Fix Issue #3, #18: Add organizationId parameter for proper organization scoping
+   * Organizations were removed: data is user-scoped.
    */
-  async exportUserData(
-    userId: string,
-    organizationId?: string | null,
-  ): Promise<{
+  async exportUserData(userId: string): Promise<{
     data: ExportData;
     timestamp: string;
     backupId: string;
@@ -769,12 +775,10 @@ export class UserSettingsService {
   /**
    * Create a manual backup of user data
    * Returns export data that can be downloaded as JSON
-   * Fix Issue #3, #18: Add organizationId parameter
    */
   async createBackup(
     userId: string,
     options?: { includeSqlBackup?: boolean },
-    organizationId?: string | null,
   ): Promise<{
     message: string;
     timestamp: string;
@@ -791,7 +795,7 @@ export class UserSettingsService {
       );
 
       // Export user data as JSON
-      const exportResult = await this.exportUserData(userId, organizationId);
+      const exportResult = await this.exportUserData(userId);
 
       let sqlBackupPath: string | undefined;
 
@@ -868,15 +872,11 @@ export class UserSettingsService {
 
   /**
    * Export user data as CSV
-   * Fix Issue #3, #18: Add organizationId parameter
    */
-  async exportUserDataAsCsv(
-    userId: string,
-    organizationId?: string | null,
-  ): Promise<string> {
+  async exportUserDataAsCsv(userId: string): Promise<string> {
     try {
       this.logger.log(`Exporting user data as CSV for user ${userId}`);
-      const exportResult = await this.exportUserData(userId, organizationId);
+      const exportResult = await this.exportUserData(userId);
       const data = exportResult.data;
 
       // Build CSV content
@@ -984,15 +984,11 @@ export class UserSettingsService {
 
   /**
    * Export user data as Excel
-   * Fix Issue #3, #18: Add organizationId parameter
    */
-  async exportUserDataAsExcel(
-    userId: string,
-    organizationId?: string | null,
-  ): Promise<Buffer> {
+  async exportUserDataAsExcel(userId: string): Promise<Buffer> {
     try {
       this.logger.log(`Exporting user data as Excel for user ${userId}`);
-      const exportResult = await this.exportUserData(userId, organizationId);
+      const exportResult = await this.exportUserData(userId);
       const data = exportResult.data;
 
       interface ExcelSheet {
@@ -1183,16 +1179,12 @@ export class UserSettingsService {
 
   /**
    * Export user data as PDF
-   * Fix Issue #3, #18: Add organizationId parameter
    * Fix Issue #19: Improved error handling
    */
-  async exportUserDataAsPdf(
-    userId: string,
-    organizationId?: string | null,
-  ): Promise<Buffer> {
+  async exportUserDataAsPdf(userId: string): Promise<Buffer> {
     try {
       this.logger.log(`Exporting user data as PDF for user ${userId}`);
-      const exportResult = await this.exportUserData(userId, organizationId);
+      const exportResult = await this.exportUserData(userId);
       const data = exportResult.data;
       // For PDF export, get first available settings or use defaults
       // This is a user-level operation, so we get the first org's settings
@@ -1402,7 +1394,7 @@ export class UserSettingsService {
     </thead>
     <tbody>
 `;
-        exportData.clients.forEach((client: any) => {
+        exportData.clients.forEach((client) => {
           const addressJson = client.addressJson || {};
           const address =
             `${addressJson.street || ''}, ${addressJson.city || ''}, ${addressJson.state || ''} ${addressJson.zip || ''}`.trim();
@@ -1423,14 +1415,11 @@ export class UserSettingsService {
 
       // Invoices section
       if (exportData.invoices && exportData.invoices.length > 0) {
-        const totalRevenue = exportData.invoices.reduce(
-          (sum: number, inv: any) => {
-            const total = Number(inv.total) || 0;
-            return sum + total;
-          },
-          0,
-        );
-        const firstInvoice = exportData.invoices[0] as any;
+        const totalRevenue = exportData.invoices.reduce((sum: number, inv) => {
+          const total = Number(inv.total) || 0;
+          return sum + total;
+        }, 0);
+        const firstInvoice = exportData.invoices[0];
         html += `
   <h2>Invoices (${exportData.invoices.length})</h2>
   <div class="summary no-break">
@@ -1450,7 +1439,7 @@ export class UserSettingsService {
     <tbody>
 `;
         // Ensure ALL invoices are included - no limits
-        exportData.invoices.forEach((invoice: any) => {
+        exportData.invoices.forEach((invoice) => {
           html += `
       <tr>
         <td>${this.escapeHtml(invoice.number || '')}</td>
@@ -1484,7 +1473,7 @@ export class UserSettingsService {
     </thead>
     <tbody>
 `;
-        exportData.inventory.forEach((item: any) => {
+        exportData.inventory.forEach((item) => {
           html += `
       <tr>
         <td>${this.escapeHtml(item.name || '')}</td>
@@ -1519,7 +1508,7 @@ export class UserSettingsService {
     </thead>
     <tbody>
 `;
-        exportData.stores.forEach((store: any) => {
+        exportData.stores.forEach((store) => {
           html += `
       <tr>
         <td>${this.escapeHtml(store.name || '')}</td>
@@ -1560,7 +1549,7 @@ export class UserSettingsService {
     <tbody>
 `;
         // Ensure ALL store item settings are included - no limits
-        exportData.storeItemSettings.forEach((setting: any) => {
+        exportData.storeItemSettings.forEach((setting) => {
           html += `
       <tr>
         <td>${this.escapeHtml(setting.store?.name || '')}</td>
@@ -1596,7 +1585,7 @@ export class UserSettingsService {
     <tbody>
 `;
         // Ensure ALL stock movements are included - no limits
-        exportData.stockMovements.forEach((movement: any) => {
+        exportData.stockMovements.forEach((movement) => {
           html += `
       <tr>
         <td>${this.escapeHtml(movement.inventoryItem?.name || '')}</td>
