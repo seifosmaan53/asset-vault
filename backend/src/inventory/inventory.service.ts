@@ -7,7 +7,12 @@ import {
   Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, QueryRunner } from 'typeorm';
+import {
+  Repository,
+  DataSource,
+  QueryRunner,
+  type FindOptionsWhere,
+} from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { InventoryItem } from './entities/inventory-item.entity';
@@ -26,8 +31,26 @@ import {
 } from '../common/utils/cache-invalidation.util';
 import { DeadlockDetector } from '../common/utils/deadlock-detection.util';
 import { ImportService } from '../common/services/import.service';
+import { errorMessage, driverErrorField } from './error-details.util';
+import { type ImportRow, firstFilled, toImportRows } from './import-rows.util';
 
 type SourceType = 'invoice' | 'manual' | 'import';
+
+/** Per-item totals across the user's stores, attached to list results. */
+export interface StoreStockAggregation {
+  totalStoreStock: number;
+  storeCount: number;
+  storesWithStock: number;
+  storesWithLowStock: number;
+  averageStoreStock: number;
+}
+
+/** Planning figures derived from an item's own fields. */
+export interface InventoryItemComputedFields {
+  weeksOnHand: number | null;
+  containersNeeded: number | null;
+  effectiveWeeksSupplyTarget: number;
+}
 
 /** Filters accepted by InventoryService.findAll. */
 export interface InventoryItemFilters {
@@ -150,15 +173,15 @@ export class InventoryService {
       });
 
       return enrichedResults;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If query fails due to missing columns, try a simpler query without new fields
+      const message = errorMessage(error);
       if (
-        error.message &&
-        (error.message.includes('column') ||
-          error.message.includes('does not exist')) &&
-        (error.message.includes('printType') ||
-          error.message.includes('containerType') ||
-          error.message.includes('category'))
+        message &&
+        (message.includes('column') || message.includes('does not exist')) &&
+        (message.includes('printType') ||
+          message.includes('containerType') ||
+          message.includes('category'))
       ) {
         this.logger.warn(
           'Database missing new columns. Please run migration: npm run migration:run. Using fallback query.',
@@ -224,7 +247,7 @@ export class InventoryService {
   private async aggregateStoreStockForItems(
     items: InventoryItem[],
     userId: string,
-  ): Promise<Map<string, any>> {
+  ): Promise<Map<string, StoreStockAggregation>> {
     if (!items || items.length === 0) {
       return new Map();
     }
@@ -240,7 +263,7 @@ export class InventoryService {
       .getMany();
 
     // Aggregate by inventory item ID
-    const aggregationMap = new Map<string, any>();
+    const aggregationMap = new Map<string, StoreStockAggregation>();
 
     for (const item of items) {
       const itemSettings = storeSettings.filter(
@@ -286,7 +309,9 @@ export class InventoryService {
   /**
    * Enrich inventory item with computed fields
    */
-  private enrichWithComputedFields(item: InventoryItem): any {
+  private enrichWithComputedFields(
+    item: InventoryItem,
+  ): InventoryItem & { computed: InventoryItemComputedFields } {
     // Use default weeks supply target (backup/planning features removed)
     const globalWeeksSupplyTarget = 4;
 
@@ -393,12 +418,13 @@ export class InventoryService {
 
     try {
       return await this.inventoryRepository.save(item);
-    } catch (error: any) {
+    } catch (error: unknown) {
       // FIX Issue #16: Handle database constraint violation gracefully
       // This catches race conditions where two requests try to create item with same SKU
-      if (error.code === '23505') {
+      if (driverErrorField(error, 'code') === '23505') {
         // PostgreSQL unique constraint violation
-        const constraintName = error.constraint || 'unknown';
+        const constraintName =
+          driverErrorField(error, 'constraint') || 'unknown';
         if (
           constraintName.includes('UX_inventory_items_org_sku') ||
           constraintName.includes('UX_inventory_items_user_sku_legacy') ||
@@ -956,7 +982,7 @@ export class InventoryService {
       // PHASE 2 FIX: Use atomic UPDATE pattern to prevent race conditions
       // This ensures stock cannot go negative even with concurrent requests
       // ENHANCED: Use raw SQL to ensure correct column name (currentStock, not current_stock)
-      const updateResult = await manager.query(
+      const updateResult: unknown = await manager.query(
         `UPDATE "inventory_items" 
          SET "currentStock" = "currentStock" - $1 
          WHERE "id" = $2 
@@ -966,9 +992,19 @@ export class InventoryService {
       );
 
       // ENHANCED: Check if update affected any rows (raw query returns rowCount)
+      // NOTE: TypeORM 0.3's Postgres driver returns [rows, rowCount] for an
+      // UPDATE, so the array branch below reads the tuple length (always 2), not
+      // the affected-row count, and the 0-rows branch never runs. Preserved
+      // as-is here (typing only); reported separately because fixing it changes
+      // what a sale of an inactive item does.
       const rowCount = Array.isArray(updateResult)
         ? updateResult.length
-        : updateResult.rowCount || 0;
+        : typeof updateResult === 'object' &&
+            updateResult !== null &&
+            'rowCount' in updateResult &&
+            typeof updateResult.rowCount === 'number'
+          ? updateResult.rowCount
+          : 0;
 
       if (rowCount === 0) {
         // Check if item exists and is active
@@ -1062,18 +1098,24 @@ export class InventoryService {
         await Promise.all([
           this.cacheManager
             .del(inventoryCacheKey)
-            .catch((err) =>
-              this.logger.warn(`Cache invalidation failed: ${err.message}`),
+            .catch((err: unknown) =>
+              this.logger.warn(
+                `Cache invalidation failed: ${errorMessage(err)}`,
+              ),
             ),
           this.cacheManager
             .del(inventoryStatsKey)
-            .catch((err) =>
-              this.logger.warn(`Cache invalidation failed: ${err.message}`),
+            .catch((err: unknown) =>
+              this.logger.warn(
+                `Cache invalidation failed: ${errorMessage(err)}`,
+              ),
             ),
           this.cacheManager
             .del(lowStockKey)
-            .catch((err) =>
-              this.logger.warn(`Cache invalidation failed: ${err.message}`),
+            .catch((err: unknown) =>
+              this.logger.warn(
+                `Cache invalidation failed: ${errorMessage(err)}`,
+              ),
             ),
         ]);
       } catch (error) {
@@ -1098,7 +1140,7 @@ export class InventoryService {
   ): Promise<StockMovement[]> {
     return this.stockMovementRepository.find({
       where: {
-        sourceType: sourceType as 'invoice' | 'manual' | 'import',
+        sourceType,
         sourceId,
         userId, // Organizations removed - filter by userId only
       },
@@ -1125,7 +1167,7 @@ export class InventoryService {
 
     // Find movements with lock to prevent concurrent reversals
     // Organizations removed - filter by userId only (user-scoped data)
-    const whereCondition: any = {
+    const whereCondition: FindOptionsWhere<StockMovement> = {
       sourceType: sourceType as 'invoice' | 'manual' | 'import',
       sourceId,
       userId, // Organizations removed - filter by userId only
@@ -1311,9 +1353,9 @@ export class InventoryService {
     });
 
     // Get unique invoices
-    const invoiceMap = new Map();
+    const invoiceMap = new Map<string, Invoice>();
     invoiceItems.forEach((item) => {
-      const inv = item.invoice as any;
+      const inv = item.invoice;
       // Organizations removed - verify user access only
       if (inv && inv.userId === userId) {
         invoiceMap.set(item.invoice.id, item.invoice);
@@ -1365,13 +1407,13 @@ export class InventoryService {
       try {
         await this.remove(id, userId);
         deleted++;
-      } catch (error: any) {
+      } catch (error: unknown) {
         this.logger.warn(
-          `bulkRemove: Failed to delete inventory item ${id}: ${error.message}`,
+          `bulkRemove: Failed to delete inventory item ${id}: ${errorMessage(error)}`,
         );
         failed.push({
           id,
-          reason: error.message || 'Unknown error',
+          reason: errorMessage(error) || 'Unknown error',
         });
       }
     }
@@ -1388,27 +1430,31 @@ export class InventoryService {
     userId: string,
   ): Promise<{
     created: number;
-    failed: Array<{ row: number; data: any; errors: string[] }>;
+    failed: Array<{ row: number; data: ImportRow; errors: string[] }>;
   }> {
     this.logger.debug(`importFromFile: Starting import for user ${userId}`);
 
-    let rows: any[];
+    let rows: ImportRow[];
 
     try {
       // Parse file based on extension
       const ext = file.originalname.split('.').pop()?.toLowerCase();
       if (ext === 'csv') {
-        rows = this.importService.parseCSV(file.buffer.toString('utf-8'));
+        rows = toImportRows(
+          this.importService.parseCSV(file.buffer.toString('utf-8')),
+        );
       } else if (ext === 'xlsx' || ext === 'xls') {
-        rows = await this.importService.parseExcel(file.buffer);
+        rows = toImportRows(await this.importService.parseExcel(file.buffer));
       } else {
         throw new BadRequestException(
           'Unsupported file format. Please upload CSV or Excel file.',
         );
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('importFromFile: Failed to parse file', error);
-      throw new BadRequestException(`Failed to parse file: ${error.message}`);
+      throw new BadRequestException(
+        `Failed to parse file: ${errorMessage(error)}`,
+      );
     }
 
     if (rows.length === 0) {
@@ -1417,7 +1463,8 @@ export class InventoryService {
       );
     }
 
-    const failed: Array<{ row: number; data: any; errors: string[] }> = [];
+    const failed: Array<{ row: number; data: ImportRow; errors: string[] }> =
+      [];
     let created = 0;
 
     // Process imports in batches
@@ -1428,46 +1475,53 @@ export class InventoryService {
       for (const row of batch) {
         try {
           // Map common column names to inventory item fields
+          const costPrice = firstFilled(row, 'costPrice', 'Cost Price');
+          const defaultTaxRate = firstFilled(row, 'defaultTaxRate', 'Tax Rate');
+          const maxStockLevel = firstFilled(
+            row,
+            'maxStockLevel',
+            'Max Stock Level',
+          );
           const itemData: CreateInventoryItemDto = {
-            sku: row.sku || row.SKU || row['Stock Keeping Unit'] || '',
-            name: row.name || row.Name || row['Product Name'] || '',
-            description: row.description || row.Description || '',
-            unit: row.unit || row.Unit || 'pcs',
-            barcode: row.barcode || row.Barcode || undefined,
-            costPrice:
-              row.costPrice || row['Cost Price']
-                ? parseFloat(row.costPrice || row['Cost Price'])
-                : undefined,
+            sku: firstFilled(row, 'sku', 'SKU', 'Stock Keeping Unit') || '',
+            name: firstFilled(row, 'name', 'Name', 'Product Name') || '',
+            description: firstFilled(row, 'description', 'Description') || '',
+            unit: firstFilled(row, 'unit', 'Unit') || 'pcs',
+            barcode: firstFilled(row, 'barcode', 'Barcode') || undefined,
+            costPrice: costPrice ? parseFloat(costPrice) : undefined,
             defaultUnitPrice: parseFloat(
-              row.defaultUnitPrice ||
-                row['Unit Price'] ||
-                row.price ||
-                row.Price ||
-                '0',
+              firstFilled(
+                row,
+                'defaultUnitPrice',
+                'Unit Price',
+                'price',
+                'Price',
+              ) || '0',
             ),
-            defaultTaxRate:
-              row.defaultTaxRate || row['Tax Rate']
-                ? parseFloat(row.defaultTaxRate || row['Tax Rate'])
-                : undefined,
+            defaultTaxRate: defaultTaxRate
+              ? parseFloat(defaultTaxRate)
+              : undefined,
             currentStock: parseInt(
-              row.currentStock ||
-                row['Current Stock'] ||
-                row.stock ||
-                row.Stock ||
-                '0',
+              firstFilled(
+                row,
+                'currentStock',
+                'Current Stock',
+                'stock',
+                'Stock',
+              ) || '0',
               10,
             ),
             reorderLevel: parseInt(
-              row.reorderLevel || row['Reorder Level'] || '0',
+              firstFilled(row, 'reorderLevel', 'Reorder Level') || '0',
               10,
             ),
-            maxStockLevel:
-              row.maxStockLevel || row['Max Stock Level']
-                ? parseInt(row.maxStockLevel || row['Max Stock Level'], 10)
-                : undefined,
+            maxStockLevel: maxStockLevel
+              ? parseInt(maxStockLevel, 10)
+              : undefined,
             status:
-              (row.status || row.Status || 'active').toLowerCase() ===
-              'inactive'
+              (
+                firstFilled(row, 'status', 'Status') || 'active'
+              ).toLowerCase() === 'inactive'
                 ? 'inactive'
                 : 'active',
           };
@@ -1494,11 +1548,11 @@ export class InventoryService {
           // Create inventory item
           await this.create(userId, itemData);
           created++;
-        } catch (error: any) {
+        } catch (error: unknown) {
           failed.push({
             row: i + batch.indexOf(row) + 2,
             data: row,
-            errors: [error.message || 'Unknown error'],
+            errors: [errorMessage(error) || 'Unknown error'],
           });
         }
       }
