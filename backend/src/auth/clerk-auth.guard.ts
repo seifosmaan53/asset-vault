@@ -116,12 +116,9 @@ export class ClerkAuthGuard implements CanActivate {
       }
 
       // FIX Issue #169: Additional validation - check if user is banned or deleted
-      // `lockoutExpiresIn` is not a field of the SDK's User resource, so this half of the
-      // check reads whatever the object happens to carry (kept exactly as it was).
-      if (
-        clerkUser.banned ||
-        ('lockoutExpiresIn' in clerkUser && clerkUser.lockoutExpiresIn)
-      ) {
+      // `locked` is the SDK's lockout flag (the previous `lockoutExpiresIn` is not a field of
+      // the User resource, so locked accounts were never refused).
+      if (clerkUser.banned || clerkUser.locked) {
         this.logger.warn(`User ${decoded.sub} is banned or locked out`);
         throw new UnauthorizedException('User account is not active');
       }
