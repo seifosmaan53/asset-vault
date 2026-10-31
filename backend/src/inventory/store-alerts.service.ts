@@ -9,6 +9,7 @@ import { InventoryItem } from './entities/inventory-item.entity';
 import { UserSettingsService } from '../user-settings/user-settings.service';
 import { OrganizationsService } from '../organizations/organizations.service';
 import { User } from '../users/entities/user.entity';
+import { errorMessage } from './error-details.util';
 
 @Injectable()
 export class StoreAlertsService {
@@ -45,9 +46,9 @@ export class StoreAlertsService {
     for (const store of stores) {
       try {
         await this.checkStoreAlerts(store.userId);
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.error(
-          `Error checking alerts for store ${store.id}: ${error.message}`,
+          `Error checking alerts for store ${store.id}: ${errorMessage(error)}`,
           error,
         );
       }
@@ -232,7 +233,9 @@ export class StoreAlertsService {
       // For email notifications, we use the first org's settings
       const userOrgs =
         await this.organizationsService.getUserOrganizations(userId);
-      let userSettings: any = {};
+      // serializeSettings output; it has no emailNotifications key today, so
+      // the opt-out check below only applies once such a setting exists.
+      let userSettings: Record<string, unknown> = {};
 
       if (userOrgs.length > 0) {
         try {
@@ -286,9 +289,9 @@ export class StoreAlertsService {
           `Store alert: ${storeAlerts.length} item(s) need attention at ${store.name} (email functionality disabled)`,
         );
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
-        `Error sending alert notifications: ${error.message}`,
+        `Error sending alert notifications: ${errorMessage(error)}`,
         error,
       );
     }
