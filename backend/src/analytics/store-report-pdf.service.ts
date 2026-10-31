@@ -5,6 +5,19 @@ import { AnalyticsService } from './analytics.service';
 import { Store } from '../inventory/entities/store.entity';
 import { PuppeteerService } from '../common/services/puppeteer.service';
 
+/** Element type of the array an AnalyticsService method resolves to. */
+type AnalyticsRow<K extends keyof AnalyticsService> =
+  AnalyticsService[K] extends (...args: never[]) => Promise<(infer Row)[]>
+    ? Row
+    : never;
+
+type StoreSummary = AnalyticsRow<'getStoresSummary'>;
+type StoreRevenue = AnalyticsRow<'getStoreRevenueReport'>;
+type StoreTopClient = AnalyticsRow<'getTopClientsByStore'>;
+type StoreTopItem = AnalyticsRow<'getTopItemsByStore'>;
+type StoreTurnover = AnalyticsRow<'getStoreInventoryTurnover'>;
+type StoreSalesTrend = AnalyticsRow<'getStoreSalesTrends'>;
+
 @Injectable()
 export class StoreReportPdfService {
   private readonly logger = new Logger(StoreReportPdfService.name);
@@ -83,12 +96,12 @@ export class StoreReportPdfService {
   }
 
   private generateHtmlReport(
-    storeSummary: any,
-    revenue: any,
-    topClients: any[],
-    topItems: any[],
-    turnover: any,
-    trends: any[],
+    storeSummary: StoreSummary,
+    revenue: StoreRevenue | undefined,
+    topClients: StoreTopClient[],
+    topItems: StoreTopItem[],
+    turnover: StoreTurnover | undefined,
+    trends: StoreSalesTrend[],
   ): string {
     const formatCurrency = (amount: number) => {
       return new Intl.NumberFormat('en-US', {

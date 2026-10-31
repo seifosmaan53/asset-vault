@@ -13,6 +13,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import {
   ApiTags,
@@ -20,7 +21,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import type { Response } from 'express';
+import type { Request as ExpressRequest, Response } from 'express';
 import { AnalyticsService } from './analytics.service';
 import { StoreReportPdfService } from './store-report-pdf.service';
 import {
@@ -28,6 +29,11 @@ import {
   formatCurrencyForExcel,
   type ExcelSheet,
 } from '../common/utils/excel-export.util';
+
+/** Every route here sits behind ClerkAuthGuard, which sets `user` before the handler runs. */
+interface AuthenticatedRequest extends ExpressRequest {
+  user: RequestUser;
+}
 
 @ApiTags('analytics')
 @ApiBearerAuth('JWT-auth')
@@ -52,7 +58,7 @@ export class AnalyticsController {
     description: 'Invoice status counts retrieved successfully',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getInvoicesByStatus(@Request() req) {
+  async getInvoicesByStatus(@Request() req: AuthenticatedRequest) {
     return this.analyticsService.getInvoicesByStatus(req.user.userId);
   }
 
@@ -67,7 +73,7 @@ export class AnalyticsController {
     description: 'Top clients retrieved successfully',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getTopClients(@Request() req) {
+  async getTopClients(@Request() req: AuthenticatedRequest) {
     // Return top 10 clients to match frontend display
     return this.analyticsService.getTopClients(req.user.userId, 10, 0);
   }
@@ -81,7 +87,7 @@ export class AnalyticsController {
   @ApiResponse({ status: 200, description: 'Top items retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getTopItems(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
@@ -112,7 +118,7 @@ export class AnalyticsController {
     description: 'Stores analytics retrieved successfully',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getStoresAnalytics(@Request() req) {
+  async getStoresAnalytics(@Request() req: AuthenticatedRequest) {
     try {
       this.logger.log(`Fetching stores analytics for user ${req.user.userId}`);
       const result = await this.analyticsService.getStoresSummary(
@@ -144,7 +150,10 @@ export class AnalyticsController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Store not found' })
-  async getStoreAnalytics(@Request() req, @Param('storeId') storeId: string) {
+  async getStoreAnalytics(
+    @Request() req: AuthenticatedRequest,
+    @Param('storeId') storeId: string,
+  ) {
     const summary = await this.analyticsService.getStoresSummary(
       req.user.userId,
     );
@@ -202,7 +211,7 @@ export class AnalyticsController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getStoreRevenue(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Param('storeId') storeId: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
@@ -229,7 +238,7 @@ export class AnalyticsController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getStoreItems(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Param('storeId') storeId: string,
     @Query('limit') limit?: string,
   ) {
@@ -253,7 +262,7 @@ export class AnalyticsController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getStoreClients(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Param('storeId') storeId: string,
     @Query('limit') limit?: string,
   ) {
@@ -277,7 +286,7 @@ export class AnalyticsController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getStoreTrends(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Param('storeId') storeId: string,
     @Query('period') period?: 'daily' | 'weekly' | 'monthly' | 'yearly',
   ) {
@@ -300,7 +309,7 @@ export class AnalyticsController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getSalesByCategory(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('storeId') storeId?: string,
@@ -328,7 +337,7 @@ export class AnalyticsController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getRevenueByPaymentMethod(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('storeId') storeId?: string,
@@ -355,7 +364,7 @@ export class AnalyticsController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getInvoicesByStatusAndStore(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Query('storeId') storeId?: string,
   ) {
     // Organizations removed - organizationId is always null, data is user-scoped
@@ -377,7 +386,7 @@ export class AnalyticsController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async compareStores(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Body() body: { storeIds: string[]; startDate?: string; endDate?: string },
   ) {
     const startDate = body.startDate ? new Date(body.startDate) : undefined;
@@ -404,7 +413,7 @@ export class AnalyticsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async exportStoreCSV(
     @Param('storeId') storeId: string,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Res() res: Response,
   ) {
     // Organizations removed - organizationId is always null, data is user-scoped
@@ -513,7 +522,7 @@ export class AnalyticsController {
   @ApiResponse({ status: 404, description: 'Store not found' })
   async exportStoreExcel(
     @Param('storeId') storeId: string,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Res() res: Response,
   ) {
     // Organizations removed - organizationId is always null, data is user-scoped
@@ -542,7 +551,7 @@ export class AnalyticsController {
     const sheets: ExcelSheet[] = [];
 
     // Summary sheet
-    const summaryData: any[][] = [
+    const summaryData: (string | number)[][] = [
       ['Store Name', storeSummary.storeName],
       ['Store Code', storeSummary.storeCode],
       [''],
@@ -571,7 +580,7 @@ export class AnalyticsController {
 
     // Top Items sheet
     if (topItems && topItems.length > 0) {
-      const itemsData: any[][] = topItems.map((item) => [
+      const itemsData: (string | number)[][] = topItems.map((item) => [
         item.itemName,
         item.sku || '',
         formatCurrencyForExcel(item.totalRevenue),
@@ -589,7 +598,7 @@ export class AnalyticsController {
 
     // Top Clients sheet
     if (topClients && topClients.length > 0) {
-      const clientsData: any[][] = topClients.map((client) => [
+      const clientsData: (string | number)[][] = topClients.map((client) => [
         client.clientName,
         formatCurrencyForExcel(client.totalRevenue),
         formatCurrencyForExcel(client.paidRevenue),
@@ -640,7 +649,7 @@ export class AnalyticsController {
   @ApiResponse({ status: 404, description: 'Store not found' })
   async exportStorePDF(
     @Param('storeId') storeId: string,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Res() res: Response,
   ) {
     // Organizations removed - organizationId is always null, data is user-scoped
