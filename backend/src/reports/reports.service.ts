@@ -480,18 +480,20 @@ export class ReportsService {
         case PeriodType.DAILY:
           key = date.toISOString().split('T')[0];
           break;
-        case PeriodType.WEEKLY:
+        case PeriodType.WEEKLY: {
           const weekStart = new Date(date);
           weekStart.setDate(date.getDate() - date.getDay());
           key = weekStart.toISOString().split('T')[0];
           break;
+        }
         case PeriodType.MONTHLY:
           key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
           break;
-        case PeriodType.QUARTERLY:
+        case PeriodType.QUARTERLY: {
           const quarter = Math.floor(date.getMonth() / 3) + 1;
           key = `${date.getFullYear()}-Q${quarter}`;
           break;
+        }
         case PeriodType.YEARLY:
           key = String(date.getFullYear());
           break;

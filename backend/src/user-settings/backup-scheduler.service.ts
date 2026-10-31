@@ -20,7 +20,7 @@ export class BackupSchedulerService {
    * NOTE: Backup scheduling has been removed - this method is disabled
    */
   @Cron(CronExpression.EVERY_HOUR)
-  async handleScheduledBackups() {
+  handleScheduledBackups() {
     // Backup scheduling feature has been removed
     // This method is kept to avoid breaking the cron scheduler, but does nothing
     return;
@@ -63,7 +63,7 @@ export class BackupSchedulerService {
           currentMinute < targetMinute + 10
         );
 
-      case 'weekly':
+      case 'weekly': {
         // Run once per week on Sunday at the backup time
         const isSunday = now.getDay() === 0;
         return (
@@ -72,8 +72,9 @@ export class BackupSchedulerService {
           currentMinute >= targetMinute &&
           currentMinute < targetMinute + 10
         );
+      }
 
-      case 'monthly':
+      case 'monthly': {
         // Run on the 1st of each month at the backup time
         const isFirstOfMonth = now.getDate() === 1;
         return (
@@ -82,6 +83,7 @@ export class BackupSchedulerService {
           currentMinute >= targetMinute &&
           currentMinute < targetMinute + 10
         );
+      }
 
       default:
         return false;

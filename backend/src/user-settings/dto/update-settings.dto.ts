@@ -357,7 +357,7 @@ export class IsValidPhoneNumberConstraint
   validate(phone: string) {
     if (!phone) return true; // Optional field
     // Allow international format: +, digits, spaces, dashes, parentheses
-    return /^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}$/.test(
+    return /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/.test(
       phone,
     );
   }
@@ -459,7 +459,7 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsString()
   @Length(0, 100, { message: 'Tax ID must not exceed 100 characters' })
-  @Matches(/^[A-Z0-9\-]+$/i, {
+  @Matches(/^[A-Z0-9-]+$/i, {
     message: 'Tax ID can only contain letters, numbers, and hyphens',
   })
   companyTaxId?: string;
@@ -469,7 +469,7 @@ export class UpdateSettingsDto {
   @Length(0, 100, {
     message: 'Registration number must not exceed 100 characters',
   })
-  @Matches(/^[A-Z0-9\-]+$/i, {
+  @Matches(/^[A-Z0-9-]+$/i, {
     message:
       'Registration number can only contain letters, numbers, and hyphens',
   })
@@ -478,7 +478,7 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsString()
   @Length(0, 100, { message: 'VAT number must not exceed 100 characters' })
-  @Matches(/^[A-Z0-9\-]+$/i, {
+  @Matches(/^[A-Z0-9-]+$/i, {
     message: 'VAT number can only contain letters, numbers, and hyphens',
   })
   companyVatNumber?: string;
@@ -572,7 +572,7 @@ export class UpdateSettingsDto {
   @Length(0, 100, {
     message: 'Tax registration number must not exceed 100 characters',
   })
-  @Matches(/^[A-Z0-9\-]+$/i, {
+  @Matches(/^[A-Z0-9-]+$/i, {
     message:
       'Tax registration number can only contain letters, numbers, and hyphens',
   })

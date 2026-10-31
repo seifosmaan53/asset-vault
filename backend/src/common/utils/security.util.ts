@@ -34,6 +34,7 @@ export function sanitizeString(
   if (!text) return '';
 
   // Remove null bytes and control characters
+  // eslint-disable-next-line no-control-regex -- stripping control characters is the point
   let sanitized = text.replace(/[\x00-\x1F\x7F]/g, '');
 
   // Remove HTML tags

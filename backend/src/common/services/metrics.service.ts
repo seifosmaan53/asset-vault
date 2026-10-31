@@ -107,7 +107,7 @@ export class MetricsService {
   /**
    * Get cache metrics
    */
-  async getCacheMetrics(): Promise<CacheMetrics> {
+  getCacheMetrics(): Promise<CacheMetrics> {
     const totalRequests = this.cacheHits + this.cacheMisses;
     const hitRate =
       totalRequests > 0 ? (this.cacheHits / totalRequests) * 100 : 0;
@@ -125,7 +125,7 @@ export class MetricsService {
       this.logger.debug('Unable to retrieve cache size');
     }
 
-    return {
+    return Promise.resolve({
       hits: this.cacheHits,
       misses: this.cacheMisses,
       hitRate: Math.round(hitRate * 100) / 100,
@@ -133,7 +133,7 @@ export class MetricsService {
       totalRequests,
       cacheSize,
       evictions: this.cacheEvictions,
-    };
+    });
   }
 
   /**

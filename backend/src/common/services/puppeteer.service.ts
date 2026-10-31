@@ -71,7 +71,7 @@ export class PuppeteerService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async onModuleInit(): Promise<void> {
+  onModuleInit(): void {
     // Pre-warm the browser on startup to avoid first request delay
     // Note: This helps but on Mac Silicon (arm64) with x64 Node.js,
     // browser launch will still be slower due to Rosetta translation.

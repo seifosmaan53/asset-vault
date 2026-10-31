@@ -14,7 +14,7 @@
  *
  * Mocked: Clerk's users.getUser, the users/organizations services. Real: verifyToken, the guard.
  */
-import { createHmac, generateKeyPairSync } from 'crypto';
+import { createHmac, createPublicKey, generateKeyPairSync } from 'crypto';
 import { type ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import * as jwt from 'jsonwebtoken';
@@ -134,7 +134,7 @@ describe('ClerkAuthGuard with the real Clerk SDK (networkless, CLERK_JWT_KEY)', 
 
 describe('ClerkAuthGuard with the real Clerk SDK (default production path: JWKS lookup, no CLERK_JWT_KEY)', () => {
   const jwk = {
-    ...(good.publicKey && (require('crypto').createPublicKey(good.publicKey).export({ format: 'jwk' }) as object)),
+    ...(good.publicKey && (createPublicKey(good.publicKey).export({ format: 'jwk' }) as object)),
     kid: KID,
     alg: 'RS256',
     use: 'sig',
@@ -143,11 +143,13 @@ describe('ClerkAuthGuard with the real Clerk SDK (default production path: JWKS 
 
   beforeEach(() => {
     fetchSpy = jest.spyOn(globalThis, 'fetch').mockImplementation(
-      async () =>
-        new Response(JSON.stringify({ keys: [jwk] }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        }),
+      () =>
+        Promise.resolve(
+          new Response(JSON.stringify({ keys: [jwk] }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+        ),
     );
   });
   afterEach(() => fetchSpy.mockRestore());
@@ -192,9 +194,9 @@ describe('ClerkAuthGuard with the real Clerk SDK (default production path: JWKS 
   });
 
   it('fails closed when the JWKS cannot be fetched', async () => {
-    fetchSpy.mockImplementation(async () => {
-      throw new Error('network down');
-    });
+    fetchSpy.mockImplementation(() =>
+      Promise.reject(new Error('network down')),
+    );
     const { guard, getUser } = freshGuard();
     await expect(guard.canActivate(ctx(rs256(good.privateKey)).context)).rejects.toMatchObject({
       status: 401, // not instanceof: isolateModules loads a second copy of @nestjs/common

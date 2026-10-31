@@ -1099,7 +1099,7 @@ export function validatePhone(
     }
 
     // Basic format check (allow common separators)
-    if (!/^[\d\s\-\+\(\)]+$/.test(str)) {
+    if (!/^[\d\s\-+()]+$/.test(str)) {
       throw new BadRequestException(
         `${fieldName} must be a valid phone number`,
       );

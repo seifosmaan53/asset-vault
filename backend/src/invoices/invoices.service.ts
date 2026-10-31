@@ -1367,7 +1367,7 @@ export class InvoicesService {
         dueDate?: string;
         paidAt?: string | undefined;
         notes?: string | undefined;
-        metadataJson?: { terms?: string } | any;
+        metadataJson?: any; // { terms?: string } plus free-form keys
       }
 
       const updateData: InvoiceUpdateData = {};
@@ -2745,7 +2745,7 @@ export class InvoicesService {
   private async generateInvoiceNumber(
     userId: string,
     type: 'invoice' | 'estimate',
-    settings: any | undefined,
+    settings: any,
     queryRunner?: QueryRunner,
   ): Promise<string> {
     const manager = queryRunner?.manager || this.invoicesRepository.manager;

@@ -820,7 +820,7 @@ export class UserSettingsService {
   /**
    * Test email connection - Email functionality has been removed
    */
-  async testEmailConnection(
+  testEmailConnection(
     userId: string,
     credentials?: {
       smtpHost?: string;
@@ -835,10 +835,10 @@ export class UserSettingsService {
     this.logger.warn(
       `Email test connection requested by user ${userId} - email functionality has been disabled`,
     );
-    return {
+    return Promise.resolve({
       success: false,
       message: 'Email functionality has been disabled',
-    };
+    });
   }
 
   /**

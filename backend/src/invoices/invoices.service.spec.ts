@@ -225,16 +225,18 @@ describe('InvoicesService', () => {
             },
           );
         }
-        qb.getOne = jest.fn(async () => {
+        qb.getOne = jest.fn(() => {
           /* Two different jobs go through this one builder, and answering both the same
              way was wrong: update() LOADS THE INVOICE here, and echoing back a bare
              { id, userId } stripped its client and items — so the "sent" guard saw no
              client email and the store-stock path had no lines to check. Invoice reads
              delegate to the findOne stub the tests set up; only the client/store
              EXISTENCE probes get the synthesised row. */
-          if (entity === Invoice) return mockInvoicesRepository.findOne();
+          if (entity === Invoice) {
+            return Promise.resolve(mockInvoicesRepository.findOne());
+          }
           const id = seen.storeId ?? seen.clientId ?? seen.id;
-          return id ? { id, userId: seen.userId } : null;
+          return Promise.resolve(id ? { id, userId: seen.userId } : null);
         });
         return qb;
       }),

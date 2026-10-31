@@ -14,7 +14,7 @@ export class ErrorFormatter {
    * Format error response consistently
    */
   static formatError(
-    error: Error | HttpException | unknown,
+    error: unknown,
     statusCode?: HttpStatus,
     path?: string,
   ): {

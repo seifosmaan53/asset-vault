@@ -70,7 +70,7 @@ export class UsersController {
   }
 
   @Post()
-  async create() {
+  create() {
     // Accounts are created by the Clerk sign-up flow (webhook / first authenticated request).
     throw new BadRequestException(
       'User creation is handled by Clerk. Please use the sign-up flow.',
@@ -99,7 +99,7 @@ export class UsersController {
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string, @Request() req) {
+  remove(@Param('id') id: string, @Request() req) {
     if (id !== req.user.userId) {
       throw new NotFoundException('User not found');
     }
