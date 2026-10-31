@@ -72,7 +72,9 @@ export function installGracefulShutdown(
         `Shutdown: ${reason} received; refusing new connections, waiting up to ${timeoutMs} ms for in-flight requests.`,
       );
 
+      let forced = false;
       const force = setTimeout(() => {
+        forced = true;
         server.getConnections((_err, open) => {
           logger.error(
             `Shutdown: not finished after ${elapsed()} (bound ${timeoutMs} ms, ${open} connection(s) still open); forcing exit 1.`,
@@ -104,6 +106,7 @@ export function installGracefulShutdown(
         return;
       }
       clearTimeout(force);
+      if (forced) return; // exit(1) already requested
       logger.log(`Shutdown: complete in ${elapsed()}; exiting 0.`);
       exit(0);
     })();

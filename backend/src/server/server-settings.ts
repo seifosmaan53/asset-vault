@@ -5,7 +5,6 @@
 // Documented in docs/setup/DOCKER_README.md ("Server settings").
 
 import { isIP } from 'node:net';
-import type { ConfigService } from '@nestjs/config';
 import { corsAllowedOrigins, type AllowedOrigin } from './cors.middleware';
 
 /**
@@ -97,18 +96,23 @@ export function httpsOriginOf(url: string): string {
   return `https://${new URL(url).host}`;
 }
 
-export function loadServerSettings(config: ConfigService): ServerSettings {
-  const isProduction = config.get<string>('NODE_ENV') === 'production';
-  const frontendUrl =
-    config.get<string>('FRONTEND_URL') || DEFAULT_FRONTEND_URL;
-  const publicUrl = config.get<string>('API_PUBLIC_URL') || frontendUrl;
+/** Reads one configuration value (ConfigService.get in the app; a plain map in tests). */
+export type ConfigReader = (key: string) => string | number | undefined;
+
+function readString(read: ConfigReader, key: string): string | undefined {
+  const value = read(key);
+  return value === undefined ? undefined : String(value);
+}
+
+export function loadServerSettings(read: ConfigReader): ServerSettings {
+  const isProduction = readString(read, 'NODE_ENV') === 'production';
+  const frontendUrl = readString(read, 'FRONTEND_URL') || DEFAULT_FRONTEND_URL;
+  const publicUrl = readString(read, 'API_PUBLIC_URL') || frontendUrl;
   return {
     isProduction,
     allowedOrigins: corsAllowedOrigins(isProduction, frontendUrl),
-    trustProxy: parseTrustProxy(config.get<string>('TRUST_PROXY')),
+    trustProxy: parseTrustProxy(readString(read, 'TRUST_PROXY')),
     httpsRedirectOrigin: httpsOriginOf(publicUrl),
-    shutdownTimeoutMs: parseShutdownTimeout(
-      config.get<string | number>('SHUTDOWN_TIMEOUT_MS'),
-    ),
+    shutdownTimeoutMs: parseShutdownTimeout(read('SHUTDOWN_TIMEOUT_MS')),
   };
 }

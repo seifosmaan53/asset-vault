@@ -57,7 +57,9 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   let settings: ServerSettings;
   try {
-    settings = loadServerSettings(configService);
+    settings = loadServerSettings((key) =>
+      configService.get<string | number>(key),
+    );
   } catch (error) {
     logger.error(
       `Startup aborted: ${error instanceof Error ? error.message : String(error)}`,
