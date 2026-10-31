@@ -41,21 +41,24 @@ export const ImportPreview = <T extends Record<string, any>>({
   result,
   isLoading = false,
 }: ImportPreviewProps<T>) => {
-  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [selectOnlyValid, setSelectOnlyValid] = useState(true);
+  const autoSelection = (onlyValid: boolean, valid: T[]) =>
+    new Set(onlyValid ? valid.map((_, index) => index) : []);
+  const [selectedRows, setSelectedRows] = useState<Set<number>>(() =>
+    autoSelection(selectOnlyValid, result.valid),
+  );
 
   const validCount = result.valid.length;
   const invalidCount = result.invalid.length;
   const totalCount = validCount + invalidCount;
 
-  // Auto-select valid rows
-  useMemo(() => {
-    if (selectOnlyValid && validCount > 0) {
-      setSelectedRows(new Set(result.valid.map((_, index) => index)));
-    } else {
-      setSelectedRows(new Set());
-    }
-  }, [selectOnlyValid, validCount, result.valid]);
+  // Auto-select valid rows whenever the rows or the "only valid" toggle change
+  // (state adjusted during render; it used to call setState from inside useMemo).
+  const [selectionSource, setSelectionSource] = useState({ selectOnlyValid, valid: result.valid });
+  if (selectionSource.selectOnlyValid !== selectOnlyValid || selectionSource.valid !== result.valid) {
+    setSelectionSource({ selectOnlyValid, valid: result.valid });
+    setSelectedRows(autoSelection(selectOnlyValid, result.valid));
+  }
 
   const handleSelectAll = () => {
     if (selectedRows.size === validCount) {

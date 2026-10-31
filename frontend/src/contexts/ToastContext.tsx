@@ -61,10 +61,6 @@ export const ToastProvider = ({ children, maxToasts = 5 }: ToastProviderProps) =
     }
   }, []);
 
-  const showToast = useCallback((msg: string, sev: ToastSeverity = 'info') => {
-    showToastWithAction(msg, { severity: sev });
-  }, []);
-
   const showToastWithAction = useCallback((msg: string, options: ToastOptions = {}) => {
     const id = `toast-${Date.now()}-${Math.random()}`;
     const {
@@ -101,6 +97,10 @@ export const ToastProvider = ({ children, maxToasts = 5 }: ToastProviderProps) =
 
     return id;
   }, [maxToasts, dismissToast]);
+
+  const showToast = useCallback((msg: string, sev: ToastSeverity = 'info') => {
+    showToastWithAction(msg, { severity: sev });
+  }, [showToastWithAction]);
 
   const handleClose = useCallback((id: string) => {
     dismissToast(id);

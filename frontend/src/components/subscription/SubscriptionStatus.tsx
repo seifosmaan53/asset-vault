@@ -17,12 +17,10 @@ export function SubscriptionStatus() {
     });
   }, [loadSubscription]);
 
-  // Track if subscription was null after initial load
-  useEffect(() => {
-    if (hasLoadedOnce && !isLoading) {
-      setSubscriptionWasNull(!subscription);
-    }
-  }, [hasLoadedOnce, isLoading, subscription]);
+  // Track if subscription was null after initial load (kept while a reload is in flight)
+  if (hasLoadedOnce && !isLoading && subscriptionWasNull !== !subscription) {
+    setSubscriptionWasNull(!subscription);
+  }
 
   // Auto-refresh if status is pending (to catch webhook updates)
   // Use syncSubscription to actively fetch latest status from Stripe

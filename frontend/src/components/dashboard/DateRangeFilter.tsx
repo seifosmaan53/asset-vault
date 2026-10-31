@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Button, Menu, MenuItem, Chip, Divider } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -36,22 +36,23 @@ const DateRangeFilter = ({ startDate, endDate, onRangeChange }: DateRangeFilterP
   const yesterday = endOfDay(subDays(now, 1));
   const currentYear = now.getFullYear();
   
-  // Validate and clamp dates to prevent future dates from being displayed
-  const validatedStartDate = useMemo(() => {
+  // Validate and clamp dates to prevent future dates from being displayed. Not memoized:
+  // todayForMaxDate is a new Date on every render, so a memo would never hit anyway.
+  const validatedStartDate = (() => {
     if (!startDate) return null;
     if (startDate > todayForMaxDate || startDate.getFullYear() > currentYear) {
       return subMonths(todayForMaxDate, 6);
     }
     return startDate;
-  }, [startDate, todayForMaxDate, currentYear]);
-  
-  const validatedEndDate = useMemo(() => {
+  })();
+
+  const validatedEndDate = (() => {
     if (!endDate) return null;
     if (endDate > todayForMaxDate || endDate.getFullYear() > currentYear) {
       return todayForMaxDate;
     }
     return endDate;
-  }, [endDate, todayForMaxDate, currentYear]);
+  })();
   
   // Auto-correct if dates are invalid (only when dates actually change)
   useEffect(() => {

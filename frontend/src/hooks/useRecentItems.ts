@@ -11,15 +11,16 @@ import { useCallback } from 'react';
  */
 export const useRecentItems = () => {
   const context = useRecentItemsContext();
+  const { addItem } = context;
 
   /**
    * Track a viewed item
    */
   const trackView = useCallback(
     (id: string, type: RecentItemType, name: string, url: string) => {
-      context.addItem({ id, type, name, url });
+      addItem({ id, type, name, url });
     },
-    [context.addItem], // Only depend on addItem, not the entire context
+    [addItem], // Only depend on addItem, not the entire context
   );
 
   return {

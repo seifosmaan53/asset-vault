@@ -49,7 +49,8 @@ export const SearchBar = ({
 }: SearchBarProps) => {
   const [isFocused, setIsFocused] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const anchorRef = useRef<HTMLDivElement>(null);
+  // Held in state (callback ref) so the Popper can read the anchor during render.
+  const [anchorEl, setAnchorEl] = useState<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { searchHistory, addToHistory, clearHistory, savedSearches, removeSavedSearch } = useSearch();
 
@@ -103,7 +104,7 @@ export const SearchBar = ({
     showSuggestions && filteredSuggestions.length > 0;
 
   return (
-    <Box ref={anchorRef} sx={{ position: 'relative', width: '100%' }}>
+    <Box ref={setAnchorEl} sx={{ position: 'relative', width: '100%' }}>
       <TextField
         inputRef={inputRef}
         fullWidth
@@ -139,9 +140,9 @@ export const SearchBar = ({
       {isFocused && showDropdown && hasResults && (
         <Popper
           open={showDropdown}
-          anchorEl={anchorRef.current}
+          anchorEl={anchorEl}
           placement="bottom-start"
-          style={{ zIndex: 1300, width: anchorRef.current?.clientWidth }}
+          style={{ zIndex: 1300, width: anchorEl?.clientWidth }}
         >
           <Paper
             elevation={8}

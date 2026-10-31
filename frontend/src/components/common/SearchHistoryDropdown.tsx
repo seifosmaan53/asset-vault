@@ -1,6 +1,5 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -32,15 +31,7 @@ export const SearchHistoryDropdown = ({
   maxItems = 10,
 }: SearchHistoryDropdownProps) => {
   const { searchHistory, removeFromHistory, clearHistory } = useSearch();
-  const [displayedHistory, setDisplayedHistory] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (open && searchHistory.length > 0) {
-      setDisplayedHistory(searchHistory.slice(0, maxItems));
-    } else {
-      setDisplayedHistory([]);
-    }
-  }, [open, searchHistory, maxItems]);
+  const displayedHistory = open ? searchHistory.slice(0, maxItems) : [];
 
   const handleSelect = (term: string) => {
     onSelect(term);
