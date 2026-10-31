@@ -29,6 +29,13 @@ import { ImportService } from '../common/services/import.service';
 
 type SourceType = 'invoice' | 'manual' | 'import';
 
+/** Filters accepted by InventoryService.findAll. */
+export interface InventoryItemFilters {
+  search?: string;
+  status?: string;
+  lowStockOnly?: boolean;
+}
+
 @Injectable()
 export class InventoryService {
   private readonly logger = new Logger(InventoryService.name);
@@ -56,11 +63,7 @@ export class InventoryService {
 
   async findAll(
     userId: string,
-    filters?: {
-      search?: string;
-      status?: string;
-      lowStockOnly?: boolean;
-    },
+    filters?: InventoryItemFilters,
   ): Promise<InventoryItem[]> {
     try {
       // DIAGNOSTIC: Log the query parameters

@@ -25,9 +25,15 @@ import {
 } from '@nestjs/swagger';
 import { ClientsService } from './clients.service';
 import { CreateClientDto, UpdateClientDto, BulkDeleteClientsDto } from './dto';
+import type { ClientFiltersDto } from './dto/client-filters.dto';
 // Organizations removed - OrganizationId decorator no longer needed
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
+
+/** A single query-string value; repeated (array) or nested values are ignored. */
+function queryString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
 
 @ApiTags('clients')
 @ApiBearerAuth('JWT-auth')
@@ -47,8 +53,21 @@ export class ClientsController {
     description: 'List of clients retrieved successfully',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  findAll(@Request() req: AuthenticatedRequest, @Query() filters?: any) {
+  findAll(
+    @Request() req: AuthenticatedRequest,
+    // Typed as a plain record (not ClientFiltersDto) so the global
+    // ValidationPipe keeps skipping it, as before: with forbidNonWhitelisted a
+    // DTO here would start rejecting any extra query parameter with a 400.
+    @Query() query?: Record<string, unknown>,
+  ) {
     // Organizations removed - data is user-scoped
+    const filters: ClientFiltersDto | undefined = query && {
+      search: queryString(query.search),
+      createdAtFrom: queryString(query.createdAtFrom),
+      createdAtTo: queryString(query.createdAtTo),
+      updatedAtFrom: queryString(query.updatedAtFrom),
+      updatedAtTo: queryString(query.updatedAtTo),
+    };
     return this.clientsService.findAll(req.user.userId, filters);
   }
 

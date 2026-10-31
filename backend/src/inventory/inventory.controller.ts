@@ -24,7 +24,10 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
-import { InventoryService } from './inventory.service';
+import {
+  InventoryService,
+  type InventoryItemFilters,
+} from './inventory.service';
 import {
   CreateInventoryItemDto,
   UpdateInventoryItemDto,
@@ -81,20 +84,23 @@ export class InventoryController {
     description: 'List of inventory items retrieved successfully',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async findAll(@Request() req: AuthenticatedRequest, @Query() filters: any) {
+  async findAll(
+    @Request() req: AuthenticatedRequest,
+    // A plain record keeps the global ValidationPipe skipping this parameter,
+    // as before (a DTO would reject unknown query parameters).
+    @Query() filters: Record<string, unknown>,
+  ) {
     // Organizations removed - data is user-scoped
     // Parse boolean query parameters correctly
-    const parsedFilters: any = {};
+    const parsedFilters: InventoryItemFilters = {};
 
     // Only include search if provided
-    if (filters.search) {
+    if (typeof filters.search === 'string' && filters.search) {
       parsedFilters.search = filters.search;
     }
 
-    // Only include category if provided
-    if (filters.category) {
-      parsedFilters.category = filters.category;
-    }
+    // `category` is documented on this route but InventoryService.findAll has
+    // never filtered on it, so it is not forwarded.
 
     // Only include status if it's a valid status value ('active' or 'inactive')
     // If status is 'all', undefined, or invalid, don't include it (will show all items)
