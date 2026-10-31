@@ -8,7 +8,6 @@ import {
   Param,
   UseGuards,
   Request,
-  BadRequestException,
 } from '@nestjs/common';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { OrganizationsService } from './organizations.service';

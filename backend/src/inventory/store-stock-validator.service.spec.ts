@@ -1,7 +1,6 @@
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import type { Repository } from 'typeorm';
 import { StoreStockValidatorService } from './store-stock-validator.service';
 import { StoreItemSettings } from './entities/store-item-settings.entity';
 import { Store } from './entities/store.entity';
@@ -11,10 +10,6 @@ import { NotFoundException, BadRequestException } from '@nestjs/common';
 
 describe('StoreStockValidatorService', () => {
   let service: StoreStockValidatorService;
-  let storeItemSettingsRepository: Repository<StoreItemSettings>;
-  let storeRepository: Repository<Store>;
-  let inventoryItemRepository: Repository<InventoryItem>;
-  let storeItemSettingsService: StoreItemSettingsService;
 
   const mockStoreItemSettingsRepository = {
     findOne: jest.fn(),
@@ -112,16 +107,6 @@ describe('StoreStockValidatorService', () => {
 
     service = module.get<StoreStockValidatorService>(
       StoreStockValidatorService,
-    );
-    storeItemSettingsRepository = module.get<Repository<StoreItemSettings>>(
-      getRepositoryToken(StoreItemSettings),
-    );
-    storeRepository = module.get<Repository<Store>>(getRepositoryToken(Store));
-    inventoryItemRepository = module.get<Repository<InventoryItem>>(
-      getRepositoryToken(InventoryItem),
-    );
-    storeItemSettingsService = module.get<StoreItemSettingsService>(
-      StoreItemSettingsService,
     );
   });
 

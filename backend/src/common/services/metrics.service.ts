@@ -120,7 +120,7 @@ export class MetricsService {
       // For in-memory cache, we can't easily get size, so we'll return 0
       // This would need to be implemented based on the cache store being used
       cacheSize = 0;
-    } catch (error) {
+    } catch {
       // Cache store may not support size retrieval
       this.logger.debug('Unable to retrieve cache size');
     }

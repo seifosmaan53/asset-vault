@@ -8,7 +8,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Store } from './entities/store.entity';
 import { InventoryItem } from './entities/inventory-item.entity';
-import { StoreItemSettings } from './entities/store-item-settings.entity';
 import { StockMovement } from './entities/stock-movement.entity';
 import { StoreItemSettingsService } from './store-item-settings.service';
 import { InventoryService } from './inventory.service';

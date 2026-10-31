@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThanOrEqual } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Cron } from '@nestjs/schedule';
 import { StoreAlert } from './entities/store-alert.entity';
 import { StoreItemSettings } from './entities/store-item-settings.entity';
@@ -151,7 +151,6 @@ export class StoreAlertsService {
     userId: string,
     storeId?: string,
     resolved?: boolean,
-    organizationId?: string | null,
   ): Promise<StoreAlert[]> {
     // FIX Issue #43: Use query builder to filter by organization through store relationship
     const query = this.storeAlertRepository
@@ -181,7 +180,6 @@ export class StoreAlertsService {
   async getStoreAlerts(
     storeId: string,
     userId: string,
-    organizationId?: string | null,
   ): Promise<StoreAlert[]> {
     // The store must belong to the caller. This used to run only `if (organizationId)`, and organizationId
     // is always null (data is per-user), so the check never executed and a foreign store id quietly
@@ -242,7 +240,7 @@ export class StoreAlertsService {
       if (userOrgs.length > 0) {
         try {
           userSettings = await this.userSettingsService.getSettings(userId);
-        } catch (error) {
+        } catch {
           // If settings don't exist for this org, use defaults
           this.logger.warn(
             `No settings found for user ${userId}, using defaults`,

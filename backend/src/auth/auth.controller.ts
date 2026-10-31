@@ -80,7 +80,7 @@ export class AuthController {
     description: 'Logged out successfully',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async logout(@Req() req: AuthenticatedRequest) {
+  async logout() {
     return { message: 'Logged out successfully' };
   }
 

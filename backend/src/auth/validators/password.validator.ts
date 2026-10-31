@@ -1,7 +1,6 @@
 import {
   ValidatorConstraint,
   ValidatorConstraintInterface,
-  ValidationArguments,
   registerDecorator,
   ValidationOptions,
 } from 'class-validator';
@@ -10,7 +9,7 @@ import {
 export class IsStrongPasswordConstraint
   implements ValidatorConstraintInterface
 {
-  validate(password: string, args: ValidationArguments): boolean {
+  validate(password: string): boolean {
     if (!password) return false;
 
     // Minimum 8 characters, maximum 128 characters
@@ -42,7 +41,7 @@ export class IsStrongPasswordConstraint
     return true;
   }
 
-  defaultMessage(args: ValidationArguments): string {
+  defaultMessage(): string {
     return 'Password must be 8-128 characters with at least one uppercase letter, one lowercase letter, and one number';
   }
 }

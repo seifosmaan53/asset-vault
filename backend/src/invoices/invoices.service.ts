@@ -7,7 +7,7 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, IsNull, DataSource, QueryRunner } from 'typeorm';
+import { Repository, IsNull, DataSource, QueryRunner } from 'typeorm';
 import { Invoice } from './entities/invoice.entity';
 import { InvoiceItem } from './entities/invoice-item.entity';
 import { CreateInvoiceDto, UpdateInvoiceDto, InvoiceItemDto } from './dto';
@@ -29,9 +29,7 @@ import type { Cache } from 'cache-manager';
 import {
   CacheKey,
   buildCacheKey,
-  getCacheKeysToInvalidate,
 } from '../common/utils/cache-invalidation.util';
-import { applyDefaultSort } from '../common/utils/default-sorting.util';
 import {
   computeInvoiceTotalsCents,
   invoiceTotalsToMoney,
@@ -44,11 +42,7 @@ import {
   InvoiceStatus,
 } from './utils/invoice-status.util';
 import { InvoiceStatusHistory } from './entities/invoice-status-history.entity';
-import {
-  validateDate,
-  validateUUID,
-  validateString,
-} from '../common/utils/edge-case-protection.util';
+import { validateDate } from '../common/utils/edge-case-protection.util';
 import { validateCurrencyCode } from './utils/currency.util';
 import { Client } from '../clients/entities/client.entity';
 import { UsageService, UsageMetric } from '../subscriptions/usage.service';
@@ -587,7 +581,7 @@ export class InvoicesService {
       try {
         await this.storeService.findOne(data.storeId, userId);
         validatedStoreId = data.storeId;
-      } catch (error) {
+      } catch {
         throw new BadRequestException(
           `Store with ID "${data.storeId}" not found or does not belong to user`,
         );
@@ -659,6 +653,7 @@ export class InvoicesService {
 
     // Sanitize text inputs to prevent XSS
     // CRITICAL: Exclude items from invoiceData to prevent cascade save with invalid quantity types
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- rest-omit: items is dropped from the copy on purpose
     const { items, ...dataWithoutItems } = data;
     // PHASE 5 FIX: Validate currency code
     const validatedCurrency = validateCurrencyCode(
@@ -1266,6 +1261,7 @@ export class InvoicesService {
       // This prevents validation errors since lineTotal is not in the DTO
       if (data.items && Array.isArray(data.items)) {
         data.items = data.items.map((item: any) => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars -- rest-omit: lineTotal is dropped from the copy on purpose
           const { lineTotal, ...itemWithoutLineTotal } = item;
           return itemWithoutLineTotal;
         });
@@ -1302,7 +1298,7 @@ export class InvoicesService {
       if (validatedStoreId) {
         try {
           await this.storeService.findOne(validatedStoreId, userId);
-        } catch (error) {
+        } catch {
           throw new BadRequestException(
             `Store with ID "${validatedStoreId}" not found or does not belong to user`,
           );
@@ -1768,7 +1764,7 @@ export class InvoicesService {
          update with items failed (shown as "Invalid inventory item ID"). Save the
          invoice row only. */
       delete (invoice as Partial<Invoice>).items;
-      const updatedInvoice = await queryRunner.manager.save(Invoice, invoice);
+      await queryRunner.manager.save(Invoice, invoice);
 
       // Reload with items to get fresh data
       const invoiceWithItems = await queryRunner.manager.findOne(Invoice, {
@@ -2392,7 +2388,6 @@ export class InvoicesService {
       // For sent invoices, stock was definitely deducted, so we reverse it
       // For cancelled invoices, check if they had stock movements (they might have been sent before cancellation)
       // Paid invoices cannot be deleted (blocked above), so we don't need to handle them here
-      const invoiceStatus = invoice.status as string;
       // UPDATED: Reverse stock for all non-estimate invoices (draft, sent, cancelled) when deleted
       // This ensures stock is properly restored when invoices are deleted
       if (invoice.type !== 'estimate') {

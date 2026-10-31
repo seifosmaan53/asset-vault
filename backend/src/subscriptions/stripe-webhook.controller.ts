@@ -1,14 +1,6 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import {
-  Controller,
-  Post,
-  Req,
-  Res,
-  Headers,
-  Logger,
-  BadRequestException,
-} from '@nestjs/common';
+import { Controller, Post, Req, Res, Headers, Logger } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';

@@ -1,7 +1,6 @@
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import type { Repository } from 'typeorm';
 import { StoreItemSettingsService } from './store-item-settings.service';
 import { StoreItemSettings } from './entities/store-item-settings.entity';
 import { Store } from './entities/store.entity';
@@ -10,9 +9,6 @@ import { NotFoundException } from '@nestjs/common';
 
 describe('StoreItemSettingsService', () => {
   let service: StoreItemSettingsService;
-  let storeItemSettingsRepository: Repository<StoreItemSettings>;
-  let storeRepository: Repository<Store>;
-  let inventoryItemRepository: Repository<InventoryItem>;
 
   /* The service moved to QueryBuilder chains but these mocks only had findOne, so
      createQueryBuilder() returned undefined and the suite died. Each chain step returns
@@ -117,13 +113,6 @@ describe('StoreItemSettingsService', () => {
     }).compile();
 
     service = module.get<StoreItemSettingsService>(StoreItemSettingsService);
-    storeItemSettingsRepository = module.get<Repository<StoreItemSettings>>(
-      getRepositoryToken(StoreItemSettings),
-    );
-    storeRepository = module.get<Repository<Store>>(getRepositoryToken(Store));
-    inventoryItemRepository = module.get<Repository<InventoryItem>>(
-      getRepositoryToken(InventoryItem),
-    );
   });
 
   afterEach(() => {
@@ -270,7 +259,7 @@ describe('StoreItemSettingsService', () => {
     });
 
     it('should increase store stock', async () => {
-      const result = await service.adjustStoreStock(
+      await service.adjustStoreStock(
         storeId,
         inventoryItemId,
         20,
@@ -285,7 +274,7 @@ describe('StoreItemSettingsService', () => {
     });
 
     it('should decrease store stock', async () => {
-      const result = await service.adjustStoreStock(
+      await service.adjustStoreStock(
         storeId,
         inventoryItemId,
         20,

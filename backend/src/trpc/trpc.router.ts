@@ -1,6 +1,6 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { TrpcService } from './trpc.service';
 import { invoicesRouter } from './routers/invoices.router';
 import { clientsRouter } from './routers/clients.router';

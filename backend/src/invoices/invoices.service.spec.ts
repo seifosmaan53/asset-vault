@@ -7,7 +7,6 @@ import { InvoiceStatusHistory } from './entities/invoice-status-history.entity';
 import { InventoryItem } from '../inventory/entities/inventory-item.entity';
 import { UsageService } from '../subscriptions/usage.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
-import type { Repository } from 'typeorm';
 import { InvoicesService } from './invoices.service';
 import { Invoice } from './entities/invoice.entity';
 import { InvoiceItem } from './entities/invoice-item.entity';
@@ -58,10 +57,6 @@ let lastInvoiceQb: ReturnType<typeof mockQueryBuilder0>;
 
 describe('InvoicesService', () => {
   let service: InvoicesService;
-  let invoicesRepository: Repository<Invoice>;
-  let invoiceItemsRepository: Repository<InvoiceItem>;
-  let inventoryService: InventoryService;
-  let storeService: StoreService;
 
   const mockInvoicesRepository = {
     // returned undefined, so the service's `invoice.subtotal = ...` blew up with
@@ -220,7 +215,7 @@ describe('InvoicesService', () => {
          Default to "the row exists and is yours" — echoing back the id that was asked
          for — which is the precondition these tests are setting up, not the thing they
          are testing. A case that wants the opposite overrides getOne itself. */
-      createQueryBuilder: jest.fn((entity?: unknown, _alias?: unknown) => {
+      createQueryBuilder: jest.fn((entity?: unknown) => {
         const qb = mockQueryBuilder0();
         const seen: Record<string, unknown> = {};
         for (const m of ['where', 'andWhere']) {
@@ -352,14 +347,6 @@ describe('InvoicesService', () => {
     }).compile();
 
     service = module.get<InvoicesService>(InvoicesService);
-    invoicesRepository = module.get<Repository<Invoice>>(
-      getRepositoryToken(Invoice),
-    );
-    invoiceItemsRepository = module.get<Repository<InvoiceItem>>(
-      getRepositoryToken(InvoiceItem),
-    );
-    inventoryService = module.get<InventoryService>(InventoryService);
-    storeService = module.get<StoreService>(StoreService);
   });
 
   afterEach(() => {

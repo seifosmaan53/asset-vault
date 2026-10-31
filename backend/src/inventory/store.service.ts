@@ -7,7 +7,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, DataSource } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { Store } from './entities/store.entity';

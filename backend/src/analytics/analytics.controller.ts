@@ -13,7 +13,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
-import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import {
   ApiTags,
   ApiOperation,
@@ -421,7 +421,7 @@ export class AnalyticsController {
       throw new NotFoundException(`Store with ID "${storeId}" not found`);
     }
 
-    const [revenue, topClients, topItems, turnover] = await Promise.all([
+    const [, topClients, topItems, turnover] = await Promise.all([
       this.analyticsService.getStoreRevenueReport(
         req.user.userId,
         storeId,
@@ -530,7 +530,7 @@ export class AnalyticsController {
       throw new NotFoundException(`Store with ID "${storeId}" not found`);
     }
 
-    const [revenue, topClients, topItems, turnover] = await Promise.all([
+    const [, topClients, topItems, turnover] = await Promise.all([
       this.analyticsService.getStoreRevenueReport(
         req.user.userId,
         storeId,

@@ -12,10 +12,8 @@ import {
   Length,
   Matches,
   IsIn,
-  Validate,
   ValidatorConstraint,
   ValidatorConstraintInterface,
-  ValidationArguments,
   registerDecorator,
 } from 'class-validator';
 import { isURL } from 'validator';
@@ -183,7 +181,7 @@ export class IsValidTimezoneConstraint implements ValidatorConstraintInterface {
     'UTC',
   ];
 
-  validate(timezone: string, args: ValidationArguments) {
+  validate(timezone: string) {
     if (!timezone) return true; // Optional field
     // Fix Issue #13: Case-insensitive matching for better UX
     return this.validTimezones.some(
@@ -191,7 +189,7 @@ export class IsValidTimezoneConstraint implements ValidatorConstraintInterface {
     );
   }
 
-  defaultMessage(args: ValidationArguments) {
+  defaultMessage() {
     return 'Timezone must be a valid IANA timezone identifier';
   }
 }
@@ -211,26 +209,14 @@ function IsValidTimezone(validationOptions?: any) {
 // Custom validator for hex color
 @ValidatorConstraint({ name: 'isValidHexColor', async: false })
 export class IsValidHexColorConstraint implements ValidatorConstraintInterface {
-  validate(color: string, args: ValidationArguments) {
+  validate(color: string) {
     if (!color) return true; // Optional field
     return /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color);
   }
 
-  defaultMessage(args: ValidationArguments) {
+  defaultMessage() {
     return 'Color must be a valid hex color (e.g., #FF5733 or #F53)';
   }
-}
-
-function IsValidHexColor(validationOptions?: any) {
-  return function (object: object, propertyName: string) {
-    registerDecorator({
-      target: object.constructor,
-      propertyName: propertyName,
-      options: validationOptions,
-      constraints: [],
-      validator: IsValidHexColorConstraint,
-    });
-  };
 }
 
 // Custom validator for invoice number format
@@ -238,7 +224,7 @@ function IsValidHexColor(validationOptions?: any) {
 export class IsValidInvoiceNumberFormatConstraint
   implements ValidatorConstraintInterface
 {
-  validate(format: string, args: ValidationArguments) {
+  validate(format: string) {
     if (!format) return true; // Optional field
     // Must contain at least one placeholder
     const placeholders = ['{YYYY}', '{YY}', '{MM}', '{DD}', '{NUM}', '{####}'];
@@ -256,7 +242,7 @@ export class IsValidInvoiceNumberFormatConstraint
     return hasPlaceholder;
   }
 
-  defaultMessage(args: ValidationArguments) {
+  defaultMessage() {
     return 'Invoice number format must contain at least one placeholder: {YYYY}, {YY}, {MM}, {DD}, {NUM}, or {####}';
   }
 }
@@ -314,14 +300,14 @@ export class IsValidLanguageCodeConstraint
     'ko',
   ];
 
-  validate(language: string, args: ValidationArguments) {
+  validate(language: string) {
     if (!language) return true; // Optional field
     // Must be 2 characters (ISO 639-1)
     if (language.length !== 2) return false;
     return this.validLanguages.includes(language.toLowerCase());
   }
 
-  defaultMessage(args: ValidationArguments) {
+  defaultMessage() {
     return 'Language must be a valid ISO 639-1 language code (2 letters, e.g., en, es, fr)';
   }
 }
@@ -341,12 +327,12 @@ function IsValidLanguageCode(validationOptions?: any) {
 // Custom validator for URL
 @ValidatorConstraint({ name: 'isValidUrl', async: false })
 export class IsValidUrlConstraint implements ValidatorConstraintInterface {
-  validate(url: string, args: ValidationArguments) {
+  validate(url: string) {
     if (!url) return true; // Optional field
     return isURL(url, { require_protocol: true, require_valid_protocol: true });
   }
 
-  defaultMessage(args: ValidationArguments) {
+  defaultMessage() {
     return 'Must be a valid URL with protocol (e.g., https://example.com)';
   }
 }
@@ -368,7 +354,7 @@ function IsValidUrl(validationOptions?: any) {
 export class IsValidPhoneNumberConstraint
   implements ValidatorConstraintInterface
 {
-  validate(phone: string, args: ValidationArguments) {
+  validate(phone: string) {
     if (!phone) return true; // Optional field
     // Allow international format: +, digits, spaces, dashes, parentheses
     return /^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}$/.test(
@@ -376,7 +362,7 @@ export class IsValidPhoneNumberConstraint
     );
   }
 
-  defaultMessage(args: ValidationArguments) {
+  defaultMessage() {
     return 'Phone number must be in valid format (e.g., +1 (555) 123-4567 or 555-123-4567)';
   }
 }

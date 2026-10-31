@@ -5,16 +5,14 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, DataSource, QueryRunner } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Client } from './entities/client.entity';
 import { Invoice } from '../invoices/entities/invoice.entity';
 import { Store } from '../inventory/entities/store.entity';
 import {
-  sanitizeObject,
   sanitizeString,
   sanitizeEmail,
   sanitizeUrl,
-  sanitizeStringArray,
 } from '../common/utils/security.util';
 import { ImportService } from '../common/services/import.service';
 
@@ -285,7 +283,7 @@ export class ClientsService {
     }
 
     // Fix Issue #1: Use query builder instead of 'as any' type assertion
-    const client = await this.findOne(id, actorUserId);
+    await this.findOne(id, actorUserId);
     const updateQuery = this.clientsRepository
       .createQueryBuilder()
       .update(Client)

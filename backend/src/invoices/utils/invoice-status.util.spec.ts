@@ -6,7 +6,6 @@ import {
   shouldAffectStock,
   getValidTransitions,
   isTerminalStatus,
-  InvoiceStatus,
 } from './invoice-status.util';
 import { BadRequestException } from '@nestjs/common';
 

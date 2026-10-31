@@ -199,7 +199,7 @@ export class ClerkAuthGuard implements CanActivate {
       request.clerkUserId = clerkUser.id;
 
       return true;
-    } catch (error) {
+    } catch {
       throw new UnauthorizedException('Invalid or expired token');
     }
   }

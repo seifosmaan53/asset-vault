@@ -668,6 +668,7 @@ export class UserSettingsService {
           movements: stockMovements
             .filter((mov) => mov.inventoryItemId === item.id)
             .map((mov) => {
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars -- rest-omit: inventoryItem is dropped from the copy on purpose
               const { inventoryItem, ...movementWithoutItem } = mov;
               return movementWithoutItem;
             }),

@@ -51,7 +51,7 @@ export async function createExcelWorkbook(
       });
     } else {
       // Auto-fit columns if widths not specified
-      worksheet.columns.forEach((column, index) => {
+      worksheet.columns.forEach((column) => {
         if (column.eachCell) {
           let maxLength = 10;
           column.eachCell({ includeEmpty: false }, (cell) => {

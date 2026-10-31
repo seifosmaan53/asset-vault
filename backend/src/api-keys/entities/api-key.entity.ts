@@ -6,7 +6,6 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
-  Index,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import * as crypto from 'crypto';

@@ -1,5 +1,5 @@
 import type { MigrationInterface, QueryRunner } from 'typeorm';
-import { TableColumn, TableForeignKey } from 'typeorm';
+import { TableColumn } from 'typeorm';
 
 export class AddOrganizationIdToEntities1746000000000
   implements MigrationInterface

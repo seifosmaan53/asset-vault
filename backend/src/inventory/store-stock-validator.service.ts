@@ -10,7 +10,6 @@ import { StoreItemSettings } from './entities/store-item-settings.entity';
 import { Store } from './entities/store.entity';
 import { InventoryItem } from './entities/inventory-item.entity';
 import { StoreItemSettingsService } from './store-item-settings.service';
-import { buildOrgScopedWhere } from '../common/utils/typeorm-query.util';
 
 export interface StockValidationResult {
   isValid: boolean;

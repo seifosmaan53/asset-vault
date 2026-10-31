@@ -21,7 +21,6 @@ export class RateLimitHeadersInterceptor {
 
     // Issue #77: Use constants instead of magic numbers
     const limit = API_CONSTANTS.RATE_LIMIT_MAX;
-    const ttl = API_CONSTANTS.RATE_LIMIT_TTL / 1000; // Convert to seconds
 
     // Add rate limit headers to all responses (Issue #18)
     response.setHeader('X-RateLimit-Limit', limit.toString());

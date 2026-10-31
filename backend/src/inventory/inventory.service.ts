@@ -6,7 +6,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, In, IsNull, DataSource, QueryRunner } from 'typeorm';
+import { Repository, DataSource, QueryRunner } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { Inject } from '@nestjs/common';
@@ -20,7 +20,6 @@ import { StoreItemSettings } from './entities/store-item-settings.entity';
 import { StoreItemSettingsService } from './store-item-settings.service';
 import { sanitizeString } from '../common/utils/security.util';
 import { CreateInventoryItemDto } from './dto';
-import { buildOrgScopedWhere } from '../common/utils/typeorm-query.util';
 import {
   CacheKey,
   buildCacheKey,
@@ -284,10 +283,7 @@ export class InventoryService {
   /**
    * Enrich inventory item with computed fields
    */
-  private async enrichWithComputedFields(
-    item: InventoryItem,
-    userId: string,
-  ): Promise<any> {
+  private enrichWithComputedFields(item: InventoryItem): any {
     // Use default weeks supply target (backup/planning features removed)
     const globalWeeksSupplyTarget = 4;
 
@@ -341,7 +337,7 @@ export class InventoryService {
     if (!item) {
       throw new NotFoundException('Inventory item not found');
     }
-    return this.enrichWithComputedFields(item, userId);
+    return this.enrichWithComputedFields(item);
   }
 
   async create(

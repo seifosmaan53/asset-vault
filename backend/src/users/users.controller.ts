@@ -70,7 +70,7 @@ export class UsersController {
   }
 
   @Post()
-  async create(@Request() _req) {
+  async create() {
     // Accounts are created by the Clerk sign-up flow (webhook / first authenticated request).
     throw new BadRequestException(
       'User creation is handled by Clerk. Please use the sign-up flow.',
