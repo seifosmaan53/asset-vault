@@ -10,6 +10,7 @@ import { Client } from '../src/clients/entities/client.entity';
 import { InventoryItem } from '../src/inventory/entities/inventory-item.entity';
 import { Store } from '../src/inventory/entities/store.entity';
 import { User } from '../src/users/entities/user.entity';
+import { runScript } from '../src/database/run-script';
 
 // Load environment variables
 config();
@@ -57,18 +58,20 @@ async function checkUserData(userEmail: string) {
       .withDeleted()
       .where('invoice.userId = :userId', { userId: user.id })
       .getMany();
-    
-    const activeInvoices = allInvoices.filter(i => !i.deletedAt);
-    const deletedInvoices = allInvoices.filter(i => i.deletedAt);
+
+    const activeInvoices = allInvoices.filter((i) => !i.deletedAt);
+    const deletedInvoices = allInvoices.filter((i) => i.deletedAt);
 
     console.log(`📄 Invoices:`);
     console.log(`   Total (including deleted): ${allInvoices.length}`);
     console.log(`   Active: ${activeInvoices.length}`);
     console.log(`   Deleted: ${deletedInvoices.length}`);
-    
+
     if (allInvoices.length > 0) {
       const sample = allInvoices[0];
-      console.log(`   Sample invoice: id=${sample.id}, number=${sample.number}, userId=${sample.userId}`);
+      console.log(
+        `   Sample invoice: id=${sample.id}, number=${sample.number}, userId=${sample.userId}`,
+      );
     }
 
     // Check clients
@@ -78,18 +81,20 @@ async function checkUserData(userEmail: string) {
       .withDeleted()
       .where('client.userId = :userId', { userId: user.id })
       .getMany();
-    
-    const activeClients = allClients.filter(c => !c.deletedAt);
-    const deletedClients = allClients.filter(c => c.deletedAt);
+
+    const activeClients = allClients.filter((c) => !c.deletedAt);
+    const deletedClients = allClients.filter((c) => c.deletedAt);
 
     console.log(`\n👥 Clients:`);
     console.log(`   Total (including deleted): ${allClients.length}`);
     console.log(`   Active: ${activeClients.length}`);
     console.log(`   Deleted: ${deletedClients.length}`);
-    
+
     if (allClients.length > 0) {
       const sample = allClients[0];
-      console.log(`   Sample client: id=${sample.id}, name=${sample.name}, userId=${sample.userId}`);
+      console.log(
+        `   Sample client: id=${sample.id}, name=${sample.name}, userId=${sample.userId}`,
+      );
     }
 
     // Check inventory
@@ -99,7 +104,7 @@ async function checkUserData(userEmail: string) {
       .withDeleted()
       .where('item.userId = :userId', { userId: user.id })
       .getMany();
-    
+
     // InventoryItem does not have soft delete (deletedAt), so all items are active
     const activeItems = allItems;
     const deletedItems: InventoryItem[] = [];
@@ -108,10 +113,12 @@ async function checkUserData(userEmail: string) {
     console.log(`   Total (including deleted): ${allItems.length}`);
     console.log(`   Active: ${activeItems.length}`);
     console.log(`   Deleted: ${deletedItems.length}`);
-    
+
     if (allItems.length > 0) {
       const sample = allItems[0];
-      console.log(`   Sample item: id=${sample.id}, name=${sample.name}, userId=${sample.userId}`);
+      console.log(
+        `   Sample item: id=${sample.id}, name=${sample.name}, userId=${sample.userId}`,
+      );
     }
 
     // Check stores
@@ -121,22 +128,26 @@ async function checkUserData(userEmail: string) {
       .withDeleted()
       .where('store.userId = :userId', { userId: user.id })
       .getMany();
-    
-    const activeStores = allStores.filter(s => !s.deletedAt);
-    const deletedStores = allStores.filter(s => s.deletedAt);
+
+    const activeStores = allStores.filter((s) => !s.deletedAt);
+    const deletedStores = allStores.filter((s) => s.deletedAt);
 
     console.log(`\n🏪 Stores:`);
     console.log(`   Total (including deleted): ${allStores.length}`);
     console.log(`   Active: ${activeStores.length}`);
     console.log(`   Deleted: ${deletedStores.length}`);
-    
+
     if (allStores.length > 0) {
       const sample = allStores[0];
-      console.log(`   Sample store: id=${sample.id}, name=${sample.name}, userId=${sample.userId}`);
+      console.log(
+        `   Sample store: id=${sample.id}, name=${sample.name}, userId=${sample.userId}`,
+      );
     }
 
     console.log(`\n=== Summary ===`);
-    console.log(`Active data: ${activeInvoices.length} invoices, ${activeClients.length} clients, ${activeItems.length} items, ${activeStores.length} stores`);
+    console.log(
+      `Active data: ${activeInvoices.length} invoices, ${activeClients.length} clients, ${activeItems.length} items, ${activeStores.length} stores`,
+    );
     console.log(`\n`);
 
     await dataSource.destroy();
@@ -154,5 +165,4 @@ if (!userEmail) {
   process.exit(1);
 }
 
-checkUserData(userEmail);
-
+runScript(() => checkUserData(userEmail));
