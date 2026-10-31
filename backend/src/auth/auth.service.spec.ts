@@ -40,6 +40,10 @@ describe('AuthService', () => {
   const usersService = {
     findById: jest.fn(),
     update: jest.fn<Promise<User>, [string, Partial<User>]>(),
+    findByClerkId: jest.fn<Promise<User | null>, [string]>(),
+  };
+  const usersRepository = {
+    save: jest.fn<Promise<User>, [User]>(),
   };
 
   beforeEach(async () => {
@@ -55,7 +59,7 @@ describe('AuthService', () => {
           provide: ConfigService,
           useValue: { get: jest.fn().mockReturnValue(undefined) },
         },
-        { provide: getRepositoryToken(User), useValue: {} },
+        { provide: getRepositoryToken(User), useValue: usersRepository },
       ],
     }).compile();
 
@@ -186,6 +190,63 @@ describe('AuthService', () => {
       await expect(service.changePassword('user-1', dto)).rejects.toThrow(
         /Clerk is not configured/i,
       );
+    });
+  });
+
+  describe('handleClerkWebhook (no CLERK_WEBHOOK_SECRET: unverified dev mode)', () => {
+    const send = (payload: unknown) =>
+      service.handleClerkWebhook(
+        Buffer.from(JSON.stringify(payload)),
+        'id',
+        'ts',
+        'sig',
+      );
+
+    it('updates the user named by the payload id', async () => {
+      usersService.findByClerkId.mockResolvedValue(baseUser());
+      usersRepository.save.mockImplementation((u) => Promise.resolve(u));
+
+      await expect(
+        send({
+          type: 'user.updated',
+          data: {
+            id: 'clerk_123',
+            email_addresses: [{ email_address: 'new@example.com' }],
+            first_name: 'New',
+            last_name: 'Name',
+          },
+        }),
+      ).resolves.toEqual({ received: true });
+
+      expect(usersService.findByClerkId).toHaveBeenCalledWith('clerk_123');
+      const [saved] = usersRepository.save.mock.calls[0];
+      expect(saved.email).toBe('new@example.com');
+      expect(saved.name).toBe('New Name');
+    });
+
+    it('ignores a user event without a string id instead of looking up `undefined`', async () => {
+      // TypeORM reads where: { clerkUserId: undefined } as "no condition", so the old
+      // code would have found (and overwritten) an arbitrary user.
+      await expect(
+        send({ type: 'user.updated', data: { first_name: 'X' } }),
+      ).resolves.toEqual({ received: true });
+      await expect(
+        send({ type: 'user.created', data: { id: 42 } }),
+      ).resolves.toEqual({ received: true });
+
+      expect(usersService.findByClerkId).not.toHaveBeenCalled();
+      expect(usersRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('rejects a payload that is not an object', async () => {
+      await expect(send(null)).rejects.toThrow(BadRequestException);
+    });
+
+    it('acknowledges unknown event types without touching users', async () => {
+      await expect(
+        send({ type: 'session.created', data: {} }),
+      ).resolves.toEqual({ received: true });
+      expect(usersService.findByClerkId).not.toHaveBeenCalled();
     });
   });
 });
