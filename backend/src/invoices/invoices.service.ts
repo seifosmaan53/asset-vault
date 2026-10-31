@@ -619,6 +619,41 @@ export class InvoicesService {
       }
     }
 
+    // Inventory items on the lines must belong to the caller too, as update() already requires.
+    // The stock deduction checks ownership, but drafts and estimates skip it, and findOne()
+    // joins the item onto the invoice, so another user's whole inventory row was readable.
+    const lineInventoryIds = [
+      ...new Set(
+        (data.items || [])
+          .map((item) =>
+            typeof item.inventoryItemId === 'string'
+              ? item.inventoryItemId.trim()
+              : '',
+          )
+          .filter((id) =>
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+              id,
+            ),
+          ),
+      ),
+    ];
+    if (lineInventoryIds.length > 0) {
+      const owned = await this.dataSource
+        .getRepository(InventoryItem)
+        .createQueryBuilder('item')
+        .select('item.id')
+        .where('item.id IN (:...ids)', { ids: lineInventoryIds })
+        .andWhere('item.userId = :userId', { userId })
+        .getMany();
+      const ownedIds = new Set(owned.map((item) => item.id));
+      const missingIds = lineInventoryIds.filter((id) => !ownedIds.has(id));
+      if (missingIds.length > 0) {
+        throw new BadRequestException(
+          `Invalid inventory item(s): ${missingIds.join(', ')}. One or more inventory items do not exist or do not belong to your organization.`,
+        );
+      }
+    }
+
     // Get user settings for defaults
     const settings = await this.userSettingsService.getSettings(userId);
 

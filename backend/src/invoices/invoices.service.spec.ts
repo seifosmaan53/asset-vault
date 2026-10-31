@@ -304,7 +304,24 @@ describe('InvoicesService', () => {
           useValue: {
             // hand back the same runner the tests already configure
             createQueryRunner: jest.fn(() => mockQueryRunner),
-            getRepository: jest.fn(() => mockClientsRepository),
+            // create() checks line inventory ownership through the InventoryItem repository;
+            // these tests' items belong to the caller, so every requested id is returned.
+            getRepository: jest.fn((entity: unknown) => {
+              if (entity !== InventoryItem) return mockClientsRepository;
+              let ids: string[] = [];
+              const qb = {
+                select: jest.fn(() => qb),
+                where: jest.fn((_sql: string, params: { ids: string[] }) => {
+                  ids = params.ids;
+                  return qb;
+                }),
+                andWhere: jest.fn(() => qb),
+                getMany: jest.fn(() =>
+                  Promise.resolve(ids.map((id) => ({ id }))),
+                ),
+              };
+              return { createQueryBuilder: jest.fn(() => qb) };
+            }),
             transaction: jest.fn(),
           },
         },

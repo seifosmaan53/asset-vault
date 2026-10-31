@@ -406,6 +406,43 @@ describe('access control (real app + real PostgreSQL)', () => {
       expect(leaked).toHaveLength(0);
     });
 
+    // Found in the final review: a draft skips the stock deduction (the only ownership check on
+    // line items at create), and GET /invoices/:id joins the item, returning the owner's row.
+    it("another user cannot put Alice's inventory item on their draft invoice", async () => {
+      const withItem = (clientId: string) => ({
+        ...invoiceFor(clientId),
+        items: [{ ...oneLine[0], inventoryItemId: aliceItemId }],
+      });
+      // Positive control: Alice can reference her own item on a draft.
+      const own = await h
+        .http()
+        .post('/invoices')
+        .set(auth(alice.token))
+        .send(withItem(aliceClientId));
+      expect(own.status).toBe(201);
+
+      const bobClient = await h
+        .http()
+        .post('/clients')
+        .set(auth(bob.token))
+        .send({ name: 'Bob Own Client', email: 'bob-own@access-test.invalid' });
+      expect(bobClient.status).toBe(201);
+      const r = await h
+        .http()
+        .post('/invoices')
+        .set(auth(bob.token))
+        .send(withItem(bobClient.body.id ?? bobClient.body.data?.id));
+      expect(r.status).toBe(400);
+      expect(JSON.stringify(r.body)).not.toMatch(/Alice Item/);
+      const leaked = await rows(
+        h,
+        `select 1 from invoice_items ii join invoices i on i.id = ii."invoiceId"
+          where i."userId" = $1 and ii."inventoryItemId" = $2`,
+        [bob.userId, aliceItemId],
+      );
+      expect(leaked).toHaveLength(0);
+    });
+
     it("editing another user's invoice is a 404, not a server error, and changes nothing", async () => {
       const created = await h
         .http()
