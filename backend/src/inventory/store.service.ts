@@ -17,6 +17,22 @@ import { StoreItemSettings } from './entities/store-item-settings.entity';
 import { CreateStoreDto, UpdateStoreDto } from './dto/store.dto';
 import { sanitizeEmail, sanitizeString } from '../common/utils/security.util';
 
+/** The PostgreSQL error fields this service branches on. Read structurally: TypeORM's
+ *  QueryFailedError copies the driver's `code` and `constraint` onto itself. */
+function pgErrorFields(error: unknown): { code?: string; constraint?: string } {
+  if (typeof error !== 'object' || error === null) return {};
+  return {
+    code:
+      'code' in error && typeof error.code === 'string'
+        ? error.code
+        : undefined,
+    constraint:
+      'constraint' in error && typeof error.constraint === 'string'
+        ? error.constraint
+        : undefined,
+  };
+}
+
 @Injectable()
 export class StoreService {
   private readonly logger = new Logger(StoreService.name);
@@ -128,12 +144,13 @@ export class StoreService {
       await this.cacheManager.del('stores-analytics');
 
       return savedStore;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // FIX Issue #10: Handle database constraint violation gracefully
       // This catches race conditions where two requests try to create store with same code
-      if (error.code === '23505') {
+      const pg = pgErrorFields(error);
+      if (pg.code === '23505') {
         // PostgreSQL unique constraint violation
-        const constraintName = error.constraint || 'unknown';
+        const constraintName = pg.constraint || 'unknown';
         if (
           constraintName.includes('UX_stores_org_code') ||
           constraintName.includes('UX_stores_user_code_legacy')
@@ -511,7 +528,7 @@ export class StoreService {
 
       // Invalidate stores analytics cache when store is deleted
       await this.cacheManager.del('stores-analytics');
-    } catch (error) {
+    } catch (error: unknown) {
       // Rollback on any error, but only if a transaction is still open: several branches above roll
       // back explicitly before throwing (e.g. the ownership denial), and a second rollback raises
       // TransactionNotStartedError, which turned a clean 404 into a 500 and hid the real reason.
@@ -529,7 +546,7 @@ export class StoreService {
 
       // Handle database errors
       this.logger.error(`remove: Error deleting store ${id}`, error);
-      if (error.code === '23503') {
+      if (pgErrorFields(error).code === '23503') {
         // Foreign key constraint violation
         throw new NotFoundException(
           'Cannot delete store: has associated records',

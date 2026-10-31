@@ -26,6 +26,12 @@ import { CreateStoreTransferDto } from './dto/store-transfer.dto';
 // Organizations removed - OrganizationId decorator no longer needed
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
+import type { Request as ExpressRequest } from 'express';
+import type { RequestUser } from '../auth/interfaces/request-user.interface';
+
+interface AuthenticatedRequest extends ExpressRequest {
+  user: RequestUser;
+}
 
 @ApiTags('stores')
 @Controller('inventory/stores')
@@ -47,7 +53,10 @@ export class StoreController {
     status: 409,
     description: 'Store with this code already exists',
   })
-  create(@Body() createStoreDto: CreateStoreDto, @Request() req) {
+  create(
+    @Body() createStoreDto: CreateStoreDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
     // Organizations removed - data is user-scoped
     const result = this.storeService.create(req.user.userId, createStoreDto);
     return result;
@@ -67,7 +76,10 @@ export class StoreController {
   })
   @ApiResponse({ status: 200, description: 'List of stores' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  findAll(@Request() req, @Query('activeOnly') activeOnly?: string) {
+  findAll(
+    @Request() req: AuthenticatedRequest,
+    @Query('activeOnly') activeOnly?: string,
+  ) {
     // Organizations removed - data is user-scoped
     const activeOnlyBool = activeOnly === 'true';
     return this.storeService.findAll(req.user.userId, activeOnlyBool);
@@ -82,7 +94,7 @@ export class StoreController {
   @ApiResponse({ status: 200, description: 'Store details' })
   @ApiResponse({ status: 404, description: 'Store not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  findOne(@Param('id') id: string, @Request() req) {
+  findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     // Organizations removed - data is user-scoped
     return this.storeService.findOne(id, req.user.userId);
   }
@@ -104,7 +116,7 @@ export class StoreController {
   update(
     @Param('id') id: string,
     @Body() updateStoreDto: UpdateStoreDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     // Organizations removed - data is user-scoped
     const result = this.storeService.update(
@@ -129,7 +141,7 @@ export class StoreController {
     status: 403,
     description: 'Forbidden - Admin/Owner access required',
   })
-  remove(@Param('id') id: string, @Request() req) {
+  remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     // Organizations removed - data is user-scoped
     return this.storeService.remove(id, req.user.userId);
   }
@@ -151,7 +163,7 @@ export class StoreController {
   })
   async transferStock(
     @Body() transferDto: CreateStoreTransferDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     // Organizations removed - data is user-scoped
     const result = await this.storeTransferService.transferStock(
