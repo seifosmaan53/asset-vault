@@ -8,6 +8,7 @@ import {
   GetObjectCommand,
   DeleteObjectCommand,
   HeadObjectCommand,
+  type S3ClientConfig,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
@@ -55,7 +56,7 @@ export class StorageService {
       return;
     }
 
-    const s3Config: any = {
+    const s3Config: S3ClientConfig = {
       region: this.region,
       credentials: {
         accessKeyId,
