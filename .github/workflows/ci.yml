@@ -451,11 +451,16 @@ jobs:
 
       - name: (d) Rerunning the migration command changes nothing
         run: |
-          docker exec av-pg pg_dump -U postgres -d "$DB" > dump-before.sql
+          # Stop the API so only the migration command can touch the database between the dumps.
+          docker stop av-api
+          # pg_dump >= 16.10 brackets its output with \restrict/\unrestrict and a random key per run.
+          dump() { docker exec av-pg pg_dump -U postgres -d "$DB" | grep -vE '^\\(un)?restrict '; }
+          dump > dump-before.sql
           docker run --rm --network "$NET" --env-file api.env av-backend node dist/database/migration-runner.js | tee rerun.log
           grep -Fx 'No pending migrations. Nothing was changed.' rerun.log
-          docker exec av-pg pg_dump -U postgres -d "$DB" > dump-after.sql
-          cmp dump-before.sql dump-after.sql && echo 'schema and data byte-identical after the rerun'
+          dump > dump-after.sql
+          wc -l dump-before.sql
+          diff dump-before.sql dump-after.sql && echo 'schema and data identical after the rerun'
 
       - name: Container logs
         if: always()
