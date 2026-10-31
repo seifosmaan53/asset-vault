@@ -138,6 +138,9 @@ describe('InvoicesService', () => {
     getSettings: jest.fn(),
   };
 
+  /* create() checks the client belongs to the caller before anything else. */
+  const mockClientsRepository = { exists: jest.fn() };
+
   const mockQueryRunner = {
     connect: jest.fn(),
     startTransaction: jest.fn(),
@@ -301,6 +304,7 @@ describe('InvoicesService', () => {
           useValue: {
             // hand back the same runner the tests already configure
             createQueryRunner: jest.fn(() => mockQueryRunner),
+            getRepository: jest.fn(() => mockClientsRepository),
             transaction: jest.fn(),
           },
         },
@@ -568,6 +572,35 @@ describe('InvoicesService', () => {
         number: 'INV-2024-0001',
       });
       mockQueryRunner.query.mockResolvedValue(undefined);
+      mockClientsRepository.exists.mockResolvedValue(true);
+    });
+
+    it("rejects another user's client before starting a transaction", async () => {
+      mockClientsRepository.exists.mockResolvedValue(false);
+      mockQueryRunner.startTransaction.mockClear();
+
+      await expect(
+        service.create(userId, {
+          clientId: 'someone-elses-client',
+          type: 'invoice' as const,
+          issueDate: new Date().toISOString(),
+          currency: 'USD',
+          items: [
+            {
+              description: 'X',
+              quantity: 1,
+              unitPrice: 1,
+              taxRate: 0,
+              discountRate: 0,
+            },
+          ],
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(mockClientsRepository.exists).toHaveBeenCalledWith({
+        where: { id: 'someone-elses-client', userId },
+      });
+      expect(mockQueryRunner.startTransaction).not.toHaveBeenCalled();
+      expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
     });
 
     it('should create invoice with valid storeId', async () => {

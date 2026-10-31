@@ -605,6 +605,20 @@ export class InvoicesService {
 
     data.storeId = validatedStoreId;
 
+    // The client must belong to the caller, as update() already requires. Without this, any
+    // authenticated user could create an invoice on another user's client id and then read
+    // that client's name and email back through the invoice and the data export.
+    if (data.clientId) {
+      const ownsClient = await this.dataSource
+        .getRepository(Client)
+        .exists({ where: { id: data.clientId, userId } });
+      if (!ownsClient) {
+        throw new NotFoundException(
+          `Client with ID "${data.clientId}" not found or does not belong to user`,
+        );
+      }
+    }
+
     // Get user settings for defaults
     const settings = await this.userSettingsService.getSettings(userId);
 
@@ -1103,10 +1117,10 @@ export class InvoicesService {
         lock: { mode: 'pessimistic_write' },
       });
 
-      // FIX #135: Release query runner on early return
+      // The catch below rolls the transaction back and the finally releases the runner. Doing
+      // either here as well made the second rollback throw, so a request for another user's
+      // invoice answered 500 instead of 404.
       if (!invoice) {
-        await queryRunner.rollbackTransaction();
-        await queryRunner.release();
         throw new NotFoundException('Invoice not found');
       }
 
