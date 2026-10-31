@@ -65,6 +65,8 @@ import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { useFormAutosave } from '../../hooks/useFormAutosave';
 
 interface InvoiceItemForm {
+  /** Set on lines loaded from a saved invoice (never treated as a placeholder). */
+  id?: string;
   inventoryItemId?: string;
   inventoryItem?: InventoryItem | null;
   description: string;
@@ -296,6 +298,7 @@ const InvoiceForm = () => {
         currency: invoice.currency,
         notes: invoice.notes || '',
         items: invoice.items?.map((item) => ({
+          id: item.id,
           inventoryItemId: item.inventoryItemId,
           description: item.description,
           quantity: item.quantity,
@@ -1246,10 +1249,10 @@ const InvoiceForm = () => {
                                 cleanValue = inputValue.replace(/^0+/, '') || '0';
                               }
                               const numValue = parseFloat(cleanValue);
-                              if (!isNaN(numValue) && numValue >= 0 && numValue <= 10000000) {
+                              // No upper clamp: the shared rules report amounts above the limit
+                              // (silently replacing the entered price was worse).
+                              if (!isNaN(numValue) && numValue >= 0) {
                                 field.onChange(numValue);
-                              } else if (numValue > 10000000) {
-                                field.onChange(10000000);
                               } else if (numValue < 0) {
                                 field.onChange(0);
                               }

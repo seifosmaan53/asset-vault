@@ -778,6 +778,19 @@ export class SampleDataService {
 
       const numItems = Math.floor(Math.random() * 5) + 1;
 
+      // Lines and totals first (shared invoice-money rules), so nothing is saved if they fail
+      const lines = Array.from({ length: numItems }, (_, j) => {
+        const item = inventoryItems[(i * numItems + j) % inventoryItems.length];
+        return {
+          item,
+          quantity: Math.floor(Math.random() * 10) + 1,
+          unitPrice: Math.round(Number(item.defaultUnitPrice) * 100) / 100,
+          taxRate: Number(item.defaultTaxRate) || 0,
+          discountRate: 0,
+        };
+      });
+      const totals = invoiceTotalsToMoney(computeInvoiceTotalsCents(lines));
+
       const invoice = this.invoiceRepository.create({
         userId,
         // Organizations removed - no organizationId needed
@@ -796,26 +809,13 @@ export class SampleDataService {
               )
             : undefined,
         currency: 'USD',
-        subtotal: 0, // Will calculate
-        taxTotal: 0, // Will calculate
-        discountTotal: 0,
-        total: 0, // Will calculate
+        subtotal: totals.invoice.subtotal,
+        taxTotal: totals.invoice.tax,
+        discountTotal: totals.invoice.discount,
+        total: totals.invoice.total,
       });
 
       const savedInvoice = await this.invoiceRepository.save(invoice);
-
-      // Create invoice items; totals from the shared invoice-money rules (as for real invoices)
-      const lines = Array.from({ length: numItems }, (_, j) => {
-        const item = inventoryItems[(i * numItems + j) % inventoryItems.length];
-        return {
-          item,
-          quantity: Math.floor(Math.random() * 10) + 1,
-          unitPrice: Number(item.defaultUnitPrice),
-          taxRate: Number(item.defaultTaxRate) || 0,
-          discountRate: 0,
-        };
-      });
-      const totals = invoiceTotalsToMoney(computeInvoiceTotalsCents(lines));
 
       for (const [j, line] of lines.entries()) {
         await this.invoiceItemRepository.save(
@@ -831,13 +831,6 @@ export class SampleDataService {
           }),
         );
       }
-
-      // Update invoice totals
-      savedInvoice.subtotal = totals.invoice.subtotal;
-      savedInvoice.taxTotal = totals.invoice.tax;
-      savedInvoice.discountTotal = totals.invoice.discount;
-      savedInvoice.total = totals.invoice.total;
-      await this.invoiceRepository.save(savedInvoice);
 
       invoices.push(savedInvoice);
     }

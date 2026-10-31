@@ -214,6 +214,16 @@ describe('invoice money through the API (real app + real PostgreSQL)', () => {
     expect(String(again.items[0].taxRate)).toBe('8.8750');
   });
 
+  it('rejects a line without a description, like the form', async () => {
+    const before = await invoiceCount();
+    for (const description of ['', '   ']) {
+      const r = await create([line({ description })]);
+      expect(r.status).toBe(400);
+      expect(JSON.stringify(r.body)).toContain('Description is required');
+    }
+    expect(await invoiceCount()).toBe(before);
+  });
+
   it('rejects a rate with a fifth decimal instead of storing it rounded', async () => {
     const r = await create([line({ taxRate: 8.87512 })]);
     expect(r.status).toBe(400);

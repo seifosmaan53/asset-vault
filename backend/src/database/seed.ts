@@ -13,6 +13,10 @@ import { StoreItemSettings } from '../inventory/entities/store-item-settings.ent
 import { Organization } from '../organizations/entities/organization.entity';
 import { UserOrganization } from '../organizations/entities/user-organization.entity';
 import { OrganizationRole } from '../organizations/entities/organization-role.enum';
+import {
+  computeInvoiceTotalsCents,
+  invoiceTotalsToMoney,
+} from '../invoices/utils/invoice-totals.util';
 
 /**
  * Seed database with demo data for demo@example.com account ONLY.
@@ -1348,11 +1352,10 @@ export async function seedDatabase(dataSource: DataSource) {
       ? Math.floor(Math.random() * 11) + 5 // 5-15 items for big invoices
       : Math.floor(Math.random() * 3) + 1; // 1-3 items for regular invoices
     const invoiceItems: InvoiceItem[] = [];
-    let subtotal = 0;
-    let taxTotal = 0;
-    let discountTotal = 0;
 
-    for (let j = 0; j < itemCount; j++) {
+    // Lines first, then every amount from the shared invoice-money rules (the API's):
+    // prices in whole cents, totals computed exactly, nothing the API would reject.
+    const lines = Array.from({ length: itemCount }, () => {
       const inventoryItem =
         inventoryItems[Math.floor(Math.random() * inventoryItems.length)];
       // Big invoices have larger quantities (10-100), regular have 1-10
@@ -1362,29 +1365,30 @@ export async function seedDatabase(dataSource: DataSource) {
       // For big invoices, sometimes apply a multiplier to unit price
       const priceMultiplier =
         isBigInvoice && Math.random() < 0.2 ? Math.random() * 3 + 1 : 1; // 20% chance of 1x-4x price
-      const unitPrice = inventoryItem.defaultUnitPrice * priceMultiplier;
-      const taxRate = inventoryItem.defaultTaxRate || 0;
-      const discountRate =
-        Math.random() < 0.3 ? Math.floor(Math.random() * 10) : 0; // 30% chance of discount
+      return {
+        inventoryItem,
+        quantity,
+        unitPrice:
+          Math.round(
+            Number(inventoryItem.defaultUnitPrice) * priceMultiplier * 100,
+          ) / 100,
+        taxRate: Number(inventoryItem.defaultTaxRate) || 0,
+        discountRate: Math.random() < 0.3 ? Math.floor(Math.random() * 10) : 0, // 30% chance of discount
+      };
+    });
+    const totals = invoiceTotalsToMoney(computeInvoiceTotalsCents(lines));
 
-      const lineSubtotal = quantity * unitPrice;
-      const lineDiscount = (lineSubtotal * discountRate) / 100;
-      const lineAfterDiscount = lineSubtotal - lineDiscount;
-      const lineTax = (lineAfterDiscount * taxRate) / 100;
-
-      subtotal += lineSubtotal;
-      discountTotal += lineDiscount;
-      taxTotal += lineTax;
-
+    for (const [j, line] of lines.entries()) {
+      const { inventoryItem, quantity } = line;
       const invoiceItem = invoiceItemRepository.create({
         invoiceId: invoice.id,
         inventoryItemId: inventoryItem.id,
         description: inventoryItem.name,
         quantity,
-        unitPrice,
-        taxRate,
-        discountRate,
-        lineTotal: lineAfterDiscount + lineTax,
+        unitPrice: line.unitPrice,
+        taxRate: line.taxRate,
+        discountRate: line.discountRate,
+        lineTotal: totals.lines[j].lineTotal,
       });
       const savedInvoiceItem = await invoiceItemRepository.save(invoiceItem);
       invoiceItems.push(savedInvoiceItem);
@@ -1413,11 +1417,10 @@ export async function seedDatabase(dataSource: DataSource) {
     }
 
     // Update invoice totals
-    invoice.subtotal = Math.round(subtotal * 100) / 100;
-    invoice.taxTotal = Math.round(taxTotal * 100) / 100;
-    invoice.discountTotal = Math.round(discountTotal * 100) / 100;
-    invoice.total =
-      Math.round((subtotal - discountTotal + taxTotal) * 100) / 100;
+    invoice.subtotal = totals.invoice.subtotal;
+    invoice.taxTotal = totals.invoice.tax;
+    invoice.discountTotal = totals.invoice.discount;
+    invoice.total = totals.invoice.total;
     await invoiceRepository.save(invoice);
   }
 

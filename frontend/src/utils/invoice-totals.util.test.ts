@@ -238,6 +238,12 @@ describe('invoice form lines: placeholders, descriptions, and totals that match 
       .toBe('Line 1: description must not exceed 1000 characters');
   });
 
+  it('a saved line (with an id) is never a placeholder, so editing cannot drop it', () => {
+    const saved = { id: 'line-1', description: '', quantity: 1, unitPrice: '0.0000', taxRate: '0.0000', discountRate: '0.0000' };
+    expect(isPlaceholderLine(saved)).toBe(false);
+    expect(checkInvoiceFormLines([saved]).issues[0].message).toBe('Line 1: description is required');
+  });
+
   it('names the form line, not the position in the payload', () => {
     const check = checkInvoiceFormLines([placeholder, line({ quantity: 2.5, unitPrice: 10 })]);
     expect(check.issues).toEqual([

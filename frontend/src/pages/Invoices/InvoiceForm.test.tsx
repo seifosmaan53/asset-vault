@@ -429,6 +429,18 @@ describe('InvoiceForm', () => {
       expect(Number(sent.items[0].taxRate)).toBe(8.875); // not rounded to 8.88
     });
 
+    it('keeps a unit price above 10,000,000 as entered (no silent cap)', async () => {
+      render(
+        <TestWrapper>
+          <InvoiceForm />
+        </TestWrapper>,
+      );
+      await userEvent.clear(screen.getByLabelText(/unit price/i));
+      await userEvent.type(screen.getByLabelText(/unit price/i), '25000000');
+      await waitFor(() => expect(screen.getAllByText('$25,000,000.00').length).toBeGreaterThan(0));
+      expect(screen.queryByText('$10,000,000.00')).not.toBeInTheDocument();
+    });
+
     it('a line with entered data but no description blocks submit with a clear message', async () => {
       render(
         <TestWrapper>
