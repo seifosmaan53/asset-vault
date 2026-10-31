@@ -15,31 +15,31 @@ import type { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
 import { v4 as uuidv4 } from 'uuid';
 import { HttpExceptionFilter } from '../common/filters/http-exception.filter';
-import { corsAllowedOrigins, createCorsMiddleware } from './cors.middleware';
+import { createCorsMiddleware } from './cors.middleware';
+import { createHttpsRedirectMiddleware } from './https-redirect.middleware';
+import type { ServerSettings } from './server-settings';
 
 export function configureHttpApp(
   app: NestExpressApplication,
+  settings: ServerSettings,
   configService: ConfigService,
 ): void {
   const logger = new Logger('Bootstrap');
-  const isProduction = configService.get<string>('NODE_ENV') === 'production';
+  const { isProduction } = settings;
+
+  // Which peers may set X-Forwarded-For / -Proto / -Host (TRUST_PROXY; default: none). This
+  // decides req.secure (HTTPS enforcement below), req.ip (rate limiting) and req.hostname.
+  app.set('trust proxy', settings.trustProxy);
 
   // Security: Request body size limits (Issue #2)
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.use(express.json({ limit: '10mb' }));
   expressApp.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-  // Security: HTTPS enforcement in production
+  // Security: HTTPS enforcement in production. HTTPS = a TLS socket, or X-Forwarded-Proto: https
+  // from a TRUSTED proxy; the redirect goes to the configured public origin, never to Host.
   if (isProduction) {
-    app.use((req: Request, res: Response, next: NextFunction) => {
-      if (
-        req.headers['x-forwarded-proto'] !== 'https' &&
-        req.protocol !== 'https'
-      ) {
-        return res.redirect(301, `https://${req.headers.host}${req.url}`);
-      }
-      next();
-    });
+    app.use(createHttpsRedirectMiddleware(settings.httpsRedirectOrigin));
   }
 
   // Security: Request timeout (Issue #8) - 30 seconds
@@ -104,11 +104,7 @@ export function configureHttpApp(
 
   // CORS: exact-origin allowlist; a disallowed Origin gets a 403 JSON, never a 500.
   // See src/server/cors.middleware.ts for the behaviour and the reasons.
-  const frontendUrl =
-    configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
-  app.use(
-    createCorsMiddleware(corsAllowedOrigins(isProduction, frontendUrl), logger),
-  );
+  app.use(createCorsMiddleware(settings.allowedOrigins, logger));
 
   // Request logging middleware
   app.use((req: Request, res: Response, next: NextFunction) => {

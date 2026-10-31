@@ -7,6 +7,10 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { checkDatabaseSchema } from './database/schema-check';
 import { configureHttpApp } from './server/configure-app';
+import {
+  loadServerSettings,
+  type ServerSettings,
+} from './server/server-settings';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -50,8 +54,17 @@ async function bootstrap() {
   }
 
   const configService = app.get(ConfigService);
-  const isProduction = configService.get<string>('NODE_ENV') === 'production';
-  configureHttpApp(app, configService);
+  let settings: ServerSettings;
+  try {
+    settings = loadServerSettings(configService);
+  } catch (error) {
+    logger.error(
+      `Startup aborted: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    process.exit(1);
+  }
+  const { isProduction } = settings;
+  configureHttpApp(app, settings, configService);
 
   const port = configService.get<number>('PORT') || 3000;
   const host = '0.0.0.0'; // Listen on all network interfaces (allows phone access on same Wi-Fi)

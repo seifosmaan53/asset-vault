@@ -62,6 +62,13 @@ import { ContentNegotiationInterceptor } from './common/interceptors/content-neg
 
         FRONTEND_URL: Joi.string().uri().default('http://localhost:5173'),
         FRONTEND_BASE_URL: Joi.string().uri().default('http://localhost:5173'),
+        // Server settings (src/server/server-settings.ts, docs/setup/DOCKER_README.md).
+        // Public https origin of the API for the production HTTP->HTTPS redirect; defaults to
+        // FRONTEND_URL's host (the proxied same-origin layout).
+        API_PUBLIC_URL: Joi.string().uri().allow('').optional(),
+        // Proxies whose X-Forwarded-* headers are believed: '' (none, default), a hop count,
+        // or a comma list of IPs / CIDRs / loopback / linklocal / uniquelocal. Never 'true'.
+        TRUST_PROXY: Joi.string().allow('').optional(),
 
         SMTP_HOST: Joi.string().allow('', null).optional(),
         SMTP_PORT: Joi.number().allow(null).min(1).max(65535).optional(),
