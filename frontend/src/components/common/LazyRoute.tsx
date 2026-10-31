@@ -9,16 +9,16 @@
  *  - the chunk is still downloading: <Suspense> shows a small loader inside the layout,
  *    so the navigation and header stay put;
  *  - the chunk cannot be fetched (offline, flaky network, or, most often, a redeploy
- *    replaced the hashed file names the open tab still refers to): the import is retried
- *    once, and if it still fails the route shows a recoverable error with a Reload
- *    button instead of an empty screen. Reloading fetches the current index.html, which
- *    names the current chunks.
+ *    replaced the hashed file names the open tab still refers to): the route shows a
+ *    recoverable error with a Reload button instead of an empty screen. Reloading fetches
+ *    the current index.html, which names the current chunks. (Retrying the import in place
+ *    does not work: see utils/lazyPage.ts.)
  */
 
 import { Component, Suspense, type ErrorInfo, type ReactNode } from 'react';
 import { Alert, AlertTitle, Box, Button, CircularProgress } from '@mui/material';
 import { logger } from '../../utils/logger';
-import { isChunkLoadError } from '../../utils/lazyWithRetry';
+import { isChunkLoadError } from '../../utils/lazyPage';
 
 export function PageLoader() {
   return (
