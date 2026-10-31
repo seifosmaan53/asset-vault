@@ -212,7 +212,7 @@ cd frontend && npm test
 - The `users` page and API client in `frontend/src` are not routed or linked from the UI.
 - The unit suite uses mocked repositories. Against a real database, the integration tests cover access control and invoice totals, rates and limits (`test/invoice-money.db.spec.ts`), but not stock arithmetic.
 - Every currency is handled with two decimal places (JPY and KWD included). This is an existing limitation, not a deliberate currency policy; see [docs/INVOICE-MONEY.md](docs/INVOICE-MONEY.md).
-- Docker Compose configuration is verified by reading, not by running it in this review.
+- CI builds the Docker images and smoke-tests the frontend image, but the full Compose stack (API with a database and Clerk) is not run.
 
 **Deployment and recovery.** These fixes are merged into the repository; the application was not deployed as part of this work and no deployment of it is known. If you deploy it and a release fails, do **not** treat redeploying the code from before this change as a rollback: that code accepted unsigned tokens and exposed other accounts' data, so it restores the vulnerabilities. Keep access restricted instead:
 1. Keep the failed release out of service (stop it, or leave the load balancer or DNS pointing away from it) rather than serving it half-configured.
@@ -229,12 +229,12 @@ cd frontend && npm test
 ```bash
 git clone https://github.com/seifosmaan53/asset-vault.git
 cd asset-vault
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
-# Add DB, Clerk, and (optional) Stripe/email/storage credentials — see Environment Variables below
-docker compose up -d
+# Compose reads a ROOT .env (not backend/.env or frontend/.env). The publishable key is
+# compiled into the web bundle at build time; the frontend build fails without it.
+printf 'CLERK_SECRET_KEY=sk_test_...\nVITE_CLERK_PUBLISHABLE_KEY=pk_test_...\n' > .env
+docker compose up -d --build
 ```
-Open [http://localhost](http://localhost)
+Open [http://localhost](http://localhost). Apply the database migrations once from the host (`cd backend && npm ci && npm run migration:run`, with `backend/.env` pointing at `localhost:5432`); see [docs/setup/DOCKER_README.md](docs/setup/DOCKER_README.md).
 
 ### Option 2 — Local Development
 ```bash
