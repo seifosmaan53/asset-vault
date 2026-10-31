@@ -10,6 +10,117 @@ import { StoreItemSettings } from '../inventory/entities/store-item-settings.ent
 import { StockMovement } from '../inventory/entities/stock-movement.entity';
 // Organizations removed - no longer using buildOrgScopedWhere
 
+/*
+ * Row shapes returned by the raw (getRawMany/getRawOne) queries below, keyed by their select
+ * aliases. PostgreSQL returns COUNT (bigint) and SUM/AVG of numeric columns as strings, and SUM
+ * over no rows as NULL, which is why every aggregate is a string or null and is converted with
+ * parseInt/parseFloat where it is read. Columns reached through a LEFT JOIN that no WHERE clause
+ * pins down, and nullable columns such as invoice.storeId, may be null.
+ */
+type InvoiceStatusValue = Invoice['status'];
+
+interface StatusCountRow {
+  status: InvoiceStatusValue;
+  count: string;
+}
+
+interface TopClientRow {
+  clientId: string;
+  clientName: string;
+  totalRevenue: string | null;
+  paidRevenue: string | null;
+  invoiceCount: string;
+}
+
+interface TopItemRow {
+  inventoryItemId: string;
+  itemName: string;
+  sku: string;
+  totalQuantity: string | null;
+  totalRevenue: string | null;
+  invoiceCount: string | null;
+}
+
+interface CategorySalesRow {
+  category: string | null;
+  totalQuantity: string | null;
+  totalRevenue: string | null;
+  invoiceCount: string | null;
+}
+
+interface PaidInvoicePaymentRow {
+  id: string;
+  total: string | null;
+  paymentMethodNote: string | null;
+}
+
+interface StatusStoreCountRow {
+  status: InvoiceStatusValue;
+  storeId: string | null;
+  storeName: string | null;
+  count: string;
+}
+
+interface StoreRow {
+  storeId: string | null;
+  storeName: string | null;
+}
+
+type TopClientByStoreRow = TopClientRow & StoreRow;
+
+type TopItemByStoreRow = TopItemRow & StoreRow;
+
+interface StoreRevenueRow extends StoreRow {
+  storeCode: string | null;
+  totalRevenue: string | null;
+  totalInvoices: string;
+  paidRevenue: string | null;
+  sentRevenue: string | null;
+  overdueRevenue: string | null;
+}
+
+interface StoreMovementRow {
+  storeId: string;
+  storeName: string;
+  uniqueItems: string | null;
+  totalSales: string | null;
+  totalPurchases: string | null;
+}
+
+interface StoreStockRow {
+  storeId: string;
+  totalCurrentStock: string | null;
+}
+
+interface StoreSalesTrendRow {
+  storeId: string;
+  storeName: string | null;
+  period: string;
+  revenue: string | null;
+  invoiceCount: string;
+}
+
+interface StoreSummaryRevenueRow {
+  storeId: string;
+  totalRevenue: string | null;
+  totalInvoices: string;
+  paidRevenue: string | null;
+}
+
+interface StoreComparisonRow {
+  storeId: string;
+  storeName: string | null;
+  storeCode: string | null;
+  totalRevenue: string | null;
+  totalInvoices: string;
+  paidRevenue: string | null;
+  averageInvoiceValue: string | null;
+}
+
+interface RevenueSumRow {
+  revenue: string | null;
+}
+
 @Injectable()
 export class AnalyticsService {
   private readonly logger = new Logger(AnalyticsService.name);
@@ -39,7 +150,9 @@ export class AnalyticsService {
       // Organizations removed - filter by userId only (user-scoped data)
       .where('invoice.userId = :userId', { userId });
 
-    const invoices = await query.groupBy('invoice.status').getRawMany();
+    const invoices = await query
+      .groupBy('invoice.status')
+      .getRawMany<StatusCountRow>();
 
     return invoices.map((item) => ({
       status: item.status,
@@ -74,7 +187,7 @@ export class AnalyticsService {
       .orderBy('SUM(invoice.total)', 'DESC')
       .skip(skip)
       .limit(limit)
-      .getRawMany();
+      .getRawMany<TopClientRow>();
 
     return topClients.map((item) => ({
       clientId: item.clientId,
@@ -112,7 +225,7 @@ export class AnalyticsService {
       .orderBy('SUM(item.lineTotal)', 'DESC') // Order by revenue instead of quantity
       .skip(skip)
       .limit(limit)
-      .getRawMany();
+      .getRawMany<TopItemRow>();
 
     return topItems.map((item) => ({
       inventoryItemId: item.inventoryItemId,
@@ -167,7 +280,7 @@ export class AnalyticsService {
       const results = await query
         .groupBy('category')
         .orderBy('SUM(item.lineTotal)', 'DESC')
-        .getRawMany();
+        .getRawMany<CategorySalesRow>();
 
       return results.map((item) => ({
         category: item.category || 'Uncategorized',
@@ -277,7 +390,7 @@ export class AnalyticsService {
         query.andWhere('invoice.storeId = :storeId', { storeId });
       }
 
-      const invoices = await query.getRawMany();
+      const invoices = await query.getRawMany<PaidInvoicePaymentRow>();
 
       // If no invoices found, return empty array
       if (!invoices || invoices.length === 0) {
@@ -350,7 +463,7 @@ export class AnalyticsService {
       .groupBy('invoice.status')
       .addGroupBy('invoice.storeId')
       .addGroupBy('store.name')
-      .getRawMany();
+      .getRawMany<StatusStoreCountRow>();
 
     return results.map((item) => ({
       status: item.status,
@@ -403,7 +516,7 @@ export class AnalyticsService {
       .addGroupBy('store.name')
       .orderBy('SUM(invoice.total)', 'DESC')
       .limit(limit)
-      .getRawMany();
+      .getRawMany<TopClientByStoreRow>();
 
     return topClients.map((item) => ({
       clientId: item.clientId,
@@ -461,7 +574,7 @@ export class AnalyticsService {
       .addGroupBy('store.name')
       .orderBy('SUM(item.lineTotal)', 'DESC')
       .limit(limit)
-      .getRawMany();
+      .getRawMany<TopItemByStoreRow>();
 
     return topItems.map((item) => ({
       inventoryItemId: item.inventoryItemId,
@@ -529,7 +642,7 @@ export class AnalyticsService {
       .groupBy('invoice.storeId')
       .addGroupBy('store.name')
       .addGroupBy('store.code')
-      .getRawMany();
+      .getRawMany<StoreRevenueRow>();
 
     return results.map((item) => ({
       storeId: item.storeId,
@@ -604,7 +717,7 @@ export class AnalyticsService {
     const results = await query
       .groupBy('movement.storeId')
       .addGroupBy('store.name')
-      .getRawMany();
+      .getRawMany<StoreMovementRow>();
 
     // Get current stock levels for turnover calculation
     const storeSettingsQuery = this.storeItemSettingsRepository
@@ -622,7 +735,7 @@ export class AnalyticsService {
 
     const stockLevels = await storeSettingsQuery
       .groupBy('settings.storeId')
-      .getRawMany();
+      .getRawMany<StoreStockRow>();
 
     const stockMap = new Map(
       stockLevels.map((s) => [
@@ -699,7 +812,7 @@ export class AnalyticsService {
       .addGroupBy('store.name')
       .addGroupBy('period')
       .orderBy('period', 'ASC')
-      .getRawMany();
+      .getRawMany<StoreSalesTrendRow>();
 
     return results.map((item) => ({
       storeId: item.storeId,
@@ -760,7 +873,8 @@ export class AnalyticsService {
         })
         .groupBy('invoice.storeId');
 
-      const revenueData = await revenueQuery.getRawMany();
+      const revenueData =
+        await revenueQuery.getRawMany<StoreSummaryRevenueRow>();
 
       this.logger.debug(`Found revenue data for ${revenueData.length} stores`);
 
@@ -867,7 +981,7 @@ export class AnalyticsService {
       .groupBy('invoice.storeId')
       .addGroupBy('store.name')
       .addGroupBy('store.code')
-      .getRawMany();
+      .getRawMany<StoreComparisonRow>();
 
     // Get inventory turnover data
     const turnoverData = await this.getStoreInventoryTurnover(
@@ -903,7 +1017,7 @@ export class AnalyticsService {
             })
             .andWhere('invoice.issueDate >= :startDate', { startDate })
             .andWhere('invoice.issueDate < :midPoint', { midPoint })
-            .getRawOne();
+            .getRawOne<RevenueSumRow>();
 
           // Organizations removed - filter by userId only (user-scoped data)
           const secondHalfQuery = this.invoiceRepository
@@ -918,7 +1032,7 @@ export class AnalyticsService {
             })
             .andWhere('invoice.issueDate >= :midPoint', { midPoint })
             .andWhere('invoice.issueDate <= :endDate', { endDate })
-            .getRawOne();
+            .getRawOne<RevenueSumRow>();
 
           const firstHalf = parseFloat(firstHalfRevenue?.revenue || '0');
           const secondHalf = parseFloat(secondHalfRevenue?.revenue || '0');
