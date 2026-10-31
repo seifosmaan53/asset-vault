@@ -58,7 +58,14 @@ function roundCents(x: number): number {
 
 /**
  * Validate string input (shape, length, pattern)
- * Prevents: null, undefined, empty strings, invalid formats
+ * Prevents: null, undefined, empty strings, invalid formats, objects and arrays
+ *
+ * Accepted input types: strings, plus numbers, booleans and bigints, which are converted with
+ * String() (e.g. 5 -> "5", true -> "true"). null/undefined mean "missing" (error when required,
+ * '' otherwise). Objects, arrays, functions and symbols are rejected with a BadRequestException
+ * ("<field> must be a string"): String() would turn them into "[object Object]" or a joined list
+ * and accept it - which is how a query-string object such as `q[a]=1` or a JSON body `{}` / `[]`
+ * would otherwise slip through as text.
  * Note: Does not sanitize for XSS - use sanitizeString() for HTML output if needed.
  * Note: SQL injection is prevented by parameterized queries/ORM bindings, not string validation.
  */
@@ -93,7 +100,16 @@ export function validateString(
     return '';
   }
 
-  // Convert to string
+  if (
+    typeof value !== 'string' &&
+    typeof value !== 'number' &&
+    typeof value !== 'boolean' &&
+    typeof value !== 'bigint'
+  ) {
+    throw new BadRequestException(`${fieldName} must be a string`);
+  }
+
+  // Convert to string (numbers, booleans and bigints keep their String() form)
   let str = String(value);
 
   // Trim if requested
