@@ -106,7 +106,7 @@ SMTP_FROM=                  # From address
 
 - ✅ **Local Development**: npm run start:dev
 - ✅ **Production Build**: npm run build && npm run start:prod
-- ✅ **Docker**: docker-compose up
+- ✅ **Docker**: `docker compose up -d --build`, migrate, then https://localhost through the Caddy TLS proxy (see `DOCKER_README.md`)
 - ✅ **Cloud Platforms**: Works on Heroku, AWS, Google Cloud, Azure, etc.
 
 ## Network Compatibility
@@ -179,18 +179,22 @@ SMTP_FROM=                  # From address
    - Should work on configured port
    - Should enforce CORS restrictions
 
-3. **Docker**
+3. **Docker** (see `DOCKER_README.md`)
    ```bash
-   docker-compose up
+   docker compose up -d --build
+   docker compose run --rm backend node dist/database/migration-runner.js
+   docker compose up -d --wait
    ```
-   - Should work with container networking
-   - Database should be accessible
+   - The browser-usable entry point is https://localhost (Caddy); the API and nginx publish no ports
+   - Plain http:// is redirected to https://
 
 ## Common Issues & Solutions
 
 ### Issue: CORS errors in production
 
-**Solution**: Set `FRONTEND_URL` environment variable to your production frontend URL
+**Solution**: Set `FRONTEND_URL` environment variable to your production frontend URL, exactly
+(scheme, host, port). A request from any other origin gets `403 {"message":"Origin not allowed"}`
+and the backend logs `CORS: refused ... from origin ...`.
 
 ### Issue: Database connection fails
 
