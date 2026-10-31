@@ -943,7 +943,7 @@ export class UserSettingsService {
   /**
    * Escape CSV value
    */
-  private escapeCsvValue(value: unknown): string {
+  private escapeCsvValue(value: string | number | null | undefined): string {
     if (value === null || value === undefined) return '';
     const str = String(value);
     if (

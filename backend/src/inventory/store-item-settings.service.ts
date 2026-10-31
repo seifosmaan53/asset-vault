@@ -493,7 +493,7 @@ export class StoreItemSettingsService {
       settings.currentStock = previousStock - validatedQuantity;
     } else {
       throw new BadRequestException(
-        `Invalid operation: ${operation}. Must be 'increase' or 'decrease'.`,
+        `Invalid operation: ${String(operation)}. Must be 'increase' or 'decrease'.`,
       );
     }
 

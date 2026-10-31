@@ -1259,7 +1259,7 @@ export class InventoryService {
         continue;
       } else {
         this.logger.warn(
-          `Skipping stock reversal for movement ${movement.id}: unsupported type=${movement.type}, sourceType=${movement.sourceType}, sourceId=${movement.sourceId}`,
+          `Skipping stock reversal for movement ${movement.id}: unsupported type=${String(movement.type)}, sourceType=${movement.sourceType}, sourceId=${movement.sourceId}`,
         );
         continue;
       }
