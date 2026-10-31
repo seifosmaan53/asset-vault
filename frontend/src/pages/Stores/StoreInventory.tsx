@@ -154,6 +154,16 @@ const StoreInventory = () => {
     return Array.from(categorySet).sort();
   }, [settings]);
 
+  // Declared before filteredSettings, which calls them while it renders: declared after
+  // it, turning on the Low Stock or Out of Stock filter threw a ReferenceError.
+  const isLowStock = useCallback((setting: StoreItemSettings) => {
+    return setting.currentStock <= (setting.minQty || 0);
+  }, []);
+  
+  const isOutOfStock = useCallback((setting: StoreItemSettings) => {
+    return setting.currentStock === 0;
+  }, []);
+
   // Filter and sort settings
   const filteredSettings = useMemo(() => {
     if (!settings) return [];
@@ -223,15 +233,7 @@ const StoreInventory = () => {
     });
     
     return filtered;
-  }, [settings, searchTerm, statusFilter, lowStockFilter, outOfStockFilter, categoryFilter, sortBy, sortOrder]);
-  
-  const isLowStock = useCallback((setting: StoreItemSettings) => {
-    return setting.currentStock <= (setting.minQty || 0);
-  }, []);
-  
-  const isOutOfStock = useCallback((setting: StoreItemSettings) => {
-    return setting.currentStock === 0;
-  }, []);
+  }, [settings, searchTerm, statusFilter, lowStockFilter, outOfStockFilter, categoryFilter, sortBy, sortOrder, isLowStock, isOutOfStock]);
 
   // Memoize summary statistics for all settings (not filtered)
   const summaryStats = useMemo(() => {
