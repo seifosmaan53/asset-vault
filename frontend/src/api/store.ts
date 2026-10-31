@@ -22,8 +22,8 @@ export interface UpdateStoreDto extends Partial<CreateStoreDto> {
 }
 
 export const storeApi = {
-  getAll: async (_activeOnly?: boolean): Promise<Store[]> => {
-    // activeOnly parameter is ignored - all stores are always active
+  getAll: async (): Promise<Store[]> => {
+    // There is no activeOnly filter: all stores are always active
     const response = await apiClient.get<Store[]>('/inventory/stores');
     return response.data;
   },

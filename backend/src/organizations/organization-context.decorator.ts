@@ -1,4 +1,3 @@
-import type { ExecutionContext } from '@nestjs/common';
 import { createParamDecorator } from '@nestjs/common';
 
 /**
@@ -12,11 +11,7 @@ import { createParamDecorator } from '@nestjs/common';
  *
  * @deprecated no organization context exists; remove call sites when convenient.
  */
-export const OrganizationId = createParamDecorator(
-  (_data: unknown, _ctx: ExecutionContext): string | null => null,
-);
+export const OrganizationId = createParamDecorator((): string | null => null);
 
 /** @deprecated see OrganizationId. Always null. */
-export const OrganizationRole = createParamDecorator(
-  (_data: unknown, _ctx: ExecutionContext): string | null => null,
-);
+export const OrganizationRole = createParamDecorator((): string | null => null);

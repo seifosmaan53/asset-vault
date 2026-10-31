@@ -2,7 +2,6 @@
 
 import { z } from 'zod';
 import { TrpcService } from '../trpc.service';
-import { TRPCError } from '@trpc/server';
 import { Injectable } from '@nestjs/common';
 import { AnalyticsService } from '../../analytics/analytics.service';
 

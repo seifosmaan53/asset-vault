@@ -4,12 +4,12 @@ import {
   ConflictException,
   Logger,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, In, IsNull, DataSource, QueryRunner } from 'typeorm';
+import { Repository, DataSource, QueryRunner } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
-import { Inject } from '@nestjs/common';
 import { InventoryItem } from './entities/inventory-item.entity';
 import { StockMovement } from './entities/stock-movement.entity';
 import { InvoiceItem } from '../invoices/entities/invoice-item.entity';
@@ -20,7 +20,6 @@ import { StoreItemSettings } from './entities/store-item-settings.entity';
 import { StoreItemSettingsService } from './store-item-settings.service';
 import { sanitizeString } from '../common/utils/security.util';
 import { CreateInventoryItemDto } from './dto';
-import { buildOrgScopedWhere } from '../common/utils/typeorm-query.util';
 import {
   CacheKey,
   buildCacheKey,
@@ -284,10 +283,7 @@ export class InventoryService {
   /**
    * Enrich inventory item with computed fields
    */
-  private async enrichWithComputedFields(
-    item: InventoryItem,
-    userId: string,
-  ): Promise<any> {
+  private enrichWithComputedFields(item: InventoryItem): any {
     // Use default weeks supply target (backup/planning features removed)
     const globalWeeksSupplyTarget = 4;
 
@@ -341,7 +337,7 @@ export class InventoryService {
     if (!item) {
       throw new NotFoundException('Inventory item not found');
     }
-    return this.enrichWithComputedFields(item, userId);
+    return this.enrichWithComputedFields(item);
   }
 
   async create(
@@ -1263,7 +1259,7 @@ export class InventoryService {
         continue;
       } else {
         this.logger.warn(
-          `Skipping stock reversal for movement ${movement.id}: unsupported type=${movement.type}, sourceType=${movement.sourceType}, sourceId=${movement.sourceId}`,
+          `Skipping stock reversal for movement ${movement.id}: unsupported type=${String(movement.type)}, sourceType=${movement.sourceType}, sourceId=${movement.sourceId}`,
         );
         continue;
       }

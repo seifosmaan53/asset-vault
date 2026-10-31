@@ -20,7 +20,7 @@ export const TokenSetup = () => {
       // This is safe because we're just assigning a function reference
       (window as Window & { __clerkGetToken?: () => Promise<string | null> }).__clerkGetToken = getToken;
     }
-  }, [isLoaded]); // Only depend on isLoaded - getToken is captured in closure
+  }, [isLoaded, getToken]);
 
   // This component doesn't render anything
   return null;

@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient';
+import type { AxiosError } from 'axios';
 import type { InvoiceTemplate, CreateInvoiceTemplateDto, UpdateInvoiceTemplateDto } from '../types/invoiceTemplate';
 
 export const invoiceTemplatesApi = {
@@ -11,8 +12,8 @@ export const invoiceTemplatesApi = {
     try {
       const response = await apiClient.get<InvoiceTemplate>('/invoice-templates/default');
       return response.data;
-    } catch (error: any) {
-      if (error.response?.status === 404) {
+    } catch (error) {
+      if ((error as AxiosError).response?.status === 404) {
         return null;
       }
       throw error;

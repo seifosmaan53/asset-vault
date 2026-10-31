@@ -9,8 +9,7 @@
  */
 
 import { GridLegacy as MuiGrid } from '@mui/material';
-import { forwardRef } from 'react';
-import type { ComponentProps } from 'react';
+import { forwardRef, type ComponentProps } from 'react';
 
 // Get props type from GridLegacy
 type GridProps = ComponentProps<typeof MuiGrid>;

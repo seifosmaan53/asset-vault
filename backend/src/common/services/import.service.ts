@@ -54,7 +54,7 @@ export class ImportService {
 
       // Get headers from first row
       worksheet.getRow(1).eachCell((cell, colNumber) => {
-        headers[colNumber - 1] = cell.value?.toString() || '';
+        headers[colNumber - 1] = cell.text || '';
       });
 
       // Get data rows
@@ -65,7 +65,7 @@ export class ImportService {
         row.eachCell((cell, colNumber) => {
           const header = headers[colNumber - 1];
           if (header) {
-            rowData[header] = cell.value?.toString() || '';
+            rowData[header] = cell.text || '';
           }
         });
         rows.push(rowData);

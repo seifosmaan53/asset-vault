@@ -1,7 +1,10 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import type { MigrationInterface, QueryRunner } from 'typeorm';
-import { TableColumn } from 'typeorm';
+import {
+  type MigrationInterface,
+  type QueryRunner,
+  TableColumn,
+} from 'typeorm';
 
 export class AddEmailVerification1749000000000 implements MigrationInterface {
   name = 'AddEmailVerification1749000000000';

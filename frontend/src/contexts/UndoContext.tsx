@@ -1,7 +1,13 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import type { ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  type ReactNode,
+} from 'react';
 import { globalUndoQueue, type UndoOperation } from '../utils/undoQueue';
 import { useToast } from './ToastContext';
 
@@ -40,20 +46,27 @@ export const UndoProvider = ({ children, showToastOnUndo = true }: UndoProviderP
      undo queue changes — they read the queue through getOperations(), not through this
      value — so the binding is dropped rather than the state, which would stop the
      re-render. */
-  const [, setOperations] = useState<UndoOperation[]>([]);
+  const [, setOperations] = useState<UndoOperation[]>(() => globalUndoQueue.getAll());
   const { showToastWithAction } = useToast();
 
   useEffect(() => {
     // Subscribe to queue changes
-    const unsubscribe = globalUndoQueue.subscribe((ops) => {
+    // (The initial queue is read by the useState initializer above.)
+    return globalUndoQueue.subscribe((ops) => {
       setOperations(ops);
     });
-
-    // Initial load
-    setOperations(globalUndoQueue.getAll());
-
-    return unsubscribe;
   }, []);
+
+  const undo = useCallback(
+    async (id: string): Promise<boolean> => {
+      const success = await globalUndoQueue.undo(id);
+      if (success && showToastOnUndo) {
+        showToastWithAction('Action undone', { severity: 'info' });
+      }
+      return success;
+    },
+    [showToastOnUndo, showToastWithAction],
+  );
 
   const addOperation = useCallback(
     <T,>(
@@ -78,18 +91,7 @@ export const UndoProvider = ({ children, showToastOnUndo = true }: UndoProviderP
 
       return id;
     },
-    [showToastOnUndo, showToastWithAction],
-  );
-
-  const undo = useCallback(
-    async (id: string): Promise<boolean> => {
-      const success = await globalUndoQueue.undo(id);
-      if (success && showToastOnUndo) {
-        showToastWithAction('Action undone', { severity: 'info' });
-      }
-      return success;
-    },
-    [showToastOnUndo, showToastWithAction],
+    [showToastOnUndo, showToastWithAction, undo],
   );
 
   const removeOperation = useCallback((id: string): boolean => {

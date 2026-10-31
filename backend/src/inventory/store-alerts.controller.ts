@@ -15,7 +15,6 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { StoreAlertsService } from './store-alerts.service';
-import { OrganizationId } from '../organizations/organization-context.decorator';
 
 @ApiTags('store-alerts')
 @Controller('inventory/store-alerts')
@@ -36,7 +35,6 @@ export class StoreAlertsController {
     @Request() req,
     @Query('storeId') storeId?: string,
     @Query('resolved') resolved?: string,
-    @OrganizationId() organizationId?: string | null,
   ) {
     // FIX Issue #43: Add organization context validation
     const resolvedBool =
@@ -46,7 +44,6 @@ export class StoreAlertsController {
       req.user.userId,
       storeId,
       resolvedBool,
-      null,
     );
   }
 
@@ -57,18 +54,10 @@ export class StoreAlertsController {
   })
   @ApiResponse({ status: 200, description: 'List of store alerts' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getStoreAlerts(
-    @Param('storeId') storeId: string,
-    @Request() req,
-    @OrganizationId() organizationId?: string | null,
-  ) {
+  async getStoreAlerts(@Param('storeId') storeId: string, @Request() req) {
     // FIX Issue #43: Add organization context validation
     // Organizations removed - organizationId is always null, data is user-scoped
-    return this.storeAlertsService.getStoreAlerts(
-      storeId,
-      req.user.userId,
-      null,
-    );
+    return this.storeAlertsService.getStoreAlerts(storeId, req.user.userId);
   }
 
   @Patch(':id/resolve')
@@ -80,15 +69,11 @@ export class StoreAlertsController {
   @ApiResponse({ status: 404, description: 'Alert not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async markAlertResolved(@Param('id') id: string, @Request() req) {
-    try {
-      const result = await this.storeAlertsService.markAlertResolved(
-        id,
-        req.user.userId,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    const result = await this.storeAlertsService.markAlertResolved(
+      id,
+      req.user.userId,
+    );
+    return result;
   }
 
   @Get('check')

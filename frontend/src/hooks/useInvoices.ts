@@ -1,6 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { invoicesApi } from '../api/invoices';
-import type { CreateInvoiceDto, UpdateInvoiceDto, PagedResult } from '../api/invoices';
+import {
+  invoicesApi,
+  type CreateInvoiceDto,
+  type UpdateInvoiceDto,
+  type PagedResult,
+} from '../api/invoices';
 import type { Invoice } from '../types/invoice';
 import { useAuthStore } from '../store/authStore';
 import { logger } from '../utils/logger';
@@ -52,7 +56,7 @@ const buildDetailKey = (_orgId: string | null, id: string) => {
   return ['invoices', id] as const;
 };
 
-const buildStatsKey = (_orgId: string | null) => {
+const buildStatsKey = () => {
   // Organizations removed - query keys are now user-scoped only
   return ['invoices', 'stats'] as const;
 };
@@ -146,7 +150,7 @@ export const useInvoiceStats = () => {
   // Note: Clerk handles token management automatically via apiClient interceptor
   
   return useQuery({
-    queryKey: buildStatsKey(null),
+    queryKey: buildStatsKey(),
     queryFn: () => invoicesApi.getStats(),
     enabled: isAuthenticated,
     refetchOnWindowFocus: true,
@@ -297,7 +301,7 @@ export const useCreateInvoice = () => {
       // Invalidate all paginated queries to ensure page numbers are recalculated
       queryClient.invalidateQueries({ queryKey: ['invoices', 'paged'], exact: false });
       queryClient.invalidateQueries({ queryKey: ['invoices'], exact: false });
-      queryClient.invalidateQueries({ queryKey: buildStatsKey(null) }); // Use buildStatsKey for consistency
+      queryClient.invalidateQueries({ queryKey: buildStatsKey() }); // Use buildStatsKey for consistency
       queryClient.invalidateQueries({ queryKey: ['invoices', 'stats'], exact: false }); // Also invalidate alternate key format
       queryClient.invalidateQueries({ queryKey: ['analytics'], exact: false });
       
@@ -610,7 +614,7 @@ export const useUpdateInvoice = () => {
         if (updatedCount > 0) {
           logger.debug(`Updated ${updatedCount} paged query cache entries for invoice ${variables.id}`);
         }
-      } catch (error) {
+      } catch {
         // queryCache not available, skip logging
       }
       
@@ -623,11 +627,11 @@ export const useUpdateInvoice = () => {
       });
       
       // Also invalidate stats to ensure Dashboard stats card updates
-      queryClient.invalidateQueries({ queryKey: buildStatsKey(null) });
+      queryClient.invalidateQueries({ queryKey: buildStatsKey() });
       queryClient.invalidateQueries({ queryKey: ['invoices', 'stats'], exact: false });
       
       // Invalidate related queries (stats, analytics, clients)
-      queryClient.invalidateQueries({ queryKey: buildStatsKey(null) });
+      queryClient.invalidateQueries({ queryKey: buildStatsKey() });
       queryClient.invalidateQueries({ queryKey: ['invoices', 'stats'], exact: false });
       queryClient.invalidateQueries({ queryKey: ['analytics'], exact: false });
       queryClient.invalidateQueries({ queryKey: ['clients'], exact: false });
@@ -723,7 +727,7 @@ export const useDeleteInvoice = () => {
       queryClient.removeQueries({ queryKey: buildDetailKey(null, id) });
       
       // ENHANCED: Invalidate stats for real-time dashboard updates
-      queryClient.invalidateQueries({ queryKey: buildStatsKey(null) }); // Use buildStatsKey for consistency
+      queryClient.invalidateQueries({ queryKey: buildStatsKey() }); // Use buildStatsKey for consistency
       queryClient.invalidateQueries({ queryKey: ['invoices', 'stats'], exact: false }); // Also invalidate alternate key format
       
       // Handle cleanup for related data

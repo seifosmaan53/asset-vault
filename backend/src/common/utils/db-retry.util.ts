@@ -12,7 +12,7 @@ export async function retryDatabaseConnection<T>(
   initialDelay: number = 1000,
   logger?: Logger,
 ): Promise<T> {
-  let lastError: Error | unknown;
+  let lastError: unknown;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {

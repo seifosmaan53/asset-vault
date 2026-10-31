@@ -39,8 +39,7 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiKeysApi } from '../../api/apiKeys';
-import type { CreateApiKeyDto } from '../../api/apiKeys';
+import { apiKeysApi, type CreateApiKeyDto } from '../../api/apiKeys';
 import { formatDate } from '../../utils/dates';
 import { useToast } from '../../contexts/ToastContext';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
@@ -135,7 +134,7 @@ const ApiKeysList = () => {
   const handleCreate = async (name: string, permissions: string[], expiresAt?: string) => {
     try {
       await createKey.mutateAsync({ name, permissions, expiresAt });
-    } catch (error) {
+    } catch {
       // Error handled in mutation
     }
   };
@@ -151,7 +150,7 @@ const ApiKeysList = () => {
       await deleteKey.mutateAsync(keyToDelete);
       setDeleteConfirmOpen(false);
       setKeyToDelete(null);
-    } catch (error) {
+    } catch {
       // Error handled in mutation
     }
   };

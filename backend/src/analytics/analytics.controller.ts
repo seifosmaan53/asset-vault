@@ -13,7 +13,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
-import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import {
   ApiTags,
   ApiOperation,
@@ -380,20 +380,16 @@ export class AnalyticsController {
     @Request() req,
     @Body() body: { storeIds: string[]; startDate?: string; endDate?: string },
   ) {
-    try {
-      const startDate = body.startDate ? new Date(body.startDate) : undefined;
-      const endDate = body.endDate ? new Date(body.endDate) : undefined;
-      // Organizations removed - organizationId is always null, data is user-scoped
-      const result = await this.analyticsService.compareStores(
-        req.user.userId,
-        body.storeIds,
-        startDate,
-        endDate,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    const startDate = body.startDate ? new Date(body.startDate) : undefined;
+    const endDate = body.endDate ? new Date(body.endDate) : undefined;
+    // Organizations removed - organizationId is always null, data is user-scoped
+    const result = await this.analyticsService.compareStores(
+      req.user.userId,
+      body.storeIds,
+      startDate,
+      endDate,
+    );
+    return result;
   }
 
   @Get('stores/:storeId/export/csv')
@@ -421,7 +417,7 @@ export class AnalyticsController {
       throw new NotFoundException(`Store with ID "${storeId}" not found`);
     }
 
-    const [revenue, topClients, topItems, turnover] = await Promise.all([
+    const [, topClients, topItems, turnover] = await Promise.all([
       this.analyticsService.getStoreRevenueReport(
         req.user.userId,
         storeId,
@@ -530,7 +526,7 @@ export class AnalyticsController {
       throw new NotFoundException(`Store with ID "${storeId}" not found`);
     }
 
-    const [revenue, topClients, topItems, turnover] = await Promise.all([
+    const [, topClients, topItems, turnover] = await Promise.all([
       this.analyticsService.getStoreRevenueReport(
         req.user.userId,
         storeId,

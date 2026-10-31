@@ -22,7 +22,7 @@ import {
   MenuItem,
   Chip,
 } from '@mui/material';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useStoreTrends, useStoresAnalytics } from '../../hooks/useAnalytics';
 import { formatCurrency } from '../../utils/formatters';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -45,12 +45,14 @@ const StoreRevenueChart = ({
     period,
   );
 
-  // Update selectedPeriod when period prop changes
-  useEffect(() => {
-    if (period !== selectedPeriod) {
-      setSelectedPeriod(period);
-    }
-  }, [period, selectedPeriod]);
+  /* Follow the period prop when it changes, and only then. The previous effect also ran
+     whenever selectedPeriod changed, so it immediately reverted every pick made in the
+     chart's own Period select back to the prop value. */
+  const [prevPeriod, setPrevPeriod] = useState(period);
+  if (period !== prevPeriod) {
+    setPrevPeriod(period);
+    setSelectedPeriod(period);
+  }
 
   // Get stores for comparison
   const { data: allStores } = useStoresAnalytics();

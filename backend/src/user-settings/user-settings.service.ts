@@ -242,7 +242,6 @@ export class UserSettingsService {
          one-way — those users would re-enter their password. */
       delete sanitizedData.smtpPassword;
 
-
       let settings: UserSettings;
 
       if (!existingSettings) {
@@ -668,6 +667,7 @@ export class UserSettingsService {
           movements: stockMovements
             .filter((mov) => mov.inventoryItemId === item.id)
             .map((mov) => {
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars -- rest-omit: inventoryItem is dropped from the copy on purpose
               const { inventoryItem, ...movementWithoutItem } = mov;
               return movementWithoutItem;
             }),
@@ -820,7 +820,7 @@ export class UserSettingsService {
   /**
    * Test email connection - Email functionality has been removed
    */
-  async testEmailConnection(
+  testEmailConnection(
     userId: string,
     credentials?: {
       smtpHost?: string;
@@ -835,10 +835,10 @@ export class UserSettingsService {
     this.logger.warn(
       `Email test connection requested by user ${userId} - email functionality has been disabled`,
     );
-    return {
+    return Promise.resolve({
       success: false,
       message: 'Email functionality has been disabled',
-    };
+    });
   }
 
   /**
@@ -943,7 +943,7 @@ export class UserSettingsService {
   /**
    * Escape CSV value
    */
-  private escapeCsvValue(value: unknown): string {
+  private escapeCsvValue(value: string | number | null | undefined): string {
     if (value === null || value === undefined) return '';
     const str = String(value);
     if (

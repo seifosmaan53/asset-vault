@@ -5,7 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, QueryRunner } from 'typeorm';
+import { Repository, QueryRunner } from 'typeorm';
 import { StoreItemSettings } from './entities/store-item-settings.entity';
 import { Store } from './entities/store.entity';
 import { InventoryItem } from './entities/inventory-item.entity';
@@ -257,7 +257,6 @@ export class StoreItemSettingsService {
         (sum, s) => sum + (s.currentStock || 0),
         0,
       );
-      const increaseAmount = validatedQuantity - previousStock;
       const newTotalStoreStock =
         currentTotalStoreStock - previousStock + validatedQuantity;
 
@@ -415,11 +414,8 @@ export class StoreItemSettingsService {
         `Item ${inventoryItemId} is not tracked in store ${storeId}. Skipping store stock adjustment. Global stock will still be decreased.`,
       );
       // Return a minimal settings object to satisfy return type, but don't save it
-      const store = await this.requireStore(storeId, actorUserId);
-      const inventoryItem = await this.requireInventoryItem(
-        inventoryItemId,
-        actorUserId,
-      );
+      await this.requireStore(storeId, actorUserId);
+      await this.requireInventoryItem(inventoryItemId, actorUserId);
       return manager.create(StoreItemSettings, {
         storeId,
         inventoryItemId,
@@ -497,7 +493,7 @@ export class StoreItemSettingsService {
       settings.currentStock = previousStock - validatedQuantity;
     } else {
       throw new BadRequestException(
-        `Invalid operation: ${operation}. Must be 'increase' or 'decrease'.`,
+        `Invalid operation: ${String(operation)}. Must be 'increase' or 'decrease'.`,
       );
     }
 

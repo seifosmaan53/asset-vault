@@ -115,13 +115,13 @@ describe('InvoicesList', () => {
          without it throws "refetch is not a function" before anything renders — which
          is why every test in this file failed identically. */
       refetch: vi.fn().mockResolvedValue({}),
-    } as any);
+    } as unknown as ReturnType<typeof useInvoicesPaged>);
     vi.mocked(useDeleteInvoice).mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue({}),
-    } as any);
+    } as unknown as ReturnType<typeof useDeleteInvoice>);
     vi.mocked(useCreateInvoice).mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue({}),
-    } as any);
+    } as unknown as ReturnType<typeof useCreateInvoice>);
   });
 
   it('should render invoices list', () => {

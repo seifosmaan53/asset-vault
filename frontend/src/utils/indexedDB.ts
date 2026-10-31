@@ -5,8 +5,7 @@
  * Provides persistent storage for React Query cache and offline mutation queue
  */
 
-import { openDB } from 'idb';
-import type { DBSchema, IDBPDatabase } from 'idb';
+import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import { logger } from './logger';
 
 // Database schema

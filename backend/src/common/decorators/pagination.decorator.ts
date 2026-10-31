@@ -1,7 +1,6 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import type { ExecutionContext } from '@nestjs/common';
-import { createParamDecorator } from '@nestjs/common';
+import { type ExecutionContext, createParamDecorator } from '@nestjs/common';
 
 export interface PaginationParams {
   page: number;

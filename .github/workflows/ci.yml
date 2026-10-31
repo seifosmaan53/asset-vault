@@ -107,10 +107,11 @@ jobs:
         working-directory: ./frontend
         run: npm ci
 
+      # GATING since the error count reached 0 (224 -> 0; no rules disabled). Warnings
+      # (exhaustive-deps, fast-refresh exports, incompatible-library) are reported, not gating.
       - name: Lint
         working-directory: ./frontend
         run: npm run lint
-        continue-on-error: true
 
       - name: Build
         working-directory: ./frontend
@@ -268,6 +269,131 @@ jobs:
           docker compose up -d --wait postgres
           docker compose exec -T postgres psql -U postgres -d invoiceme -c 'select 1'
           docker compose down -v
+
+  # GATING. The built API image, the built frontend and PostgreSQL running together, with
+  # synthetic data only (users *@full-stack.invalid in a throwaway CI database).
+  #
+  # Real: the API image from backend/Dockerfile running dist/main with NODE_ENV=production, the
+  # schema built by the repository's migrations, every guard, and @clerk/backend verifyToken()
+  # checking RS256 session tokens signed with a key pair generated in this job and given to the
+  # API as CLERK_JWT_KEY (the SDK's networkless mode). The frontend is a production `vite build`
+  # served by `vite preview`, checked over HTTP and in headless Chromium.
+  #
+  # Stand-in: Clerk's users.getUser(), the per-request user re-check, is answered from a file by
+  # backend/test/full-stack/clerk-users-stub.cjs, preloaded with NODE_OPTIONS and mounted
+  # read-only; it is not in the image. A local HTTP stub of Clerk's API is not possible without
+  # an application change: the guard calls createClerkClient({ secretKey }) with no apiUrl, and
+  # @clerk/backend does not read one from the environment.
+  #
+  # Not covered: signing in through Clerk in the browser (clerk-js loads from a real Clerk
+  # instance's frontend API), and therefore the web app's own authenticated API calls.
+  full-stack:
+    name: Full stack (API image + built frontend + PostgreSQL)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: asset_vault_full_stack
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_DATABASE: asset_vault_full_stack
+      # Not a real Clerk key; the stub refuses to load with anything but sk_test_.
+      CLERK_SECRET_KEY: sk_test_full_stack_not_a_real_key
+      # pk_test_ + base64("dummy.clerk.accounts.dev$"). Not a real Clerk instance.
+      DUMMY_PK: pk_test_ZHVtbXkuY2xlcmsuYWNjb3VudHMuZGV2JA==
+      API_URL: http://localhost:3000/api/v1
+      FRONTEND_ORIGIN: http://localhost:4173
+      TZ: UTC
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      # The API image has no migration runner, so the schema is built from the checkout.
+      - name: Install backend and apply migrations
+        working-directory: ./backend
+        run: |
+          npm ci
+          npm run migration:run
+
+      - name: Build the API image
+        run: docker build -t av-backend backend
+
+      - name: Generate the throwaway signing keys and synthetic Clerk users
+        run: node backend/test/full-stack/prepare.cjs "$RUNNER_TEMP/full-stack"
+
+      - name: Start the API
+        run: |
+          docker run -d --name av-api --network host \
+            -v "$GITHUB_WORKSPACE/backend/test/full-stack:/full-stack:ro" \
+            -v "$RUNNER_TEMP/full-stack/clerk-directory.json:/fs/clerk-directory.json:ro" \
+            -e NODE_ENV=production -e PORT=3000 \
+            -e DB_HOST -e DB_PORT -e DB_USERNAME -e DB_PASSWORD -e DB_DATABASE \
+            -e CLERK_SECRET_KEY \
+            -e CLERK_JWT_KEY="$(cat "$RUNNER_TEMP/full-stack/jwt-public.pem")" \
+            -e FRONTEND_URL="$FRONTEND_ORIGIN" \
+            -e FULL_STACK_CLERK_STUB=1 -e FULL_STACK_CLERK_DIRECTORY=/fs/clerk-directory.json \
+            -e NODE_OPTIONS='--require /full-stack/clerk-users-stub.cjs' \
+            av-backend
+          for i in $(seq 1 60); do
+            curl -fsS -o /dev/null -H 'X-Forwarded-Proto: https' "$API_URL/health" && break
+            if [ "$(docker inspect -f '{{.State.Running}}' av-api)" != true ]; then docker logs av-api; exit 1; fi
+            sleep 1
+          done
+          curl -fsS -H 'X-Forwarded-Proto: https' "$API_URL/health"; echo
+          docker logs av-api 2>&1 | grep -F '[clerk-users-stub]'
+
+      # Authentication (real verifyToken; forged, expired, alg-confusion, unknown and banned users),
+      # invoice create / read / edit with totals checked against hand-computed values and the
+      # database row, and ownership checks with a second user.
+      - name: API flow (invoices, totals, ownership)
+        working-directory: ./backend
+        run: node test/full-stack/flow.cjs "$RUNNER_TEMP/full-stack"
+
+      - name: Build the frontend against this API
+        working-directory: ./frontend
+        run: |
+          npm ci
+          VITE_CLERK_PUBLISHABLE_KEY="$DUMMY_PK" VITE_API_BASE_URL="$API_URL" npx vite build --manifest
+          echo '--- the bundle calls this API'
+          grep -lF "$API_URL" dist/assets/*.js
+
+      - name: Serve it and check every route's chunk over HTTP
+        working-directory: ./frontend
+        run: |
+          npx vite preview --port 4173 --strictPort > preview.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS -o /dev/null "$FRONTEND_ORIGIN/" && break; sleep 1; done
+          node scripts/verify-route-chunks.mjs "$FRONTEND_ORIGIN" dist
+
+      - name: Browser check (lazy page renders; failed chunk is recoverable)
+        working-directory: ./frontend
+        run: |
+          npm i --no-save --no-audit --no-fund playwright@1.59.1
+          npx playwright install --with-deps chromium
+          node scripts/browser-smoke.mjs "$FRONTEND_ORIGIN"
+
+      - name: API log
+        if: always()
+        run: docker logs av-api 2>&1 | tail -n 80 || true
 
   audit:
     name: Dependency audit

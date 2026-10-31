@@ -36,16 +36,16 @@ const TopItemsTable = () => {
     return itemsArray.map((item) => {
       // Find all invoice items for this inventory item
       const itemInvoices = Array.isArray(invoices)
-        ? invoices.filter((inv: any) => 
+        ? invoices.filter((inv) => 
             inv.items && Array.isArray(inv.items) && 
-            inv.items.some((invItem: any) => invItem.inventoryItemId === item.inventoryItemId)
+            inv.items.some((invItem) => invItem.inventoryItemId === item.inventoryItemId)
           )
         : [];
 
       let totalProfit = 0;
-      itemInvoices.forEach((invoice: any) => {
+      itemInvoices.forEach((invoice) => {
         if (invoice.items && Array.isArray(invoice.items)) {
-          invoice.items.forEach((invItem: any) => {
+          invoice.items.forEach((invItem) => {
             if (invItem.inventoryItemId === item.inventoryItemId) {
               const quantity = Number(invItem.quantity) || 0;
               const unitPrice = Number(invItem.unitPrice) || 0;

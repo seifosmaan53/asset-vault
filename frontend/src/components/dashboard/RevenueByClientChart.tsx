@@ -88,7 +88,7 @@ const RevenueByClientChart = ({ startDate, endDate }: RevenueByClientChartProps)
             totalRevenue: existing.totalRevenue + (Number(invoice.total) || 0),
             invoiceCount: existing.invoiceCount + 1,
           });
-        } catch (error) {
+        } catch {
           // Skip invalid dates silently
         }
       });

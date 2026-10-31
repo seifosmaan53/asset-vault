@@ -52,7 +52,7 @@ export class MetricsController {
     status: 403,
     description: 'Forbidden - Admin/Owner access required',
   })
-  async getQueryMetrics() {
+  getQueryMetrics() {
     return this.metricsService.getQueryMetrics();
   }
 
@@ -90,7 +90,7 @@ export class MetricsController {
     status: 403,
     description: 'Forbidden - Admin/Owner access required',
   })
-  async getMemoryMetrics() {
+  getMemoryMetrics() {
     return this.metricsService.getMemoryMetrics();
   }
 

@@ -1,7 +1,7 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
 import { HttpException, HttpStatus } from '@nestjs/common';
-import { ErrorCode, getErrorCode, getErrorMessage } from './error-codes.util';
+import { ErrorCode, getErrorCode } from './error-codes.util';
 
 /**
  * Error Formatter Utility
@@ -14,7 +14,7 @@ export class ErrorFormatter {
    * Format error response consistently
    */
   static formatError(
-    error: Error | HttpException | unknown,
+    error: unknown,
     statusCode?: HttpStatus,
     path?: string,
   ): {

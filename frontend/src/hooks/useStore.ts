@@ -1,13 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { storeApi } from '../api/store';
-import type { CreateStoreDto, UpdateStoreDto } from '../api/store';
+import { storeApi, type CreateStoreDto, type UpdateStoreDto } from '../api/store';
 import { useAuthStore } from '../store/authStore';
 
 export const useStores = (activeOnly?: boolean) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   return useQuery({
     queryKey: ['stores', activeOnly],
-    queryFn: () => storeApi.getAll(activeOnly),
+    queryFn: () => storeApi.getAll(),
     enabled: isAuthenticated,
     // Keep data fresh but don't refetch too aggressively
     staleTime: 30000, // Consider data fresh for 30 seconds

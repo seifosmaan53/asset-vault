@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { storeItemSettingsApi } from '../api/storeItemSettings';
-import type {
-  CreateStoreItemSettingsDto,
-  UpdateStoreItemSettingsDto,
+import {
+  storeItemSettingsApi,
+  type CreateStoreItemSettingsDto,
+  type UpdateStoreItemSettingsDto,
 } from '../api/storeItemSettings';
 import { useAuthStore } from '../store/authStore';
 
@@ -49,7 +49,7 @@ export const useCreateOrUpdateStoreItemSettings = () => {
       queryClient.invalidateQueries({ queryKey: ['analytics', 'stores', variables.storeId] });
       await queryClient.refetchQueries({ queryKey: ['analytics', 'stores', variables.storeId], exact: false });
     },
-    onError: (_error) => {
+    onError: () => {
       // Error handling - could show toast notification here if needed
       // The error will be handled by the component using this hook
     },
@@ -61,7 +61,7 @@ export const useUpdateStoreItemSettings = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateStoreItemSettingsDto }) =>
       storeItemSettingsApi.update(id, data),
-    onSuccess: async (_settings, _variables) => {
+    onSuccess: async () => {
       // CRITICAL: Refetch queries to ensure data is persisted and fresh
       queryClient.invalidateQueries({ queryKey: ['store-item-settings'] });
       await queryClient.refetchQueries({ queryKey: ['store-item-settings'], exact: false });
@@ -71,7 +71,7 @@ export const useUpdateStoreItemSettings = () => {
       queryClient.invalidateQueries({ queryKey: ['analytics'], exact: false });
       await queryClient.refetchQueries({ queryKey: ['analytics'], exact: false });
     },
-    onError: (_error) => {
+    onError: () => {
       // Error handling - could show toast notification here if needed
       // The error will be handled by the component using this hook
     },
@@ -103,7 +103,7 @@ export const useUpdateStock = () => {
       queryClient.invalidateQueries({ queryKey: ['analytics', 'stores', variables.storeId] });
       await queryClient.refetchQueries({ queryKey: ['analytics', 'stores', variables.storeId], exact: false });
     },
-    onError: (_error) => {
+    onError: () => {
       // Error handling - could show toast notification here if needed
       // The error will be handled by the component using this hook
     },

@@ -7,7 +7,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, DataSource } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { Store } from './entities/store.entity';
@@ -347,7 +347,7 @@ export class StoreService {
       if (anyStore.deletedAt) {
         await queryRunner.rollbackTransaction();
         this.logger.debug(
-          `remove: Store ${id} is already soft-deleted (deletedAt=${anyStore.deletedAt}), returning early`,
+          `remove: Store ${id} is already soft-deleted (deletedAt=${String(anyStore.deletedAt)}), returning early`,
         );
         return; // Idempotent - already deleted, success
       }
@@ -380,7 +380,7 @@ export class StoreService {
       if (store.deletedAt) {
         await queryRunner.rollbackTransaction();
         this.logger.debug(
-          `remove: Store ${id} is already soft-deleted (deletedAt=${store.deletedAt}), returning early`,
+          `remove: Store ${id} is already soft-deleted (deletedAt=${String(store.deletedAt)}), returning early`,
         );
         return; // Idempotent - already deleted, success
       }
@@ -473,7 +473,7 @@ export class StoreService {
       }
 
       this.logger.debug(
-        `remove: Verified store ${id} has deletedAt=${verifyDeleted.deletedAt} in database before commit`,
+        `remove: Verified store ${id} has deletedAt=${String(verifyDeleted.deletedAt)} in database before commit`,
       );
 
       // CRITICAL FIX: Since stores use soft delete, CASCADE won't trigger automatically

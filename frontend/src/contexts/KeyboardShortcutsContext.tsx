@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import { KeyboardShortcutsDialog } from '../components/common/KeyboardShortcutsDialog';
-import type { ShortcutGroup } from '../components/common/KeyboardShortcutsDialog';
+import {
+  KeyboardShortcutsDialog,
+  type ShortcutGroup,
+} from '../components/common/KeyboardShortcutsDialog';
 
 interface KeyboardShortcutsContextType {
   openShortcutsDialog: () => void;

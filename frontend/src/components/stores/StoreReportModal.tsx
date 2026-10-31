@@ -63,7 +63,7 @@ const StoreReportModal = ({ open, onClose, reportType }: StoreReportModalProps) 
           stores: allStores,
           description: `Complete list of all ${allStores.length} stores in your system`,
         };
-      case 'alerts':
+      case 'alerts': {
         if (!alerts || alerts.length === 0) {
           return {
             title: 'Stores with Alerts',
@@ -101,6 +101,7 @@ const StoreReportModal = ({ open, onClose, reportType }: StoreReportModalProps) 
           alerts: alertsByStore,
           description: `${storesWithAlerts.size} store(s) have unresolved alerts`,
         };
+      }
       case 'lowStock':
         return {
           title: 'Low Stock Items',

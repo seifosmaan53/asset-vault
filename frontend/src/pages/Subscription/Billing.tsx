@@ -36,7 +36,7 @@ export default function Billing() {
   useEffect(() => {
     loadSubscription();
     loadUsage();
-  }, [loadSubscription]);
+  }, [loadSubscription, loadUsage]);
 
   const { data: invoices, isLoading: invoicesLoading } = useQuery({
     queryKey: ['billing-history'],

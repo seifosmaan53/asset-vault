@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -18,8 +18,7 @@ import {
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useProfile, useUpdateProfile } from '../../hooks/useAuth';
-import { settingsApi } from '../../api/settings';
-import type { UserSettings } from '../../api/settings';
+import { settingsApi, type UserSettings } from '../../api/settings';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSettingsContext } from '../../contexts/SettingsContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -227,9 +226,9 @@ const Settings = () => {
       // Additional validation: check if it's actually a UserSettings object
       const isSettingsObject = updatedSettings && typeof updatedSettings === 'object' && 
         !Array.isArray(updatedSettings) &&
-        (updatedSettings.hasOwnProperty('defaultCurrency') || 
-         updatedSettings.hasOwnProperty('dateFormat') || 
-         updatedSettings.hasOwnProperty('companyName'));
+        (Object.prototype.hasOwnProperty.call(updatedSettings, 'defaultCurrency') || 
+         Object.prototype.hasOwnProperty.call(updatedSettings, 'dateFormat') || 
+         Object.prototype.hasOwnProperty.call(updatedSettings, 'companyName'));
       
       if (hasErrorProperties || !isSettingsObject) {
         logger.error('Received invalid response in onSuccess handler:', updatedSettings);
@@ -325,12 +324,11 @@ const Settings = () => {
     control,
     watch,
     getValues,
-    setValue,
     handleSubmit: handleSettingsSubmitForm,
   } = useForm<UserSettings>({
-    // Note: 'as any' is required here due to TypeScript type incompatibility between zod schema and UserSettings
+    // Note: the cast is required here due to TypeScript type incompatibility between zod schema and UserSettings
     // This is a known limitation when using zodResolver with complex schemas
-    resolver: zodResolver(settingsSchema) as any,
+    resolver: zodResolver(settingsSchema) as unknown as Resolver<UserSettings>,
     defaultValues: settings ? createResetValues(settings) : {},
     mode: 'onBlur', // Validate on blur to avoid blocking saves with unrelated field errors
     reValidateMode: 'onChange', // Re-validate on change after first blur
@@ -418,7 +416,7 @@ const Settings = () => {
     
     // Remove undefined values
     return Object.fromEntries(
-      Object.entries(cleaned).filter(([_key, value]) => value !== undefined)
+      Object.entries(cleaned).filter(([, value]) => value !== undefined)
     ) as Partial<UserSettings>;
   };
 
@@ -448,7 +446,7 @@ const Settings = () => {
         // Show validation warnings but don't block submission
         const errorMessages: string[] = [];
         errorFields.forEach((field) => {
-          const error = (errors as Record<string, any>)[field];
+          const error: unknown = (errors as Record<string, unknown>)[field];
           if (error && typeof error === 'object' && 'message' in error) {
             errorMessages.push(`${field}: ${error.message}`);
           } else if (typeof error === 'string') {
@@ -2119,126 +2117,6 @@ const Settings = () => {
                   </Box>
                 </Box>
             </SettingsField>
-            
-            {false && (
-              <>
-                {/* Fix Issue #95, #98: Add warnings and best practices */}
-                <SettingsField 
-                  xs={12} 
-                  md={6} 
-                  label="Backup Schedule"
-                  description="How often backups should be created"
-                  tooltip="Daily backups provide the best protection but use more storage. Weekly or monthly backups are more storage-efficient."
-                  error={errors.backupSchedule?.message}
-                >
-                    <Controller
-                      name="backupSchedule"
-                      control={control}
-                      render={({ field }) => (
-                        <FormControl fullWidth error={!!errors.backupSchedule}>
-                          <Select 
-                            {...field} 
-                            value={field.value ?? ''} 
-                            displayEmpty
-                            disabled={updateSettings.isPending}
-                            onChange={(e) => {
-                              const value = e.target.value === '' ? undefined : e.target.value;
-                              field.onChange(value);
-                              // Clear backupTime if schedule is disabled, set default if enabled
-                              if (!value) {
-                                setValue('backupTime', undefined, { shouldDirty: true });
-                              } else if (!getValues('backupTime')) {
-                                // Set default time if schedule is enabled but no time is set
-                                setValue('backupTime', '02:00', { shouldDirty: true });
-                              }
-                            }}
-                          >
-                            <MenuItem value="">
-                              <em>Disabled</em>
-                            </MenuItem>
-                            <MenuItem value="daily">Daily - Every day</MenuItem>
-                            <MenuItem value="weekly">Weekly - Once per week</MenuItem>
-                            <MenuItem value="monthly">Monthly - Once per month</MenuItem>
-                          </Select>
-                        </FormControl>
-                      )}
-                    />
-                </SettingsField>
-                
-                {false && (
-                  <>
-                    <SettingsField 
-                      xs={12} 
-                      md={6} 
-                      label="Backup Time"
-                      description={`Backups will run at this time (${settings?.timezone || 'America/New_York'})`}
-                    >
-                        <Controller
-                          name="backupTime"
-                          control={control}
-                          render={({ field }) => (
-                            <TextField
-                              fullWidth
-                              type="time"
-                              {...field}
-                              value={field.value || '02:00'}
-                              disabled={updateSettings.isPending}
-                              onChange={(e) => {
-                                field.onChange(e.target.value);
-                              }}
-                              InputLabelProps={{ shrink: true }}
-                              inputProps={{ step: 300 }}
-                            />
-                          )}
-                        />
-                    </SettingsField>
-                  </>
-                )}
-                
-                {/* Fix Issue #86-87: Add unit and range display */}
-                <SettingsField 
-                  xs={12} 
-                  md={6} 
-                  label="Backup Retention"
-                  description="How many days to keep backups before automatic deletion"
-                  tooltip="Recommended: 7-30 days for daily backups, 30-90 days for weekly/monthly"
-                >
-                    <Controller
-                      name="backupRetentionDays"
-                      control={control}
-                      render={({ field }) => (
-                        <TextField
-                          fullWidth
-                          type="number"
-                          {...field}
-                          value={field.value ?? 7}
-                          disabled={updateSettings.isPending}
-                          onChange={(e) => {
-                            const value = e.target.value.trim();
-                            if (value === '') {
-                              field.onChange(undefined);
-                              return;
-                            }
-                            const numValue = Number(value);
-                            if (Number.isFinite(numValue) && numValue >= 0 && numValue <= 3650) {
-                              field.onChange(numValue);
-                            } else {
-                              field.onChange(numValue < 0 ? 0 : 3650);
-                            }
-                          }}
-                          InputLabelProps={{ shrink: true }}
-                          inputProps={{ min: 1, max: 365, step: 1 }}
-                          error={!!errors.backupRetentionDays}
-                          helperText={errors.backupRetentionDays?.message || `Range: 1-365 days. Backups older than this will be automatically deleted.`}
-                          InputProps={{
-                            endAdornment: <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>days</Typography>
-                          }}
-                        />
-                      )}
-                    />
-                </SettingsField>
-              </>
-            )}
               </Grid>
         </SettingsSection>
 

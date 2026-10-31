@@ -20,7 +20,7 @@ export class DeadlockDetector {
     queryRunner: QueryRunner,
     maxRetries: number = this.MAX_RETRIES,
   ): Promise<T> {
-    let lastError: Error | unknown;
+    let lastError: unknown;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {

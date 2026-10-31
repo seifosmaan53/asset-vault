@@ -27,7 +27,7 @@ const StatusPieChart = () => {
     }
 
     return Object.entries(statusCounts)
-      .filter(([_, count]) => count > 0)
+      .filter(([, count]) => count > 0)
       .map(([status, count]) => ({
         name: status.charAt(0).toUpperCase() + status.slice(1),
         value: count,

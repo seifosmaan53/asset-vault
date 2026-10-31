@@ -35,15 +35,11 @@ export const setGlobalSettings = (settings: { dateFormat?: string; timeFormat?: 
  * Handles Postgres DATE format (YYYY-MM-DD) safely by treating as local calendar date
  * @param date - Date string or Date object
  * @param userDateFormat - Optional: User's date format preference (e.g., 'MM/DD/YYYY')
- * @param userTimeFormat - Optional: User's time format preference ('12' or '24')
- * @param userTimezone - Optional: User's timezone preference (for future use)
  * @returns Formatted date string
  */
 export const formatDate = (
   date: string | Date | null | undefined,
   userDateFormat?: string,
-  _userTimeFormat?: string,
-  _userTimezone?: string,
 ): string => {
   if (!date) return '';
   
@@ -76,14 +72,12 @@ export const formatDate = (
  * @param date - Date string or Date object
  * @param userDateFormat - Optional: User's date format preference
  * @param userTimeFormat - Optional: User's time format preference ('12' or '24')
- * @param userTimezone - Optional: User's timezone preference (for future use)
  * @returns Formatted date and time string
  */
 export const formatDateTime = (
   date: string | Date,
   userDateFormat?: string,
   userTimeFormat?: string,
-  _userTimezone?: string,
 ): string => {
   try {
     const d = typeof date === 'string' ? parseISO(date) : date;

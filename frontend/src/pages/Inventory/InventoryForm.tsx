@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom';
-import { useForm, useWatch, Controller } from 'react-hook-form';
+import { useForm, useWatch, Controller, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import {
@@ -25,7 +25,7 @@ import {
 import { useInventoryItem, useCreateInventoryItem, useUpdateInventoryItem, useInventory } from '../../hooks/useInventory';
 import { useStores } from '../../hooks/useStore';
 import { useStoreItemSettingsByItem, useCreateOrUpdateStoreItemSettings } from '../../hooks/useStoreItemSettings';
-import type { CreateInventoryItemDto } from '../../api/inventory';
+import { type CreateInventoryItemDto, inventoryApi } from '../../api/inventory';
 import { useEffect, useRef, useState } from 'react';
 import { TIMEOUTS } from '../../constants/timeouts';
 import { inventoryItemSchema } from '../../utils/validationSchemas';
@@ -35,7 +35,6 @@ import { logger } from '../../utils/logger';
 import { getErrorMessage } from '../../utils/errorHandling';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { useUndo } from '../../hooks/useUndo';
-import { inventoryApi } from '../../api/inventory';
 import StoreIcon from '@mui/icons-material/Store';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import NumbersIcon from '@mui/icons-material/Numbers';
@@ -122,8 +121,9 @@ const InventoryForm = () => {
     setError,
     control,
   } = useForm<InventoryFormData>({
-    // Type assertion needed due to zod schema preprocessing creating unknown types
-    resolver: zodResolver(inventoryItemSchema) as any,
+    // Type assertion needed due to zod schema preprocessing creating unknown types:
+    // the schema's input type does not line up with InventoryFormData.
+    resolver: zodResolver(inventoryItemSchema) as unknown as Resolver<InventoryFormData>,
     mode: 'onChange', // Show errors as user types for real-time feedback
     defaultValues: {
       status: 'active',
@@ -491,7 +491,7 @@ const InventoryForm = () => {
       const cleanedData: Partial<InventoryFormData> = { ...data };
       
       // List of optional number fields that should be undefined if NaN
-      const optionalNumberFields = [
+      const optionalNumberFields: Array<keyof InventoryFormData> = [
         'maxStockLevel',
         'bundleSize',
         'spacePerBundle',
@@ -504,11 +504,11 @@ const InventoryForm = () => {
       ];
       
       optionalNumberFields.forEach((field) => {
-        const fieldValue = cleanedData[field as keyof InventoryFormData];
+        const fieldValue = cleanedData[field];
         if (fieldValue !== undefined && (typeof fieldValue === 'number' && (isNaN(fieldValue) || fieldValue === null))) {
-          (cleanedData as any)[field] = undefined;
+          cleanedData[field] = undefined;
         } else if (fieldValue === null) {
-          (cleanedData as any)[field] = undefined;
+          cleanedData[field] = undefined;
         }
       });
       
@@ -649,8 +649,7 @@ const InventoryForm = () => {
           </Typography>
         </Box>
 
-        {/* Type assertion needed for form submit handler due to zod schema type inference */}
-        <form onSubmit={handleSubmit(onSubmit as any)}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           <Grid container spacing={3}>
             {/* Basic Information Section */}
             <Grid item xs={12}>

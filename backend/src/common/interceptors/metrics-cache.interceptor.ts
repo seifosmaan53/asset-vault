@@ -30,7 +30,6 @@ export class MetricsCacheInterceptor implements NestInterceptor {
     context: ExecutionContext,
     next: CallHandler,
   ): Promise<Observable<any>> {
-    const request = context.switchToHttp().getRequest();
     const key = this.trackBy(context);
 
     if (!key) {
@@ -52,19 +51,27 @@ export class MetricsCacheInterceptor implements NestInterceptor {
       // Cache miss - execute the handler and cache the result
       this.metricsService.recordCacheMiss();
       return next.handle().pipe(
-        tap(async (response) => {
-          // Get TTL from metadata or use default
-          const ttl =
-            this.reflector.get<number>('cache-ttl', context.getHandler()) ||
-            300000; // Default 5 minutes
-          try {
-            await this.cacheManager.set(key, response, ttl);
-          } catch (error) {
-            // If cache is full, record eviction
-            this.metricsService.recordCacheEviction();
-          }
+        tap((response) => {
+          // Fire-and-forget: storeInCache never rejects.
+          void this.storeInCache(context, key, response);
         }),
       );
+    }
+  }
+
+  private async storeInCache(
+    context: ExecutionContext,
+    key: string,
+    response: unknown,
+  ): Promise<void> {
+    // Get TTL from metadata or use default
+    const ttl =
+      this.reflector.get<number>('cache-ttl', context.getHandler()) || 300000; // Default 5 minutes
+    try {
+      await this.cacheManager.set(key, response, ttl);
+    } catch {
+      // If cache is full, record eviction
+      this.metricsService.recordCacheEviction();
     }
   }
 

@@ -1,3 +1,4 @@
+import type { InventoryItem } from './inventory';
 import type { Client } from './client';
 
 export interface Store {
@@ -33,6 +34,6 @@ export interface StoreItemSettings {
   updatedAt: string;
   // Relations (when loaded)
   store?: Store;
-  inventoryItem?: import('./inventory').InventoryItem;
+  inventoryItem?: InventoryItem;
 }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -46,8 +46,14 @@ export const EmailDialog = ({
   const [includePdf, setIncludePdf] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset form when dialog opens or defaults change
-  useEffect(() => {
+  // Reset form when dialog opens or defaults change (state adjusted during render)
+  const [prevProps, setPrevProps] = useState({ open, defaultTo, defaultSubject });
+  if (
+    prevProps.open !== open ||
+    prevProps.defaultTo !== defaultTo ||
+    prevProps.defaultSubject !== defaultSubject
+  ) {
+    setPrevProps({ open, defaultTo, defaultSubject });
     if (open) {
       setTo(defaultTo);
       setSubject(defaultSubject);
@@ -55,7 +61,7 @@ export const EmailDialog = ({
       setIncludePdf(true);
       setError(null);
     }
-  }, [open, defaultTo, defaultSubject]);
+  }
 
   const handleSend = async () => {
     if (!to || !to.trim()) {
@@ -77,8 +83,8 @@ export const EmailDialog = ({
         includePdf,
       });
       handleClose();
-    } catch (err: any) {
-      setError(err.message || 'Failed to send email');
+    } catch (err) {
+      setError((err as Error).message || 'Failed to send email');
     }
   };
 

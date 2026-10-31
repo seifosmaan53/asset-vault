@@ -1,7 +1,6 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
 import type { SelectQueryBuilder, ObjectLiteral } from 'typeorm';
-import { IsNull } from 'typeorm';
 
 /**
  * TypeORM Query Utility

@@ -1,5 +1,4 @@
 import type { MigrationInterface, QueryRunner } from 'typeorm';
-import { TableColumn } from 'typeorm';
 
 export class AddUserRole1700000000001 implements MigrationInterface {
   name = 'AddUserRole1700000000001';

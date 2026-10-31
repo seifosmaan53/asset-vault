@@ -40,13 +40,12 @@ import superjson from 'superjson';
    The genuine end-to-end types are exported from backend/src/trpc/trpc.router.ts as
    `AppRouter`; wiring them up here requires the two packages to share a TypeScript
    project, which is tracked as follow-up work. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- type-only on purpose: `typeof` needs a value to instantiate `router<...>`, and a `declare const` emits no JavaScript
 declare const typeOnlyRouterFactory: ReturnType<
   typeof initTRPC.create<{ transformer: typeof superjson }>
 >;
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- the literal empty
-// object is the point: it is what gives the router a closed, zero-key record.
-declare const emptyRouter: ReturnType<typeof typeOnlyRouterFactory.router<{}>>;
-type AppRouter = typeof emptyRouter;
+// The explicit empty record is the point: it gives the router a closed, zero-key set.
+type AppRouter = ReturnType<typeof typeOnlyRouterFactory.router<Record<never, never>>>;
 
 // Create tRPC React hooks
 export const trpc = createTRPCReact<AppRouter>();
@@ -83,7 +82,7 @@ const getClerkToken = async (maxWaitMs: number = 1000): Promise<string | null> =
 
     // Timeout reached, token function not available
     return null;
-  } catch (e) {
+  } catch {
     return null;
   }
 };

@@ -5,7 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, LessThan } from 'typeorm';
+import { Repository, LessThan } from 'typeorm';
 import { ApiKey } from './entities/api-key.entity';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { CreateApiKeyDto, UpdateApiKeyDto } from './dto';
@@ -26,6 +26,7 @@ export class ApiKeysService {
       .where('key.userId = :userId', { userId })
       .orderBy('key.createdAt', 'DESC')
       .getMany();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- rest-omit: keyHash is dropped from the copy on purpose
     return keys.map(({ keyHash, ...rest }) => rest);
   }
 
@@ -40,6 +41,7 @@ export class ApiKeysService {
     if (!key) {
       throw new NotFoundException('API key not found');
     }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- rest-omit: keyHash is dropped from the copy on purpose
     const { keyHash, ...rest } = key;
     return rest;
   }

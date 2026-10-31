@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Invoice } from '../invoices/entities/invoice.entity';
 import { InvoiceItem } from '../invoices/entities/invoice-item.entity';
 import { Client } from '../clients/entities/client.entity';
@@ -679,22 +679,17 @@ export class AnalyticsService {
     }
 
     // Group by period based on issueDate
-    let dateFormat: string;
     switch (period) {
       case 'daily':
-        dateFormat = 'YYYY-MM-DD';
         query.addSelect("TO_CHAR(invoice.issueDate, 'YYYY-MM-DD')", 'period');
         break;
       case 'weekly':
-        dateFormat = 'YYYY-"W"WW';
         query.addSelect('TO_CHAR(invoice.issueDate, \'IYYY-"W"IW\')', 'period');
         break;
       case 'monthly':
-        dateFormat = 'YYYY-MM';
         query.addSelect("TO_CHAR(invoice.issueDate, 'YYYY-MM')", 'period');
         break;
       case 'yearly':
-        dateFormat = 'YYYY';
         query.addSelect("TO_CHAR(invoice.issueDate, 'YYYY')", 'period');
         break;
     }

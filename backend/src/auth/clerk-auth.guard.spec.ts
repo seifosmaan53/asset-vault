@@ -14,9 +14,8 @@
  *
  * Mocked: Clerk's users.getUser, the users/organizations services. Real: verifyToken, the guard.
  */
-import { createHmac, generateKeyPairSync } from 'crypto';
-import type { ExecutionContext } from '@nestjs/common';
-import { UnauthorizedException } from '@nestjs/common';
+import { createHmac, createPublicKey, generateKeyPairSync } from 'crypto';
+import { type ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import * as jwt from 'jsonwebtoken';
 import { ClerkAuthGuard } from './clerk-auth.guard';
@@ -57,19 +56,33 @@ function makeGuard(env: Record<string, string | undefined>) {
     lastName: 'User',
   });
   const users = {
-    findByClerkId: jest
-      .fn()
-      .mockResolvedValue({ id: 'db-user-1', email: 'real@unit.test', role: 'owner' }),
+    findByClerkId: jest.fn().mockResolvedValue({
+      id: 'db-user-1',
+      email: 'real@unit.test',
+      role: 'owner',
+    }),
   };
-  const orgs = { findAll: jest.fn().mockResolvedValue([{ id: 'org-1' }]), create: jest.fn() };
+  const orgs = {
+    findAll: jest.fn().mockResolvedValue([{ id: 'org-1' }]),
+    create: jest.fn(),
+  };
   const config = { get: (k: string) => env[k] };
-  const guard = new ClerkAuthGuard(new Reflector(), users as never, orgs as never, config as never);
-  (guard as unknown as { clerkClient: unknown }).clerkClient = { users: { getUser } };
+  const guard = new ClerkAuthGuard(
+    new Reflector(),
+    users as never,
+    orgs as never,
+    config as never,
+  );
+  (guard as unknown as { clerkClient: unknown }).clerkClient = {
+    users: { getUser },
+  };
   return { guard, getUser };
 }
 
 function ctx(token?: string) {
-  const req: Record<string, unknown> = { headers: token ? { authorization: `Bearer ${token}` } : {} };
+  const req: Record<string, unknown> = {
+    headers: token ? { authorization: `Bearer ${token}` } : {},
+  };
   const context = {
     getHandler: () => function handler() {},
     getClass: () => class Controller {},
@@ -90,13 +103,20 @@ describe('ClerkAuthGuard with the real Clerk SDK (networkless, CLERK_JWT_KEY)', 
   });
 
   const forged: Array<[string, () => string]> = [
-    ['a token signed by a different RSA key (same kid, same subject)', () => rs256(attacker.privateKey)],
+    [
+      'a token signed by a different RSA key (same kid, same subject)',
+      () => rs256(attacker.privateKey),
+    ],
     [
       'an HS256 token using the PUBLIC key as the HMAC secret (algorithm confusion)',
       () => {
-        const head = b64u(JSON.stringify({ alg: 'HS256', typ: 'JWT', kid: KID }));
+        const head = b64u(
+          JSON.stringify({ alg: 'HS256', typ: 'JWT', kid: KID }),
+        );
         const body = b64u(JSON.stringify(claims()));
-        const sig = createHmac('sha256', good.publicKey).update(`${head}.${body}`).digest('base64url');
+        const sig = createHmac('sha256', good.publicKey)
+          .update(`${head}.${body}`)
+          .digest('base64url');
         return `${head}.${body}.${sig}`;
       },
     ],
@@ -105,8 +125,14 @@ describe('ClerkAuthGuard with the real Clerk SDK (networkless, CLERK_JWT_KEY)', 
       () =>
         `${b64u(JSON.stringify({ alg: 'none', typ: 'JWT' }))}.${b64u(JSON.stringify(claims()))}.`,
     ],
-    ['an expired token with a valid signature', () => rs256(good.privateKey, { exp: now() - 60 })],
-    ['a token that is not valid yet (nbf in the future)', () => rs256(good.privateKey, { nbf: now() + 3600 })],
+    [
+      'an expired token with a valid signature',
+      () => rs256(good.privateKey, { exp: now() - 60 }),
+    ],
+    [
+      'a token that is not valid yet (nbf in the future)',
+      () => rs256(good.privateKey, { nbf: now() + 3600 }),
+    ],
     [
       'a valid token whose payload was swapped for another subject',
       () => {
@@ -114,28 +140,39 @@ describe('ClerkAuthGuard with the real Clerk SDK (networkless, CLERK_JWT_KEY)', 
         return `${head}.${b64u(JSON.stringify(claims({ sub: 'user_victim' })))}.${sig}`;
       },
     ],
-    ['a correctly signed token with no subject', () => rs256(good.privateKey, { sub: undefined })],
+    [
+      'a correctly signed token with no subject',
+      () => rs256(good.privateKey, { sub: undefined }),
+    ],
     ['garbage', () => 'not.a.jwt'],
   ];
 
-  it.each(forged)('rejects %s and never reaches the Clerk user lookup', async (_name, make) => {
-    const { guard, getUser } = makeGuard(env);
-    const { context, req } = ctx(make());
-    await expect(guard.canActivate(context)).rejects.toBeInstanceOf(UnauthorizedException);
-    expect(getUser).not.toHaveBeenCalled();
-    expect(req.user).toBeUndefined();
-  });
+  it.each(forged)(
+    'rejects %s and never reaches the Clerk user lookup',
+    async (_name, make) => {
+      const { guard, getUser } = makeGuard(env);
+      const { context, req } = ctx(make());
+      await expect(guard.canActivate(context)).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+      expect(getUser).not.toHaveBeenCalled();
+      expect(req.user).toBeUndefined();
+    },
+  );
 
   it('rejects a request with no Authorization header', async () => {
     const { guard, getUser } = makeGuard(env);
-    await expect(guard.canActivate(ctx().context)).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(guard.canActivate(ctx().context)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
     expect(getUser).not.toHaveBeenCalled();
   });
 });
 
 describe('ClerkAuthGuard with the real Clerk SDK (default production path: JWKS lookup, no CLERK_JWT_KEY)', () => {
   const jwk = {
-    ...(good.publicKey && (require('crypto').createPublicKey(good.publicKey).export({ format: 'jwk' }) as object)),
+    ...(good.publicKey &&
+      (createPublicKey(good.publicKey).export({ format: 'jwk' }) as object)),
     kid: KID,
     alg: 'RS256',
     use: 'sig',
@@ -143,12 +180,13 @@ describe('ClerkAuthGuard with the real Clerk SDK (default production path: JWKS 
   let fetchSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    fetchSpy = jest.spyOn(globalThis, 'fetch').mockImplementation(
-      async () =>
+    fetchSpy = jest.spyOn(globalThis, 'fetch').mockImplementation(() =>
+      Promise.resolve(
         new Response(JSON.stringify({ keys: [jwk] }), {
           status: 200,
           headers: { 'content-type': 'application/json' },
         }),
+      ),
     );
   });
   afterEach(() => fetchSpy.mockRestore());
@@ -157,8 +195,11 @@ describe('ClerkAuthGuard with the real Clerk SDK (default production path: JWKS 
   function freshGuard() {
     let Guard!: typeof ClerkAuthGuard;
     jest.isolateModules(() => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      Guard = (require('./clerk-auth.guard') as { ClerkAuthGuard: typeof ClerkAuthGuard }).ClerkAuthGuard;
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- isolateModules needs a fresh require of the guard
+      const mod = require('./clerk-auth.guard') as {
+        ClerkAuthGuard: typeof ClerkAuthGuard;
+      };
+      Guard = mod.ClerkAuthGuard;
     });
     const getUser = jest.fn().mockResolvedValue({
       id: 'user_real',
@@ -166,38 +207,67 @@ describe('ClerkAuthGuard with the real Clerk SDK (default production path: JWKS 
       emailAddresses: [{ id: 'e1', emailAddress: 'real@unit.test' }],
       primaryEmailAddressId: 'e1',
     });
-    const users = { findByClerkId: jest.fn().mockResolvedValue({ id: 'db-user-1', email: 'real@unit.test', role: 'owner' }) };
-    const orgs = { findAll: jest.fn().mockResolvedValue([{ id: 'org-1' }]), create: jest.fn() };
-    const config = { get: (k: string) => ({ CLERK_SECRET_KEY: SECRET_KEY })[k] };
-    const guard = new Guard(new Reflector(), users as never, orgs as never, config as never);
-    (guard as unknown as { clerkClient: unknown }).clerkClient = { users: { getUser } };
+    const users = {
+      findByClerkId: jest.fn().mockResolvedValue({
+        id: 'db-user-1',
+        email: 'real@unit.test',
+        role: 'owner',
+      }),
+    };
+    const orgs = {
+      findAll: jest.fn().mockResolvedValue([{ id: 'org-1' }]),
+      create: jest.fn(),
+    };
+    const config = {
+      get: (k: string) => ({ CLERK_SECRET_KEY: SECRET_KEY })[k],
+    };
+    const guard = new Guard(
+      new Reflector(),
+      users as never,
+      orgs as never,
+      config as never,
+    );
+    (guard as unknown as { clerkClient: unknown }).clerkClient = {
+      users: { getUser },
+    };
     return { guard, getUser };
   }
 
   it('asks Clerk for the JWKS with the secret key, then accepts a correctly signed token', async () => {
     const { guard } = freshGuard();
-    await expect(guard.canActivate(ctx(rs256(good.privateKey)).context)).resolves.toBe(true);
+    await expect(
+      guard.canActivate(ctx(rs256(good.privateKey)).context),
+    ).resolves.toBe(true);
     expect(fetchSpy).toHaveBeenCalled();
-    const [url, init] = fetchSpy.mock.calls[0] as [string | URL, RequestInit | undefined];
+    const [url, init] = fetchSpy.mock.calls[0] as [
+      string | URL,
+      RequestInit | undefined,
+    ];
     expect(new URL(String(url)).host).toBe('api.clerk.com');
     expect(String(url)).toContain('/jwks');
-    expect(new Headers(init?.headers).get('authorization')).toBe(`Bearer ${SECRET_KEY}`);
+    expect(new Headers(init?.headers).get('authorization')).toBe(
+      `Bearer ${SECRET_KEY}`,
+    );
   });
 
   it('rejects a token with the right kid but a signature from another key', async () => {
     const { guard, getUser } = freshGuard();
-    await expect(guard.canActivate(ctx(rs256(attacker.privateKey)).context)).rejects.toMatchObject({
+    await expect(
+      guard.canActivate(ctx(rs256(attacker.privateKey)).context),
+    ).rejects.toMatchObject({
       status: 401, // not instanceof: isolateModules loads a second copy of @nestjs/common
     });
     expect(getUser).not.toHaveBeenCalled();
   });
 
   it('fails closed when the JWKS cannot be fetched', async () => {
-    fetchSpy.mockImplementation(async () => {
-      throw new Error('network down');
-    });
+    fetchSpy.mockImplementation(() =>
+      Promise.reject(new Error('network down')),
+    );
     const { guard, getUser } = freshGuard();
-    await expect(guard.canActivate(ctx(rs256(good.privateKey)).context)).rejects.toMatchObject({
+    await expect(
+      guard.canActivate(ctx(rs256(good.privateKey)).context),
+    ).rejects.toMatchObject({
       status: 401, // not instanceof: isolateModules loads a second copy of @nestjs/common
     });
     expect(getUser).not.toHaveBeenCalled();

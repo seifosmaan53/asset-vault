@@ -1,5 +1,4 @@
-import type { TestingModule } from '@nestjs/testing';
-import { Test } from '@nestjs/testing';
+import { type TestingModule, Test } from '@nestjs/testing';
 import { InvoicesController } from './invoices.controller';
 import { InvoicesService } from './invoices.service';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
@@ -13,7 +12,6 @@ import type { ExecutionContext } from '@nestjs/common';
    this a controller unit test rather than an auth-stack integration test. */
 describe('InvoicesController', () => {
   let controller: InvoicesController;
-  let service: InvoicesService;
 
   const mockInvoicesService = {
     findAll: jest.fn(),
@@ -55,7 +53,6 @@ describe('InvoicesController', () => {
       .compile();
 
     controller = module.get<InvoicesController>(InvoicesController);
-    service = module.get<InvoicesService>(InvoicesService);
   });
 
   afterEach(() => {
@@ -76,7 +73,7 @@ describe('InvoicesController', () => {
       );
 
       expect(result).toEqual(mockInvoices);
-      expect(service.findAll).toHaveBeenCalledWith('user-123', {});
+      expect(mockInvoicesService.findAll).toHaveBeenCalledWith('user-123', {});
     });
 
     it('should pass filters to service', async () => {
@@ -88,7 +85,10 @@ describe('InvoicesController', () => {
         filters,
       );
 
-      expect(service.findAll).toHaveBeenCalledWith('user-123', filters);
+      expect(mockInvoicesService.findAll).toHaveBeenCalledWith(
+        'user-123',
+        filters,
+      );
     });
   });
 
@@ -102,7 +102,10 @@ describe('InvoicesController', () => {
       } as any);
 
       expect(result).toEqual(mockInvoice);
-      expect(service.findOne).toHaveBeenCalledWith('invoice-1', 'user-123');
+      expect(mockInvoicesService.findOne).toHaveBeenCalledWith(
+        'invoice-1',
+        'user-123',
+      );
     });
   });
 
@@ -128,7 +131,10 @@ describe('InvoicesController', () => {
          still proving the wrapper is there. */
       expect(result.data).toEqual(mockInvoice);
       expect(result.message).toMatch(/created/i);
-      expect(service.create).toHaveBeenCalledWith('user-123', createDto);
+      expect(mockInvoicesService.create).toHaveBeenCalledWith(
+        'user-123',
+        createDto,
+      );
     });
   });
 
@@ -144,7 +150,7 @@ describe('InvoicesController', () => {
       } as any);
 
       expect(result.data).toEqual(mockInvoice);
-      expect(service.update).toHaveBeenCalledWith(
+      expect(mockInvoicesService.update).toHaveBeenCalledWith(
         'invoice-1',
         'user-123',
         updateDto,
@@ -160,7 +166,10 @@ describe('InvoicesController', () => {
         user: { userId: 'user-123' },
       } as any);
 
-      expect(service.remove).toHaveBeenCalledWith('invoice-1', 'user-123');
+      expect(mockInvoicesService.remove).toHaveBeenCalledWith(
+        'invoice-1',
+        'user-123',
+      );
     });
   });
 
@@ -180,7 +189,7 @@ describe('InvoicesController', () => {
       // getStats spreads the figures and adds a message alongside them.
       expect(result).toEqual(expect.objectContaining(mockStats));
       expect(result.message).toMatch(/statistics/i);
-      expect(service.getStats).toHaveBeenCalledWith('user-123');
+      expect(mockInvoicesService.getStats).toHaveBeenCalledWith('user-123');
     });
   });
 
@@ -196,7 +205,7 @@ describe('InvoicesController', () => {
       } as any);
 
       expect(result).toEqual(mockInvoice);
-      expect(service.convertEstimateToInvoice).toHaveBeenCalledWith(
+      expect(mockInvoicesService.convertEstimateToInvoice).toHaveBeenCalledWith(
         'estimate-1',
         'user-123',
       );
@@ -215,7 +224,7 @@ describe('InvoicesController', () => {
       } as any);
 
       expect(result).toEqual(mockResponse);
-      expect(service.sendEmail).toHaveBeenCalledWith(
+      expect(mockInvoicesService.sendEmail).toHaveBeenCalledWith(
         'invoice-1',
         'user-123',
         emailOptions,

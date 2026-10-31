@@ -7,7 +7,7 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, IsNull, DataSource, QueryRunner } from 'typeorm';
+import { Repository, IsNull, DataSource, QueryRunner } from 'typeorm';
 import { Invoice } from './entities/invoice.entity';
 import { InvoiceItem } from './entities/invoice-item.entity';
 import { CreateInvoiceDto, UpdateInvoiceDto, InvoiceItemDto } from './dto';
@@ -29,14 +29,15 @@ import type { Cache } from 'cache-manager';
 import {
   CacheKey,
   buildCacheKey,
-  getCacheKeysToInvalidate,
 } from '../common/utils/cache-invalidation.util';
-import { applyDefaultSort } from '../common/utils/default-sorting.util';
 import {
   computeInvoiceTotalsCents,
   invoiceTotalsToMoney,
 } from './utils/invoice-totals.util';
-import { centsToMoney } from '../common/utils/edge-case-protection.util';
+import {
+  centsToMoney,
+  validateDate,
+} from '../common/utils/edge-case-protection.util';
 import {
   validateStatusTransition,
   validateStatusBusinessRules,
@@ -44,11 +45,6 @@ import {
   InvoiceStatus,
 } from './utils/invoice-status.util';
 import { InvoiceStatusHistory } from './entities/invoice-status-history.entity';
-import {
-  validateDate,
-  validateUUID,
-  validateString,
-} from '../common/utils/edge-case-protection.util';
 import { validateCurrencyCode } from './utils/currency.util';
 import { Client } from '../clients/entities/client.entity';
 import { UsageService, UsageMetric } from '../subscriptions/usage.service';
@@ -278,7 +274,7 @@ export class InvoicesService {
         );
         if (allInvoices.length > 0) {
           this.logger.warn(
-            `[DIAGNOSTIC] Sample invoice: id=${allInvoices[0].id}, userId=${allInvoices[0].userId}, deletedAt=${allInvoices[0].deletedAt}`,
+            `[DIAGNOSTIC] Sample invoice: id=${allInvoices[0].id}, userId=${allInvoices[0].userId}, deletedAt=${String(allInvoices[0].deletedAt)}`,
           );
         }
       }
@@ -587,7 +583,7 @@ export class InvoicesService {
       try {
         await this.storeService.findOne(data.storeId, userId);
         validatedStoreId = data.storeId;
-      } catch (error) {
+      } catch {
         throw new BadRequestException(
           `Store with ID "${data.storeId}" not found or does not belong to user`,
         );
@@ -598,21 +594,30 @@ export class InvoicesService {
       if (data.items && data.items.length > 0) {
         const operation =
           (data.status || 'draft') === 'draft' ? 'reserve' : 'sale';
-        try {
-          await this.storeStockValidator.validateAndThrow(
-            validatedStoreId,
-            data.items,
-            userId,
-            operation,
-          );
-        } catch (error) {
-          // Re-throw BadRequestException from validator
-          throw error;
-        }
+        await this.storeStockValidator.validateAndThrow(
+          validatedStoreId,
+          data.items,
+          userId,
+          operation,
+        );
       }
     }
 
     data.storeId = validatedStoreId;
+
+    // The client must belong to the caller, as update() already requires. Without this, any
+    // authenticated user could create an invoice on another user's client id and then read
+    // that client's name and email back through the invoice and the data export.
+    if (data.clientId) {
+      const ownsClient = await this.dataSource
+        .getRepository(Client)
+        .exists({ where: { id: data.clientId, userId } });
+      if (!ownsClient) {
+        throw new NotFoundException(
+          `Client with ID "${data.clientId}" not found or does not belong to user`,
+        );
+      }
+    }
 
     // Get user settings for defaults
     const settings = await this.userSettingsService.getSettings(userId);
@@ -659,6 +664,7 @@ export class InvoicesService {
 
     // Sanitize text inputs to prevent XSS
     // CRITICAL: Exclude items from invoiceData to prevent cascade save with invalid quantity types
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- rest-omit: items is dropped from the copy on purpose
     const { items, ...dataWithoutItems } = data;
     // PHASE 5 FIX: Validate currency code
     const validatedCurrency = validateCurrencyCode(
@@ -1111,10 +1117,10 @@ export class InvoicesService {
         lock: { mode: 'pessimistic_write' },
       });
 
-      // FIX #135: Release query runner on early return
+      // The catch below rolls the transaction back and the finally releases the runner. Doing
+      // either here as well made the second rollback throw, so a request for another user's
+      // invoice answered 500 instead of 404.
       if (!invoice) {
-        await queryRunner.rollbackTransaction();
-        await queryRunner.release();
         throw new NotFoundException('Invoice not found');
       }
 
@@ -1266,6 +1272,7 @@ export class InvoicesService {
       // This prevents validation errors since lineTotal is not in the DTO
       if (data.items && Array.isArray(data.items)) {
         data.items = data.items.map((item: any) => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars -- rest-omit: lineTotal is dropped from the copy on purpose
           const { lineTotal, ...itemWithoutLineTotal } = item;
           return itemWithoutLineTotal;
         });
@@ -1302,7 +1309,7 @@ export class InvoicesService {
       if (validatedStoreId) {
         try {
           await this.storeService.findOne(validatedStoreId, userId);
-        } catch (error) {
+        } catch {
           throw new BadRequestException(
             `Store with ID "${validatedStoreId}" not found or does not belong to user`,
           );
@@ -1332,17 +1339,13 @@ export class InvoicesService {
             }));
 
           if (itemsForValidation.length > 0) {
-            try {
-              await this.storeStockValidator.validateAndThrow(
-                validatedStoreId,
-                itemsForValidation,
-                userId,
-                operation,
-                queryRunner, // Pass queryRunner for pessimistic locking inside transaction
-              );
-            } catch (error) {
-              throw error;
-            }
+            await this.storeStockValidator.validateAndThrow(
+              validatedStoreId,
+              itemsForValidation,
+              userId,
+              operation,
+              queryRunner, // Pass queryRunner for pessimistic locking inside transaction
+            );
           }
         }
       }
@@ -1378,7 +1381,7 @@ export class InvoicesService {
         dueDate?: string;
         paidAt?: string | undefined;
         notes?: string | undefined;
-        metadataJson?: { terms?: string } | any;
+        metadataJson?: any; // { terms?: string } plus free-form keys
       }
 
       const updateData: InvoiceUpdateData = {};
@@ -1768,7 +1771,7 @@ export class InvoicesService {
          update with items failed (shown as "Invalid inventory item ID"). Save the
          invoice row only. */
       delete (invoice as Partial<Invoice>).items;
-      const updatedInvoice = await queryRunner.manager.save(Invoice, invoice);
+      await queryRunner.manager.save(Invoice, invoice);
 
       // Reload with items to get fresh data
       const invoiceWithItems = await queryRunner.manager.findOne(Invoice, {
@@ -2300,7 +2303,7 @@ export class InvoicesService {
       // Check if invoice is already soft-deleted (idempotent operation)
       if (anyInvoice.deletedAt) {
         this.logger.debug(
-          `Invoice ${id} is already soft-deleted (deletedAt: ${anyInvoice.deletedAt}), returning early (idempotent)`,
+          `Invoice ${id} is already soft-deleted (deletedAt: ${String(anyInvoice.deletedAt)}), returning early (idempotent)`,
         );
         await queryRunner.rollbackTransaction();
         await queryRunner.release();
@@ -2392,7 +2395,6 @@ export class InvoicesService {
       // For sent invoices, stock was definitely deducted, so we reverse it
       // For cancelled invoices, check if they had stock movements (they might have been sent before cancellation)
       // Paid invoices cannot be deleted (blocked above), so we don't need to handle them here
-      const invoiceStatus = invoice.status as string;
       // UPDATED: Reverse stock for all non-estimate invoices (draft, sent, cancelled) when deleted
       // This ensures stock is properly restored when invoices are deleted
       if (invoice.type !== 'estimate') {
@@ -2720,7 +2722,7 @@ export class InvoicesService {
 
       updatedCount++;
       this.logger.log(
-        `Updated invoice ${invoice.number} with paidAt: ${paidAtDate}`,
+        `Updated invoice ${invoice.number} with paidAt: ${String(paidAtDate)}`,
       );
     }
 
@@ -2757,7 +2759,7 @@ export class InvoicesService {
   private async generateInvoiceNumber(
     userId: string,
     type: 'invoice' | 'estimate',
-    settings: any | undefined,
+    settings: any,
     queryRunner?: QueryRunner,
   ): Promise<string> {
     const manager = queryRunner?.manager || this.invoicesRepository.manager;

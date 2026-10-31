@@ -5,16 +5,14 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, DataSource, QueryRunner } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Client } from './entities/client.entity';
 import { Invoice } from '../invoices/entities/invoice.entity';
 import { Store } from '../inventory/entities/store.entity';
 import {
-  sanitizeObject,
   sanitizeString,
   sanitizeEmail,
   sanitizeUrl,
-  sanitizeStringArray,
 } from '../common/utils/security.util';
 import { ImportService } from '../common/services/import.service';
 
@@ -105,7 +103,7 @@ export class ClientsService {
       );
       if (allClients.length > 0) {
         this.logger.warn(
-          `[DIAGNOSTIC] Sample client: id=${allClients[0].id}, userId=${allClients[0].userId}, deletedAt=${allClients[0].deletedAt}`,
+          `[DIAGNOSTIC] Sample client: id=${allClients[0].id}, userId=${allClients[0].userId}, deletedAt=${String(allClients[0].deletedAt)}`,
         );
       }
     }
@@ -134,7 +132,7 @@ export class ClientsService {
     // Check if client is soft-deleted
     if (anyClient.deletedAt) {
       this.logger.warn(
-        `Client ${id} is soft-deleted (deletedAt=${anyClient.deletedAt})`,
+        `Client ${id} is soft-deleted (deletedAt=${String(anyClient.deletedAt)})`,
       );
       throw new NotFoundException('Client not found (may have been deleted)');
     }
@@ -285,7 +283,7 @@ export class ClientsService {
     }
 
     // Fix Issue #1: Use query builder instead of 'as any' type assertion
-    const client = await this.findOne(id, actorUserId);
+    await this.findOne(id, actorUserId);
     const updateQuery = this.clientsRepository
       .createQueryBuilder()
       .update(Client)
@@ -337,7 +335,7 @@ export class ClientsService {
           await queryRunner.rollbackTransaction();
         }
         this.logger.debug(
-          `remove: Client ${id} is already soft-deleted (deletedAt=${anyClient.deletedAt}), returning early`,
+          `remove: Client ${id} is already soft-deleted (deletedAt=${String(anyClient.deletedAt)}), returning early`,
         );
         return; // Idempotent - already deleted, success
       }
@@ -386,7 +384,7 @@ export class ClientsService {
           await queryRunner.rollbackTransaction();
         }
         this.logger.debug(
-          `remove: Client ${id} is already soft-deleted (deletedAt=${client.deletedAt}), returning early`,
+          `remove: Client ${id} is already soft-deleted (deletedAt=${String(client.deletedAt)}), returning early`,
         );
         return; // Idempotent - already deleted, success
       }
@@ -495,7 +493,7 @@ export class ClientsService {
       }
 
       this.logger.debug(
-        `remove: Verified client ${id} has deletedAt=${verifyDeleted.deletedAt} in database before commit`,
+        `remove: Verified client ${id} has deletedAt=${String(verifyDeleted.deletedAt)} in database before commit`,
       );
 
       // Commit transaction
@@ -510,30 +508,9 @@ export class ClientsService {
       // This is safer than using queryRunner after commit
       // NOTE: Verification is non-critical and runs asynchronously - deletion is already complete
       // We don't track this timeout as it's fire-and-forget for logging purposes only
-      setImmediate(async () => {
-        try {
-          // Small delay to ensure transaction is committed and visible
-          await new Promise((resolve) => setTimeout(resolve, 100));
-
-          // Verify using findAll to ensure it's excluded from normal queries
-          const verifyClients = await this.findAll(actorUserId);
-          const stillExists = verifyClients.some((c) => c.id === id);
-          if (stillExists) {
-            this.logger.warn(
-              `remove: Client ${id} was soft-deleted but still appears in findAll results. This may be due to connection pooling or replication lag.`,
-            );
-          } else {
-            this.logger.debug(
-              `remove: Verified - Client ${id} confirmed removed from findAll results`,
-            );
-          }
-        } catch (verifyError) {
-          // Don't fail deletion if verification fails - it's just for logging
-          this.logger.warn(
-            `remove: Could not verify deletion via findAll`,
-            verifyError,
-          );
-        }
+      // Fire-and-forget: verifyRemovedFromFindAll never rejects.
+      setImmediate(() => {
+        void this.verifyRemovedFromFindAll(id, actorUserId);
       });
     } catch (error) {
       // Rollback transaction on any error, but only if transaction was started
@@ -574,6 +551,35 @@ export class ClientsService {
           releaseError,
         );
       }
+    }
+  }
+
+  private async verifyRemovedFromFindAll(
+    id: string,
+    actorUserId: string,
+  ): Promise<void> {
+    try {
+      // Small delay to ensure transaction is committed and visible
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Verify using findAll to ensure it's excluded from normal queries
+      const verifyClients = await this.findAll(actorUserId);
+      const stillExists = verifyClients.some((c) => c.id === id);
+      if (stillExists) {
+        this.logger.warn(
+          `remove: Client ${id} was soft-deleted but still appears in findAll results. This may be due to connection pooling or replication lag.`,
+        );
+      } else {
+        this.logger.debug(
+          `remove: Verified - Client ${id} confirmed removed from findAll results`,
+        );
+      }
+    } catch (verifyError) {
+      // Don't fail deletion if verification fails - it's just for logging
+      this.logger.warn(
+        `remove: Could not verify deletion via findAll`,
+        verifyError,
+      );
     }
   }
 

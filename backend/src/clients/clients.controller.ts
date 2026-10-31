@@ -74,16 +74,9 @@ export class ClientsController {
   @ApiResponse({ status: 400, description: 'Bad request - validation error' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   create(@Body() createClientDto: CreateClientDto, @Request() req) {
-    try {
-      // Organizations removed - data is user-scoped
-      const result = this.clientsService.create(
-        req.user.userId,
-        createClientDto,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    // Organizations removed - data is user-scoped
+    const result = this.clientsService.create(req.user.userId, createClientDto);
+    return result;
   }
 
   @Patch(':id')
@@ -100,17 +93,13 @@ export class ClientsController {
     @Body() updateClientDto: UpdateClientDto,
     @Request() req,
   ) {
-    try {
-      // Organizations removed - data is user-scoped
-      const result = this.clientsService.update(
-        id,
-        req.user.userId,
-        updateClientDto,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    // Organizations removed - data is user-scoped
+    const result = this.clientsService.update(
+      id,
+      req.user.userId,
+      updateClientDto,
+    );
+    return result;
   }
 
   @Delete(':id')
