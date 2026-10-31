@@ -1,5 +1,11 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsDateString, IsString, IsEnum } from 'class-validator';
+import {
+  IsOptional,
+  IsDateString,
+  IsString,
+  IsEnum,
+  IsUUID,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export enum ReportType {
@@ -52,9 +58,13 @@ export class ReportFiltersDto {
   @IsString()
   clientId?: string;
 
-  @ApiPropertyOptional({ description: 'Filter by store ID' })
+  @ApiPropertyOptional({
+    description:
+      'Inventory valuation only: value just this store, using its store-level quantities. Must be one of your stores (404 otherwise).',
+    format: 'uuid',
+  })
   @IsOptional()
-  @IsString()
+  @IsUUID()
   storeId?: string;
 
   @ApiPropertyOptional({

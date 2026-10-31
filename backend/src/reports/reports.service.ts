@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Invoice } from '../invoices/entities/invoice.entity';
@@ -6,7 +6,37 @@ import { InvoiceItem } from '../invoices/entities/invoice-item.entity';
 import { Client } from '../clients/entities/client.entity';
 import { InventoryItem } from '../inventory/entities/inventory-item.entity';
 import { Store } from '../inventory/entities/store.entity';
+import { StoreItemSettings } from '../inventory/entities/store-item-settings.entity';
 import { ReportFiltersDto, PeriodType } from './dto/report-filters.dto';
+
+export interface InventoryValuationLine {
+  itemId: string;
+  itemName: string;
+  sku: string;
+  unitPrice: number;
+  currentStock: number;
+  totalValue: number;
+  store: string;
+}
+
+/** The single valuation rule shared by the global and the per-store report. */
+function valuationLine(
+  item: InventoryItem,
+  quantity: number | null | undefined,
+  store: string,
+): InventoryValuationLine {
+  const unitPrice = Number(item.defaultUnitPrice || 0);
+  const currentStock = quantity || 0;
+  return {
+    itemId: item.id,
+    itemName: item.name,
+    sku: item.sku,
+    unitPrice,
+    currentStock,
+    totalValue: unitPrice * currentStock,
+    store,
+  };
+}
 
 @Injectable()
 export class ReportsService {
@@ -23,6 +53,8 @@ export class ReportsService {
     private inventoryItemRepository: Repository<InventoryItem>,
     @InjectRepository(Store)
     private storeRepository: Repository<Store>,
+    @InjectRepository(StoreItemSettings)
+    private storeItemSettingsRepository: Repository<StoreItemSettings>,
   ) {}
 
   /**
@@ -213,6 +245,17 @@ export class ReportsService {
 
   /**
    * Generate Inventory Valuation Report
+   *
+   * One valuation policy for both scopes: unit price = the item's `defaultUnitPrice` (0 when
+   * unset), value = unit price x quantity, no rounding and no currency conversion (items carry
+   * no currency of their own).
+   *
+   * - Without `storeId`: every inventory item of the caller, valued at its overall
+   *   `inventory_items.currentStock` (unchanged behaviour).
+   * - With `storeId`: the store must belong to the caller and not be deleted, otherwise 404 (the
+   *   same answer GET /inventory/stores/:id gives). Only that store's stock is valued, using the
+   *   store-level quantity `store_item_settings.currentStock`; items the store has no stock row for
+   *   are not part of that store's inventory and are left out.
    */
   async generateInventoryValuationReport(
     userId: string,
@@ -220,43 +263,56 @@ export class ReportsService {
   ) {
     const { storeId } = filters;
 
-    const query = this.inventoryItemRepository
-      .createQueryBuilder('item')
-      .where('item.userId = :userId', { userId });
+    const lines: InventoryValuationLine[] = storeId
+      ? await this.storeValuationLines(userId, storeId)
+      : (
+          await this.inventoryItemRepository
+            .createQueryBuilder('item')
+            .where('item.userId = :userId', { userId })
+            .getMany()
+        ).map((item) => valuationLine(item, item.currentStock, 'N/A'));
 
-    const items = await query.getMany();
-
-    // Valuation uses defaultUnitPrice and currentStock. The storeId filter is not
-    // applied yet: per-store settings would need StoreItemSettings injected here.
-
-    const valuation = items.map((item) => {
-      const unitPrice = Number(item.defaultUnitPrice || 0);
-      const totalValue = unitPrice * (item.currentStock || 0);
-      return {
-        itemId: item.id,
-        itemName: item.name,
-        sku: item.sku,
-        unitPrice,
-        currentStock: item.currentStock || 0,
-        totalValue,
-        store: 'N/A', // Store info would need separate query
-      };
-    });
-
-    const totalValuation = valuation.reduce(
+    const totalValuation = lines.reduce(
       (sum, item) => sum + item.totalValue,
       0,
     );
 
     return {
-      items: valuation.sort((a, b) => b.totalValue - a.totalValue),
+      items: lines.sort((a, b) => b.totalValue - a.totalValue),
       summary: {
-        totalItems: valuation.length,
+        totalItems: lines.length,
         totalValuation,
-        averageValue:
-          valuation.length > 0 ? totalValuation / valuation.length : 0,
+        averageValue: lines.length > 0 ? totalValuation / lines.length : 0,
       },
     };
+  }
+
+  private async storeValuationLines(
+    userId: string,
+    storeId: string,
+  ): Promise<InventoryValuationLine[]> {
+    const store = await this.storeRepository
+      .createQueryBuilder('store')
+      .where('store.id = :storeId', { storeId })
+      .andWhere('store.userId = :userId', { userId })
+      .andWhere('store.deletedAt IS NULL')
+      .getOne();
+    if (!store) {
+      throw new NotFoundException(`Store with ID "${storeId}" not found`);
+    }
+
+    const settings = await this.storeItemSettingsRepository
+      .createQueryBuilder('settings')
+      .innerJoinAndSelect('settings.inventoryItem', 'item')
+      .where('settings.storeId = :storeId', { storeId: store.id })
+      // The store is the caller's, but each item is checked too, so a stock row can never pull
+      // in another user's item.
+      .andWhere('item.userId = :userId', { userId })
+      .getMany();
+
+    return settings.map((s) =>
+      valuationLine(s.inventoryItem, s.currentStock, store.name),
+    );
   }
 
   /**

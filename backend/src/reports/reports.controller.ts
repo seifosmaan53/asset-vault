@@ -80,13 +80,19 @@ export class ReportsController {
   @Get('inventory-valuation')
   @ApiOperation({
     summary: 'Generate Inventory Valuation report',
-    description: 'Generate a report showing current inventory value',
+    description:
+      'Generate a report showing current inventory value (defaultUnitPrice x quantity). Without storeId every item is valued at its overall stock; with storeId only that store is valued, at its store-level quantities.',
   })
   @ApiResponse({
     status: 200,
     description: 'Inventory Valuation report generated successfully',
   })
+  @ApiResponse({ status: 400, description: 'storeId is not a UUID' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({
+    status: 404,
+    description: 'storeId is not one of your stores (or it was deleted)',
+  })
   async getInventoryValuationReport(
     @Query() filters: ReportFiltersDto,
     @Request() req,
