@@ -48,13 +48,9 @@ export class StoreController {
     description: 'Store with this code already exists',
   })
   create(@Body() createStoreDto: CreateStoreDto, @Request() req) {
-    try {
-      // Organizations removed - data is user-scoped
-      const result = this.storeService.create(req.user.userId, createStoreDto);
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    // Organizations removed - data is user-scoped
+    const result = this.storeService.create(req.user.userId, createStoreDto);
+    return result;
   }
 
   @Get()
@@ -109,17 +105,13 @@ export class StoreController {
     @Body() updateStoreDto: UpdateStoreDto,
     @Request() req,
   ) {
-    try {
-      // Organizations removed - data is user-scoped
-      const result = this.storeService.update(
-        id,
-        req.user.userId,
-        updateStoreDto,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    // Organizations removed - data is user-scoped
+    const result = this.storeService.update(
+      id,
+      req.user.userId,
+      updateStoreDto,
+    );
+    return result;
   }
 
   @Delete(':id')
@@ -160,15 +152,11 @@ export class StoreController {
     @Body() transferDto: CreateStoreTransferDto,
     @Request() req,
   ) {
-    try {
-      // Organizations removed - data is user-scoped
-      const result = await this.storeTransferService.transferStock(
-        req.user.userId,
-        transferDto,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    // Organizations removed - data is user-scoped
+    const result = await this.storeTransferService.transferStock(
+      req.user.userId,
+      transferDto,
+    );
+    return result;
   }
 }

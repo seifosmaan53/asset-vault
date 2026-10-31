@@ -38,39 +38,25 @@ export class UserSettingsController {
   // Fix Issue #15: Add rate limiting to prevent DoS attacks and spam updates
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 updates per 60 seconds per IP
   @ApiResponse({ status: 429, description: 'Too many requests - rate limited' })
-  updateSettings(
-    @Request() req,
-    @Body() data: UpdateSettingsDto,
-  ) {
-    try {
-      // Organizations removed - organizationId is always null, data is user-scoped
-      const result = this.settingsService.updateSettings(
-        req.user.userId,
-        data,
-        null,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+  updateSettings(@Request() req, @Body() data: UpdateSettingsDto) {
+    // Organizations removed - organizationId is always null, data is user-scoped
+    const result = this.settingsService.updateSettings(
+      req.user.userId,
+      data,
+      null,
+    );
+    return result;
   }
 
   @Post('backup')
-  createBackup(
-    @Request() req,
-    @Body() body?: { includeSqlBackup?: boolean },
-  ) {
+  createBackup(@Request() req, @Body() body?: { includeSqlBackup?: boolean }) {
     // Organizations removed - organizationId is always null, data is user-scoped
-    try {
-      const result = this.settingsService.createBackup(
-        req.user.userId,
-        body,
-        null,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    const result = this.settingsService.createBackup(
+      req.user.userId,
+      body,
+      null,
+    );
+    return result;
   }
 
   @Post('backup/export')
@@ -190,14 +176,10 @@ export class UserSettingsController {
       emailFromName?: string;
     },
   ) {
-    try {
-      const result = await this.settingsService.testEmailConnection(
-        req.user.userId,
-        body,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    const result = await this.settingsService.testEmailConnection(
+      req.user.userId,
+      body,
+    );
+    return result;
   }
 }

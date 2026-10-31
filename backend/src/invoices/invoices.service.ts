@@ -592,17 +592,12 @@ export class InvoicesService {
       if (data.items && data.items.length > 0) {
         const operation =
           (data.status || 'draft') === 'draft' ? 'reserve' : 'sale';
-        try {
-          await this.storeStockValidator.validateAndThrow(
-            validatedStoreId,
-            data.items,
-            userId,
-            operation,
-          );
-        } catch (error) {
-          // Re-throw BadRequestException from validator
-          throw error;
-        }
+        await this.storeStockValidator.validateAndThrow(
+          validatedStoreId,
+          data.items,
+          userId,
+          operation,
+        );
       }
     }
 
@@ -1328,17 +1323,13 @@ export class InvoicesService {
             }));
 
           if (itemsForValidation.length > 0) {
-            try {
-              await this.storeStockValidator.validateAndThrow(
-                validatedStoreId,
-                itemsForValidation,
-                userId,
-                operation,
-                queryRunner, // Pass queryRunner for pessimistic locking inside transaction
-              );
-            } catch (error) {
-              throw error;
-            }
+            await this.storeStockValidator.validateAndThrow(
+              validatedStoreId,
+              itemsForValidation,
+              userId,
+              operation,
+              queryRunner, // Pass queryRunner for pessimistic locking inside transaction
+            );
           }
         }
       }

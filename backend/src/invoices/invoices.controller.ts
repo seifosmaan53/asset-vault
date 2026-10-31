@@ -223,20 +223,16 @@ export class InvoicesController {
     @Body() createDto: CreateInvoiceDto,
     @Request() req,
   ): Promise<CreateInvoiceResponseDto> {
-    try {
-      // Organizations removed - data is user-scoped
-      const invoice = await this.invoicesService.create(
-        req.user.userId,
-        createDto,
-      );
-      // Issue #36 & #62: Return with DTO and success message
-      return {
-        data: invoice,
-        message: 'Invoice created successfully',
-      };
-    } catch (error: any) {
-      throw error;
-    }
+    // Organizations removed - data is user-scoped
+    const invoice = await this.invoicesService.create(
+      req.user.userId,
+      createDto,
+    );
+    // Issue #36 & #62: Return with DTO and success message
+    return {
+      data: invoice,
+      message: 'Invoice created successfully',
+    };
   }
 
   @Patch(':id')
@@ -267,21 +263,17 @@ export class InvoicesController {
     logger.log(
       `Updating invoice ${id} with data: ${JSON.stringify({ ...updateDto, items: updateDto.items?.length || 0 })}`,
     );
-    try {
-      // Organizations removed - data is user-scoped
-      const invoice = await this.invoicesService.update(
-        id,
-        req.user.userId,
-        updateDto,
-      );
-      // Issue #36 & #62: Return with DTO and success message
-      return {
-        data: invoice,
-        message: 'Invoice updated successfully',
-      };
-    } catch (error: any) {
-      throw error;
-    }
+    // Organizations removed - data is user-scoped
+    const invoice = await this.invoicesService.update(
+      id,
+      req.user.userId,
+      updateDto,
+    );
+    // Issue #36 & #62: Return with DTO and success message
+    return {
+      data: invoice,
+      message: 'Invoice updated successfully',
+    };
   }
 
   @Delete(':id')
@@ -323,16 +315,12 @@ export class InvoicesController {
   @ApiResponse({ status: 400, description: 'Bad request - not an estimate' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   convert(@Param('id') id: string, @Request() req) {
-    try {
-      // Organizations removed - data is user-scoped
-      const result = this.invoicesService.convertEstimateToInvoice(
-        id,
-        req.user.userId,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    // Organizations removed - data is user-scoped
+    const result = this.invoicesService.convertEstimateToInvoice(
+      id,
+      req.user.userId,
+    );
+    return result;
   }
 
   @Post(':id/send')
@@ -355,17 +343,13 @@ export class InvoicesController {
     @Body() emailOptions: any,
     @Request() req,
   ) {
-    try {
-      // Organizations removed - data is user-scoped
-      const result = await this.invoicesService.sendEmail(
-        id,
-        req.user.userId,
-        emailOptions,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    // Organizations removed - data is user-scoped
+    const result = await this.invoicesService.sendEmail(
+      id,
+      req.user.userId,
+      emailOptions,
+    );
+    return result;
   }
 
   @Post(':id/pdf')
@@ -386,21 +370,17 @@ export class InvoicesController {
     @Request() req,
     @Res() res: Response,
   ) {
-    try {
-      // Organizations removed - data is user-scoped
-      const pdfBuffer = await this.invoicesService.generatePdf(
-        id,
-        req.user.userId,
-      );
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader(
-        'Content-Disposition',
-        `attachment; filename=invoice-${id}.pdf`,
-      );
-      res.send(pdfBuffer);
-    } catch (error: any) {
-      throw error;
-    }
+    // Organizations removed - data is user-scoped
+    const pdfBuffer = await this.invoicesService.generatePdf(
+      id,
+      req.user.userId,
+    );
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=invoice-${id}.pdf`,
+    );
+    res.send(pdfBuffer);
   }
 
   @Post('backfill-paid-at')
@@ -420,13 +400,9 @@ export class InvoicesController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async backfillPaidAt(@Request() req) {
-    try {
-      const result = await this.invoicesService.backfillPaidAtDates(
-        req.user.userId,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    const result = await this.invoicesService.backfillPaidAtDates(
+      req.user.userId,
+    );
+    return result;
   }
 }

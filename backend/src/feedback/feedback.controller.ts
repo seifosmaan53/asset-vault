@@ -12,11 +12,7 @@ export class FeedbackController {
 
   @Post()
   create(@Body() createDto: CreateFeedbackDto, @Request() req) {
-    try {
-      const result = this.feedbackService.create(req.user.userId, createDto);
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    const result = this.feedbackService.create(req.user.userId, createDto);
+    return result;
   }
 }

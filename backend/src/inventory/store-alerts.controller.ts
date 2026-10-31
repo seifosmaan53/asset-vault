@@ -54,10 +54,7 @@ export class StoreAlertsController {
   })
   @ApiResponse({ status: 200, description: 'List of store alerts' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getStoreAlerts(
-    @Param('storeId') storeId: string,
-    @Request() req,
-  ) {
+  async getStoreAlerts(@Param('storeId') storeId: string, @Request() req) {
     // FIX Issue #43: Add organization context validation
     // Organizations removed - organizationId is always null, data is user-scoped
     return this.storeAlertsService.getStoreAlerts(storeId, req.user.userId);
@@ -72,15 +69,11 @@ export class StoreAlertsController {
   @ApiResponse({ status: 404, description: 'Alert not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async markAlertResolved(@Param('id') id: string, @Request() req) {
-    try {
-      const result = await this.storeAlertsService.markAlertResolved(
-        id,
-        req.user.userId,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    const result = await this.storeAlertsService.markAlertResolved(
+      id,
+      req.user.userId,
+    );
+    return result;
   }
 
   @Get('check')

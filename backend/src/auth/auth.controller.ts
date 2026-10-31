@@ -55,17 +55,13 @@ export class AuthController {
     if (!req.rawBody) {
       throw new Error('Raw body is required for webhook verification');
     }
-    try {
-      const result = await this.authService.handleClerkWebhook(
-        req.rawBody,
-        svixId,
-        svixTimestamp,
-        svixSignature,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    const result = await this.authService.handleClerkWebhook(
+      req.rawBody,
+      svixId,
+      svixTimestamp,
+      svixSignature,
+    );
+    return result;
   }
 
   @Post('logout')
@@ -121,12 +117,8 @@ export class AuthController {
     @Req() req: AuthenticatedRequest,
     @Body() dto: UpdateProfileDto,
   ) {
-    try {
-      const result = await this.authService.updateProfile(req.user.userId, dto);
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    const result = await this.authService.updateProfile(req.user.userId, dto);
+    return result;
   }
 
   @Post('change-password')
@@ -147,14 +139,7 @@ export class AuthController {
     @Req() req: AuthenticatedRequest,
     @Body() dto: ChangePasswordDto,
   ) {
-    try {
-      const result = await this.authService.changePassword(
-        req.user.userId,
-        dto,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    const result = await this.authService.changePassword(req.user.userId, dto);
+    return result;
   }
 }

@@ -57,17 +57,11 @@ export class SampleDataController {
   })
   @ApiResponse({ status: 404, description: 'User not found' })
   async addSampleData(@Request() req: AuthenticatedRequest) {
-    try {
-      const result = await this.sampleDataService.addSampleData(
-        req.user.userId,
-      );
-      return {
-        message: 'Sample data added successfully',
-        data: result,
-      };
-    } catch (error: any) {
-      throw error;
-    }
+    const result = await this.sampleDataService.addSampleData(req.user.userId);
+    return {
+      message: 'Sample data added successfully',
+      data: result,
+    };
   }
 
   @Delete()

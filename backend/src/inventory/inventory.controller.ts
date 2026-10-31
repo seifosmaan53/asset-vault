@@ -138,16 +138,12 @@ export class InventoryController {
   @ApiResponse({ status: 400, description: 'Bad request - validation failed' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async create(@Body() createDto: CreateInventoryItemDto, @Request() req) {
-    try {
-      // Organizations removed - data is user-scoped
-      const result = await this.inventoryService.create(
-        req.user.userId,
-        createDto,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    // Organizations removed - data is user-scoped
+    const result = await this.inventoryService.create(
+      req.user.userId,
+      createDto,
+    );
+    return result;
   }
 
   @Post('items/bulk')
@@ -170,16 +166,12 @@ export class InventoryController {
     @Body() bulkDto: BulkCreateInventoryItemsDto,
     @Request() req,
   ) {
-    try {
-      // Organizations removed - data is user-scoped
-      const result = await this.inventoryService.bulkCreate(
-        req.user.userId,
-        bulkDto.items,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    // Organizations removed - data is user-scoped
+    const result = await this.inventoryService.bulkCreate(
+      req.user.userId,
+      bulkDto.items,
+    );
+    return result;
   }
 
   @Patch('items/:id')
@@ -200,17 +192,13 @@ export class InventoryController {
     @Body() updateDto: UpdateInventoryItemDto,
     @Request() req,
   ) {
-    try {
-      // Organizations removed - data is user-scoped
-      const result = await this.inventoryService.update(
-        id,
-        req.user.userId,
-        updateDto,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    // Organizations removed - data is user-scoped
+    const result = await this.inventoryService.update(
+      id,
+      req.user.userId,
+      updateDto,
+    );
+    return result;
   }
 
   @Delete('items/:id')
@@ -274,17 +262,13 @@ export class InventoryController {
     @Body() createDto: CreateStockMovementDto,
     @Request() req,
   ) {
-    try {
-      // Organizations removed - data is user-scoped
-      const result = this.inventoryService.createMovement(
-        id,
-        req.user.userId,
-        createDto,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    // Organizations removed - data is user-scoped
+    const result = this.inventoryService.createMovement(
+      id,
+      req.user.userId,
+      createDto,
+    );
+    return result;
   }
 
   @Get('stats')

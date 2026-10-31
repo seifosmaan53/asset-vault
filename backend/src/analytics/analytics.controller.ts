@@ -380,20 +380,16 @@ export class AnalyticsController {
     @Request() req,
     @Body() body: { storeIds: string[]; startDate?: string; endDate?: string },
   ) {
-    try {
-      const startDate = body.startDate ? new Date(body.startDate) : undefined;
-      const endDate = body.endDate ? new Date(body.endDate) : undefined;
-      // Organizations removed - organizationId is always null, data is user-scoped
-      const result = await this.analyticsService.compareStores(
-        req.user.userId,
-        body.storeIds,
-        startDate,
-        endDate,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    const startDate = body.startDate ? new Date(body.startDate) : undefined;
+    const endDate = body.endDate ? new Date(body.endDate) : undefined;
+    // Organizations removed - organizationId is always null, data is user-scoped
+    const result = await this.analyticsService.compareStores(
+      req.user.userId,
+      body.storeIds,
+      startDate,
+      endDate,
+    );
+    return result;
   }
 
   @Get('stores/:storeId/export/csv')
