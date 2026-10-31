@@ -5,6 +5,36 @@ import * as sgMail from '@sendgrid/mail';
 
 export type EmailProvider = 'smtp' | 'sendgrid';
 
+/** A complete SMTP configuration to test. Every field is the submitted value; none is optional,
+ *  so nothing can be filled in from the environment. */
+export interface SmtpTestConfig {
+  host: string;
+  port: number;
+  /** Implicit TLS. Defaults to `port === 465` when omitted. */
+  secure?: boolean;
+  user: string;
+  password: string;
+}
+
+const SMTP_TEST_TIMEOUT_MS = 10000;
+
+function describeError(error: unknown): { message: string; code: string } {
+  // Read structurally rather than with `instanceof Error`: socket errors can come from another
+  // realm (e.g. under Jest), where instanceof is false for a perfectly ordinary Error.
+  if (typeof error === 'object' && error !== null) {
+    const message = 'message' in error ? error.message : undefined;
+    const code = 'code' in error ? error.code : undefined;
+    return {
+      message:
+        typeof message === 'string' && message
+          ? message
+          : 'Unknown error occurred',
+      code: typeof code === 'string' ? code : 'UNKNOWN',
+    };
+  }
+  return { message: String(error), code: 'UNKNOWN' };
+}
+
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
@@ -115,7 +145,9 @@ export class MailService {
     }
   }
 
-  private isValidSmtpHost(host: string): boolean {
+  /** Rejects empty, placeholder and local hosts (see invalidHosts). Public so tests that run a
+   *  synthetic SMTP server on 127.0.0.1 can allow exactly that address and nothing else. */
+  isValidSmtpHost(host: string): boolean {
     if (!host || host.trim().length === 0) {
       return false;
     }
@@ -138,118 +170,64 @@ export class MailService {
   }
 
   /**
-   * Test SMTP connection with provided credentials or environment variables
+   * Check that a submitted SMTP configuration can connect and authenticate.
+   *
+   * Uses exactly the configuration passed in: nothing is read from the environment, so a
+   * submitted host can never receive the server's own SMTP_USER / SMTP_PASS. The check is the
+   * transport's verify() (connect, EHLO, STARTTLS when offered, AUTH, QUIT); no message is sent
+   * and nothing is stored.
    */
-  async testConnection(config?: {
-    host?: string;
-    port?: number;
-    secure?: boolean;
-    user?: string;
-    password?: string;
-    from?: string;
-  }): Promise<{ success: boolean; message: string }> {
+  async testConnection(
+    config: SmtpTestConfig,
+  ): Promise<{ success: boolean; message: string }> {
+    if (!this.isValidSmtpHost(config.host)) {
+      return {
+        success: false,
+        message: `SMTP host "${config.host}" is a placeholder, a local address or not a valid host name.`,
+      };
+    }
+
+    const testTransporter = nodemailer.createTransport({
+      host: config.host,
+      port: config.port,
+      secure: config.secure ?? config.port === 465,
+      auth: { user: config.user, pass: config.password },
+      connectionTimeout: SMTP_TEST_TIMEOUT_MS,
+      greetingTimeout: SMTP_TEST_TIMEOUT_MS,
+      socketTimeout: SMTP_TEST_TIMEOUT_MS,
+    });
+
+    let timer: NodeJS.Timeout | undefined;
     try {
-      // Use provided config or fall back to environment variables
-      const smtpHost = config?.host || this.configService.get('SMTP_HOST');
-      const smtpPort =
-        config?.port || Number(this.configService.get('SMTP_PORT') ?? 587);
-      const smtpUser = config?.user || this.configService.get('SMTP_USER');
-      const smtpPass = config?.password || this.configService.get('SMTP_PASS');
-      const emailFrom =
-        config?.from ||
-        this.configService.get('SMTP_FROM') ||
-        'Asset Vault <test@asset-vault.app>';
-
-      // Validate required fields
-      if (!smtpHost || !smtpUser || !smtpPass) {
-        return {
-          success: false,
-          message:
-            'SMTP configuration is incomplete. Please provide SMTP_HOST, SMTP_USER, and SMTP_PASS (or configure them in environment variables).',
-        };
-      }
-
-      // Check if host is a placeholder/invalid value
-      const isInvalidHost = this.invalidHosts.some((invalid) =>
-        smtpHost.toLowerCase().includes(invalid.toLowerCase()),
-      );
-
-      if (isInvalidHost) {
-        return {
-          success: false,
-          message: `SMTP host "${smtpHost}" appears to be a placeholder. Please provide a valid SMTP host.`,
-        };
-      }
-
-      // Validate host format
-      if (!smtpHost.includes('.') || smtpHost.length < 4) {
-        return {
-          success: false,
-          message: `SMTP host "${smtpHost}" appears to be invalid.`,
-        };
-      }
-
-      // Create a test transporter
-      const testTransporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: smtpPort,
-        secure: config?.secure !== undefined ? config.secure : smtpPort === 465,
-        auth: {
-          user: smtpUser,
-          pass: smtpPass,
-        },
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-      });
-
-      // Test connection
       await Promise.race([
         testTransporter.verify(),
-        new Promise((_, reject) =>
-          setTimeout(
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
             () => reject(new Error('SMTP verification timeout')),
-            10000,
-          ),
-        ),
+            SMTP_TEST_TIMEOUT_MS,
+          );
+        }),
       ]);
-
-      // Try to send a test email
-      const testEmailAddress = config?.from
-        ? config.from.match(/<(.+)>/)?.pop() || config.from
-        : emailFrom.match(/<(.+)>/)?.pop() || emailFrom;
-
-      await testTransporter.sendMail({
-        from: emailFrom,
-        to: testEmailAddress,
-        subject: 'Asset Vault - Email Connection Test',
-        html: `
-          <div style="font-family: Arial, sans-serif; padding: 20px;">
-            <h2>Email Connection Test Successful!</h2>
-            <p>This is a test email from Asset Vault to verify your SMTP configuration.</p>
-            <p>If you received this email, your email settings are working correctly.</p>
-            <p><strong>Test time:</strong> ${new Date().toLocaleString()}</p>
-          </div>
-        `,
-      });
-
       return {
         success: true,
-        message: `Email connection test successful! Test email sent to ${testEmailAddress}`,
+        message: `Connected to ${config.host}:${config.port} and authenticated as ${config.user}. No email was sent.`,
       };
-    } catch (error: any) {
-      const errorMessage = error.message || 'Unknown error occurred';
-      const errorCode = error.code || 'UNKNOWN';
+    } catch (error: unknown) {
+      const { message: errorMessage, code: errorCode } = describeError(error);
 
       let message = 'Email connection test failed: ';
       if (errorCode === 'EAUTH') {
         message +=
-          'SMTP authentication failed. Please check your SMTP_USER and SMTP_PASS credentials.';
+          'SMTP authentication failed. Please check the SMTP username and password.';
       } else if (
         errorCode === 'ECONNECTION' ||
         errorCode === 'ETIMEDOUT' ||
-        errorCode === 'ENOTFOUND'
+        errorCode === 'ENOTFOUND' ||
+        errorCode === 'ECONNREFUSED' ||
+        errorCode === 'ESOCKET'
       ) {
-        message += `Cannot connect to SMTP server. Please check SMTP_HOST and SMTP_PORT settings.`;
+        message +=
+          'Cannot connect to the SMTP server. Please check the SMTP host and port.';
       } else if (
         errorMessage.includes('Invalid login') ||
         errorMessage.includes('authentication')
@@ -268,6 +246,9 @@ export class MailService {
         code: errorCode,
       });
       return { success: false, message };
+    } finally {
+      if (timer) clearTimeout(timer);
+      testTransporter.close();
     }
   }
 

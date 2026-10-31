@@ -14,6 +14,7 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { UserSettingsService } from './user-settings.service';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
+import { TestEmailConnectionDto } from './dto/test-email.dto';
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
@@ -157,25 +158,20 @@ export class UserSettingsController {
 
   @Post('test-email')
   @ApiOperation({
-    summary: 'Test email connection',
+    summary: 'Test an SMTP configuration',
     description:
-      'Test SMTP email connection with provided credentials or environment variables. If credentials are provided in the request body, they will be used for testing. Otherwise, environment variables will be used.',
+      'Connects to the submitted SMTP server and authenticates with the submitted username and password (transport verify only: no email is sent, nothing is saved, and neither stored settings nor the server environment are used). The password must be submitted: omitted, empty, or the stored-password placeholder "***ENCRYPTED***" returns 400 for any host, because a stored password is never reused for a test. Connection and authentication failures are reported as { success: false, message }.',
   })
-  @ApiResponse({ status: 200, description: 'Email connection test completed' })
+  @ApiResponse({
+    status: 201,
+    description: 'Test completed; see success and message',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid body, or the password was omitted/redacted',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async testEmail(
-    @Request() req,
-    @Body()
-    body?: {
-      smtpHost?: string;
-      smtpPort?: number;
-      smtpSecure?: boolean;
-      smtpUser?: string;
-      smtpPassword?: string;
-      emailFromAddress?: string;
-      emailFromName?: string;
-    },
-  ) {
+  async testEmail(@Request() req, @Body() body: TestEmailConnectionDto) {
     const result = await this.settingsService.testEmailConnection(
       req.user.userId,
       body,

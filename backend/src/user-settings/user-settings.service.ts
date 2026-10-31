@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { exec } from 'child_process';
@@ -17,6 +22,8 @@ import { Store } from '../inventory/entities/store.entity';
 import { StoreItemSettings } from '../inventory/entities/store-item-settings.entity';
 import { createExcelWorkbook } from '../common/utils/excel-export.util';
 import { PuppeteerService } from '../common/services/puppeteer.service';
+import { MailService } from '../mail/mail.service';
+import { TestEmailConnectionDto } from './dto/test-email.dto';
 import {
   sanitizeString,
   sanitizeEmail,
@@ -115,6 +122,7 @@ export class UserSettingsService {
     private storeItemSettingsRepository: Repository<StoreItemSettings>,
     private dataSource: DataSource,
     private puppeteerService: PuppeteerService,
+    private readonly mailService: MailService,
   ) {}
 
   async getSettings(userId: string) {
@@ -228,8 +236,8 @@ export class UserSettingsService {
 
       /* Per-account SMTP is not connected to anything. MailService authenticates with
          SMTP_PASS from the environment and never reads this column, and
-         testEmailConnection returns "email functionality has been disabled" without
-         opening a connection. A submitted password therefore has no consumer, and storing
+         testEmailConnection tests only the password submitted with that request and never
+         reads a stored one. A submitted password therefore has no consumer, and storing
          one would only create a secret to protect for no benefit — so it is dropped here,
          before it can reach the database.
 
@@ -818,26 +826,43 @@ export class UserSettingsService {
   }
 
   /**
-   * Test email connection - Email functionality has been removed
+   * Test a submitted SMTP configuration (connect + authenticate; no email is sent).
+   *
+   * Only the submitted values are used. Nothing is read from or written to user_settings and the
+   * server's own SMTP_* environment is not consulted, so the outcome depends on nothing but the
+   * request body.
+   *
+   * Password rule (also in TestEmailConnectionDto and the API docs): the password must be
+   * submitted. Omitted, empty, or the MASKED_SMTP_PASSWORD placeholder is a 400 for any host and
+   * username. A stored password is never reused: stored values are one-way hashes from an earlier
+   * version (and new ones are no longer stored), so they cannot authenticate, and reusing one
+   * would send a stored secret to whatever host was submitted.
    */
-  testEmailConnection(
+  async testEmailConnection(
     userId: string,
-    credentials?: {
-      smtpHost?: string;
-      smtpPort?: number;
-      smtpSecure?: boolean;
-      smtpUser?: string;
-      smtpPassword?: string;
-      emailFromAddress?: string;
-      emailFromName?: string;
-    },
+    dto: TestEmailConnectionDto,
   ): Promise<{ success: boolean; message: string }> {
-    this.logger.warn(
-      `Email test connection requested by user ${userId} - email functionality has been disabled`,
+    const password = dto.smtpPassword;
+    if (
+      password === undefined ||
+      password === '' ||
+      password === MASKED_SMTP_PASSWORD
+    ) {
+      throw new BadRequestException(
+        'Enter the SMTP password to test the connection. A saved SMTP password is never reused for a test.',
+      );
+    }
+
+    const port = dto.smtpPort ?? 587;
+    this.logger.log(
+      `SMTP connection test requested by user ${userId} for ${dto.smtpHost}:${port}`,
     );
-    return Promise.resolve({
-      success: false,
-      message: 'Email functionality has been disabled',
+    return this.mailService.testConnection({
+      host: dto.smtpHost,
+      port,
+      secure: dto.smtpSecure,
+      user: dto.smtpUser,
+      password,
     });
   }
 
