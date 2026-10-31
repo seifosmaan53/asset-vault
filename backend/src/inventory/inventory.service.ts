@@ -981,33 +981,21 @@ export class InventoryService {
     } else if (data.type === 'sale') {
       // PHASE 2 FIX: Use atomic UPDATE pattern to prevent race conditions
       // This ensures stock cannot go negative even with concurrent requests
-      // ENHANCED: Use raw SQL to ensure correct column name (currentStock, not current_stock)
-      const updateResult: unknown = await manager.query(
-        `UPDATE "inventory_items" 
-         SET "currentStock" = "currentStock" - $1 
-         WHERE "id" = $2 
-           AND "currentStock" >= $1 
-           AND "status" = $3`,
-        [validatedQuantity, inventoryItemId, 'active'],
-      );
+      // No status condition: like purchases and adjustments, a sale is limited only by the
+      // available stock (see the check above). UpdateResult.affected is the real row count
+      // (a raw manager.query returns a [rows, rowCount] tuple for UPDATE instead).
+      const updateResult = await manager
+        .createQueryBuilder()
+        .update(InventoryItem)
+        .set({ currentStock: () => '"currentStock" - :quantity' })
+        .where('id = :id AND "currentStock" >= :quantity', {
+          id: inventoryItemId,
+          quantity: validatedQuantity,
+        })
+        .execute();
 
-      // ENHANCED: Check if update affected any rows (raw query returns rowCount)
-      // NOTE: TypeORM 0.3's Postgres driver returns [rows, rowCount] for an
-      // UPDATE, so the array branch below reads the tuple length (always 2), not
-      // the affected-row count, and the 0-rows branch never runs. Preserved
-      // as-is here (typing only); reported separately because fixing it changes
-      // what a sale of an inactive item does.
-      const rowCount = Array.isArray(updateResult)
-        ? updateResult.length
-        : typeof updateResult === 'object' &&
-            updateResult !== null &&
-            'rowCount' in updateResult &&
-            typeof updateResult.rowCount === 'number'
-          ? updateResult.rowCount
-          : 0;
-
-      if (rowCount === 0) {
-        // Check if item exists and is active
+      if (!updateResult.affected) {
+        // No row updated: the item is gone or another sale took the stock first
         const checkItem = await manager.findOne(InventoryItem, {
           where: { id: inventoryItemId },
         });
