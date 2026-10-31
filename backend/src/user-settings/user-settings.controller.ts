@@ -8,15 +8,21 @@ import {
   Request,
   Res,
 } from '@nestjs/common';
-import type { Response } from 'express';
+import type { Request as ExpressRequest, Response } from 'express';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { UserSettingsService } from './user-settings.service';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
+import { TestEmailConnectionDto } from './dto/test-email.dto';
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
+import type { RequestUser } from '../auth/interfaces/request-user.interface';
+
+interface AuthenticatedRequest extends ExpressRequest {
+  user: RequestUser;
+}
 
 @ApiTags('settings')
 @Controller('user-settings')
@@ -29,7 +35,7 @@ export class UserSettingsController {
   ) {}
 
   @Get()
-  getSettings(@Request() req) {
+  getSettings(@Request() req: AuthenticatedRequest) {
     // Organizations removed - organizationId is always null, data is user-scoped
     return this.settingsService.getSettings(req.user.userId);
   }
@@ -38,7 +44,10 @@ export class UserSettingsController {
   // Fix Issue #15: Add rate limiting to prevent DoS attacks and spam updates
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 updates per 60 seconds per IP
   @ApiResponse({ status: 429, description: 'Too many requests - rate limited' })
-  updateSettings(@Request() req, @Body() data: UpdateSettingsDto) {
+  updateSettings(
+    @Request() req: AuthenticatedRequest,
+    @Body() data: UpdateSettingsDto,
+  ) {
     // Organizations removed - organizationId is always null, data is user-scoped
     const result = this.settingsService.updateSettings(
       req.user.userId,
@@ -49,19 +58,18 @@ export class UserSettingsController {
   }
 
   @Post('backup')
-  createBackup(@Request() req, @Body() body?: { includeSqlBackup?: boolean }) {
+  createBackup(
+    @Request() req: AuthenticatedRequest,
+    @Body() body?: { includeSqlBackup?: boolean },
+  ) {
     // Organizations removed - organizationId is always null, data is user-scoped
-    const result = this.settingsService.createBackup(
-      req.user.userId,
-      body,
-      null,
-    );
+    const result = this.settingsService.createBackup(req.user.userId, body);
     return result;
   }
 
   @Post('backup/export')
   async exportData(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Res() res: Response,
     @Body() body?: { format?: string },
   ) {
@@ -73,7 +81,6 @@ export class UserSettingsController {
       if (format === 'csv') {
         const csvContent = await this.settingsService.exportUserDataAsCsv(
           req.user.userId,
-          null,
         );
         const fileName = `asset-vault_export_${timestamp}.csv`;
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -86,7 +93,6 @@ export class UserSettingsController {
       } else if (format === 'excel') {
         const excelBuffer = await this.settingsService.exportUserDataAsExcel(
           req.user.userId,
-          null,
         );
         const fileName = `asset-vault_export_${timestamp}.xlsx`;
         res.setHeader(
@@ -104,7 +110,6 @@ export class UserSettingsController {
           // Fix Issue #19: Improved error handling for PDF generation
           const pdfBuffer = await this.settingsService.exportUserDataAsPdf(
             req.user.userId,
-            null,
           );
           const fileName = `asset-vault_export_${timestamp}.pdf`;
           res.setHeader('Content-Type', 'application/pdf');
@@ -134,7 +139,6 @@ export class UserSettingsController {
         // Default to JSON
         const result = await this.settingsService.exportUserData(
           req.user.userId,
-          null,
         );
         const fileName = `asset-vault_export_${timestamp}.json`;
         res.setHeader('Content-Type', 'application/json');
@@ -157,24 +161,22 @@ export class UserSettingsController {
 
   @Post('test-email')
   @ApiOperation({
-    summary: 'Test email connection',
+    summary: 'Test an SMTP configuration',
     description:
-      'Test SMTP email connection with provided credentials or environment variables. If credentials are provided in the request body, they will be used for testing. Otherwise, environment variables will be used.',
+      'Connects to the submitted SMTP server and authenticates with the submitted username and password (transport verify only: no email is sent, nothing is saved, and neither stored settings nor the server environment are used). The password must be submitted: omitted, empty, or the stored-password placeholder "***ENCRYPTED***" returns 400 for any host, because a stored password is never reused for a test. Connection and authentication failures are reported as { success: false, message }.',
   })
-  @ApiResponse({ status: 200, description: 'Email connection test completed' })
+  @ApiResponse({
+    status: 201,
+    description: 'Test completed; see success and message',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid body, or the password was omitted/redacted',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async testEmail(
-    @Request() req,
-    @Body()
-    body?: {
-      smtpHost?: string;
-      smtpPort?: number;
-      smtpSecure?: boolean;
-      smtpUser?: string;
-      smtpPassword?: string;
-      emailFromAddress?: string;
-      emailFromName?: string;
-    },
+    @Request() req: AuthenticatedRequest,
+    @Body() body: TestEmailConnectionDto,
   ) {
     const result = await this.settingsService.testEmailConnection(
       req.user.userId,

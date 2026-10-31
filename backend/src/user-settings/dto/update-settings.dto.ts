@@ -15,6 +15,7 @@ import {
   ValidatorConstraint,
   ValidatorConstraintInterface,
   registerDecorator,
+  type ValidationOptions,
 } from 'class-validator';
 import { isURL } from 'validator';
 
@@ -194,7 +195,7 @@ export class IsValidTimezoneConstraint implements ValidatorConstraintInterface {
   }
 }
 
-function IsValidTimezone(validationOptions?: any) {
+function IsValidTimezone(validationOptions?: ValidationOptions) {
   return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
@@ -247,7 +248,7 @@ export class IsValidInvoiceNumberFormatConstraint
   }
 }
 
-function IsValidInvoiceNumberFormat(validationOptions?: any) {
+function IsValidInvoiceNumberFormat(validationOptions?: ValidationOptions) {
   return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
@@ -312,7 +313,7 @@ export class IsValidLanguageCodeConstraint
   }
 }
 
-function IsValidLanguageCode(validationOptions?: any) {
+function IsValidLanguageCode(validationOptions?: ValidationOptions) {
   return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
@@ -337,7 +338,7 @@ export class IsValidUrlConstraint implements ValidatorConstraintInterface {
   }
 }
 
-function IsValidUrl(validationOptions?: any) {
+function IsValidUrl(validationOptions?: ValidationOptions) {
   return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
@@ -367,7 +368,7 @@ export class IsValidPhoneNumberConstraint
   }
 }
 
-function IsValidPhoneNumber(validationOptions?: any) {
+function IsValidPhoneNumber(validationOptions?: ValidationOptions) {
   return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
@@ -383,7 +384,7 @@ export class UpdateSettingsDto {
   // Existing fields
   @IsOptional()
   @ValidateIf(
-    (o) =>
+    (o: UpdateSettingsDto) =>
       o.invoiceNumberFormat !== undefined &&
       o.invoiceNumberFormat !== null &&
       o.invoiceNumberFormat !== '',
@@ -436,7 +437,7 @@ export class UpdateSettingsDto {
   @IsString()
   @Length(0, 255, { message: 'Email must not exceed 255 characters' })
   @ValidateIf(
-    (o) =>
+    (o: UpdateSettingsDto) =>
       o.companyEmail !== '' &&
       o.companyEmail !== null &&
       o.companyEmail !== undefined,
@@ -633,14 +634,17 @@ export class UpdateSettingsDto {
   stockAlertThreshold?: number;
 
   // Email/SMTP Settings
-  @ValidateIf((o) => o.smtpPort !== undefined && o.smtpPort !== null)
+  @ValidateIf(
+    (o: UpdateSettingsDto) => o.smtpPort !== undefined && o.smtpPort !== null,
+  )
   @IsString({ message: 'SMTP host is required when SMTP port is provided' })
   @Length(1, 255, { message: 'SMTP host must be between 1 and 255 characters' })
   @IsOptional()
   smtpHost?: string;
 
   @ValidateIf(
-    (o) => o.smtpHost !== undefined && o.smtpHost !== null && o.smtpHost !== '',
+    (o: UpdateSettingsDto) =>
+      o.smtpHost !== undefined && o.smtpHost !== null && o.smtpHost !== '',
   )
   @IsInt({ message: 'SMTP port is required when SMTP host is provided' })
   @Min(1, { message: 'SMTP port must be between 1 and 65535' })
@@ -653,7 +657,7 @@ export class UpdateSettingsDto {
   smtpSecure?: boolean;
 
   @ValidateIf(
-    (o) =>
+    (o: UpdateSettingsDto) =>
       o.smtpPassword !== undefined &&
       o.smtpPassword !== null &&
       o.smtpPassword !== '',
@@ -675,7 +679,7 @@ export class UpdateSettingsDto {
   @Length(0, 255, { message: 'Email from name must not exceed 255 characters' })
   emailFromName?: string;
 
-  @ValidateIf((o) => {
+  @ValidateIf((o: UpdateSettingsDto) => {
     // Required if SMTP is configured
     const hasSmtpConfig =
       (o.smtpHost && o.smtpHost !== '') ||

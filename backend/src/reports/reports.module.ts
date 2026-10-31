@@ -7,6 +7,7 @@ import { InvoiceItem } from '../invoices/entities/invoice-item.entity';
 import { Client } from '../clients/entities/client.entity';
 import { InventoryItem } from '../inventory/entities/inventory-item.entity';
 import { Store } from '../inventory/entities/store.entity';
+import { StoreItemSettings } from '../inventory/entities/store-item-settings.entity';
 import { InvoicesModule } from '../invoices/invoices.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { ClientsModule } from '../clients/clients.module';
@@ -19,6 +20,7 @@ import { ClientsModule } from '../clients/clients.module';
       Client,
       InventoryItem,
       Store,
+      StoreItemSettings,
     ]),
     InvoicesModule,
     InventoryModule,
