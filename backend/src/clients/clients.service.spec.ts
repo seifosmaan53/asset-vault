@@ -74,8 +74,10 @@ describe('ClientsService', () => {
   let managerQb: ReturnType<typeof makeQueryBuilder>;
 
   const repo = {
-    create: jest.fn((x) => x),
-    save: jest.fn((x) => Promise.resolve({ id: 'client-new', ...x })),
+    create: jest.fn((x: Partial<Client>) => x),
+    save: jest.fn((x: Partial<Client>) =>
+      Promise.resolve({ id: 'client-new', ...x }),
+    ),
     findOne: jest.fn(),
     find: jest.fn(),
     update: jest.fn(),
