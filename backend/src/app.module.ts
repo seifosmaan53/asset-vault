@@ -6,7 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { CacheModule } from '@nestjs/cache-manager';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import * as Joi from 'joi';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -34,13 +34,11 @@ import { TrpcController } from './trpc/trpc.controller';
 import { ClerkAuthGuard } from './auth/clerk-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
 import { SubscriptionGuard } from './subscriptions/subscription.guard';
-import { APP_INTERCEPTOR } from '@nestjs/core';
 import { RateLimitHeadersInterceptor } from './common/interceptors/rate-limit-headers.interceptor';
 import { RequestLoggingInterceptor } from './common/interceptors/request-logging.interceptor';
 import { CacheHeadersInterceptor } from './common/interceptors/cache-headers.interceptor';
 import { QueryLoggingInterceptor } from './common/interceptors/query-logging.interceptor';
 import { ContentNegotiationInterceptor } from './common/interceptors/content-negotiation.interceptor';
-import { DataSource } from 'typeorm';
 
 @Module({
   imports: [
@@ -64,6 +62,19 @@ import { DataSource } from 'typeorm';
 
         FRONTEND_URL: Joi.string().uri().default('http://localhost:5173'),
         FRONTEND_BASE_URL: Joi.string().uri().default('http://localhost:5173'),
+        // Server settings (src/server/server-settings.ts, docs/setup/DOCKER_README.md).
+        // Public https origin of the API for the production HTTP->HTTPS redirect; defaults to
+        // FRONTEND_URL's host (the proxied same-origin layout).
+        API_PUBLIC_URL: Joi.string().uri().allow('').optional(),
+        // Proxies whose X-Forwarded-* headers are believed: '' (none, default), a hop count,
+        // or a comma list of IPs / CIDRs / loopback / linklocal / uniquelocal. Never 'true'.
+        TRUST_PROXY: Joi.string().allow('').optional(),
+        // Graceful-shutdown bound: in-flight requests get this long after SIGTERM, then exit 1.
+        SHUTDOWN_TIMEOUT_MS: Joi.number()
+          .integer()
+          .min(1000)
+          .max(120000)
+          .default(8000),
 
         SMTP_HOST: Joi.string().allow('', null).optional(),
         SMTP_PORT: Joi.number().allow(null).min(1).max(65535).optional(),
@@ -72,7 +83,9 @@ import { DataSource } from 'typeorm';
         SMTP_FROM: Joi.string()
           .allow('', null)
           .optional()
-          .custom((value, helpers) => {
+          // Joi.string() has already rejected non-strings, and allow('', null) values never reach
+          // custom rules, so the value here is a string (null kept in the type for safety).
+          .custom((value: string | null, helpers: Joi.CustomHelpers) => {
             if (!value || value === '') return value;
             // Allow format: "Name <email@domain.com>" or just "email@domain.com"
             const emailMatch = value.match(
