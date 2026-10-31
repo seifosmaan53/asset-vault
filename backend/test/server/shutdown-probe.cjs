@@ -69,11 +69,16 @@ async function main() {
       body.slice(0, half),
   );
   await sleep(300);
-  if (raw !== '') throw new Error(`the API answered before the body was complete: ${raw}`);
+  if (raw !== '')
+    throw new Error(`the API answered before the body was complete: ${raw}`);
 
   const t0 = now();
-  const stop = spawn('sh', ['-c', stopCmd], { stdio: ['ignore', 'inherit', 'inherit'] });
-  const stopped = new Promise((resolve) => stop.on('exit', (code) => resolve({ code, at: now() })));
+  const stop = spawn('sh', ['-c', stopCmd], {
+    stdio: ['ignore', 'inherit', 'inherit'],
+  });
+  const stopped = new Promise((resolve) =>
+    stop.on('exit', (code) => resolve({ code, at: now() })),
+  );
 
   // New connections must be refused once the signal has been handled.
   let refusedAt = null;
@@ -87,24 +92,42 @@ async function main() {
     await sleep(50);
   }
 
-  const result = { mode, refused: lastConnect, refusedAfterMs: refusedAt && refusedAt - t0 };
+  const result = {
+    mode,
+    refused: lastConnect,
+    refusedAfterMs: refusedAt && refusedAt - t0,
+  };
   const failures = [];
-  if (refusedAt === null) failures.push('new connections were still accepted 5 s after the stop signal');
-  else if (!/ECONNREFUSED|ECONNRESET/.test(lastConnect)) failures.push(`unexpected connect result ${lastConnect}`);
+  if (refusedAt === null)
+    failures.push(
+      'new connections were still accepted 5 s after the stop signal',
+    );
+  else if (!/ECONNREFUSED|ECONNRESET/.test(lastConnect))
+    failures.push(`unexpected connect result ${lastConnect}`);
 
   if (mode === 'complete') {
     await sleep(holdMs);
     result.inFlightAtMs = now() - t0;
-    if (closedAt !== null) failures.push('the in-flight connection was closed before its request finished');
+    if (closedAt !== null)
+      failures.push(
+        'the in-flight connection was closed before its request finished',
+      );
     sock.write(body.slice(half));
     const deadline = now() + 10000;
-    while (now() < deadline && !/\r\n\r\n[\s\S]*"status":"ok"/.test(raw) && closedAt === null) await sleep(20);
+    while (
+      now() < deadline &&
+      !/\r\n\r\n[\s\S]*"status":"ok"/.test(raw) &&
+      closedAt === null
+    )
+      await sleep(20);
     await sleep(100);
     const statusLine = raw.split('\r\n')[0];
     result.response = statusLine;
     result.responseBodyOk = /"status":"ok"/.test(raw);
-    if (statusLine !== 'HTTP/1.1 200 OK') failures.push(`in-flight request got "${statusLine}"`);
-    if (!result.responseBodyOk) failures.push('in-flight response body is not {"status":"ok",...}');
+    if (statusLine !== 'HTTP/1.1 200 OK')
+      failures.push(`in-flight request got "${statusLine}"`);
+    if (!result.responseBodyOk)
+      failures.push('in-flight response body is not {"status":"ok",...}');
   }
 
   const { code, at } = await stopped;
@@ -113,7 +136,8 @@ async function main() {
   if (mode === 'hang') {
     result.connectionClosedByServer = closedAt !== null;
     result.response = raw.split('\r\n')[0] || '(none)';
-    if (closedAt === null) failures.push('the hung connection was not closed by the server');
+    if (closedAt === null)
+      failures.push('the hung connection was not closed by the server');
   }
   sock.destroy();
   result.failures = failures;

@@ -94,7 +94,7 @@ describe('inventory sales (real app + real PostgreSQL)', () => {
       .send({ type: 'sale', quantity, sourceType: 'manual' });
   const stockOf = async (itemId: string) =>
     (
-      await rows<{ currentStock: number }>(
+      await rows(
         h,
         'select "currentStock" from inventory_items where id = $1',
         [itemId],
@@ -102,7 +102,7 @@ describe('inventory sales (real app + real PostgreSQL)', () => {
     )[0].currentStock;
   const salesOf = async (itemId: string) =>
     (
-      await rows<{ n: number }>(
+      await rows(
         h,
         `select count(*)::int n from stock_movements where "inventoryItemId" = $1 and type = 'sale'`,
         [itemId],

@@ -145,7 +145,7 @@ describe('GET /inventory/stores activeOnly (real app + real PostgreSQL)', () => 
   });
 
   it('fixture: the inactive row really is inactive in the database', async () => {
-    const r = await rows<{ name: string; active: boolean }>(
+    const r = await rows(
       h,
       'select name, active from stores where "userId" = $1 and "deletedAt" is null order by name',
       [owner.userId],
