@@ -87,6 +87,11 @@ export class TrpcController {
       const result = await procedure(body);
       return result;
     } catch (error: unknown) {
+      // The bad-path and not-found responses above already carry their status.
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
       // Handle tRPC errors
       const code = errorField(error, 'code');
       const message = errorField(error, 'message');
