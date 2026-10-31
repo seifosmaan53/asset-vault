@@ -544,8 +544,8 @@ const InvoicePreview = () => {
                           <TableCell align="right" sx={{ py: 1.5, fontSize: '0.875rem', fontWeight: 500 }}>
                             {formatCurrency(item.unitPrice, invoice.currency)}
                           </TableCell>
-                          <TableCell align="right" sx={{ py: 1.5, fontSize: '0.875rem' }}>{item.taxRate}%</TableCell>
-                          <TableCell align="right" sx={{ py: 1.5, fontSize: '0.875rem' }}>{item.discountRate}%</TableCell>
+                          <TableCell align="right" sx={{ py: 1.5, fontSize: '0.875rem' }}>{Number(item.taxRate)}%</TableCell>
+                          <TableCell align="right" sx={{ py: 1.5, fontSize: '0.875rem' }}>{Number(item.discountRate)}%</TableCell>
                           <TableCell align="right" sx={{ py: 1.5, fontSize: '0.875rem', fontWeight: 700, color: '#1976d2' }}>
                             {formatCurrency(item.lineTotal, invoice.currency)}
                           </TableCell>

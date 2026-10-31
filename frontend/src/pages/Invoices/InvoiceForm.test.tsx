@@ -391,6 +391,69 @@ describe('InvoiceForm', () => {
       expect(screen.queryByText(/must have at most 2 decimal places/)).not.toBeInTheDocument();
     });
 
+    it('submits a loaded invoice with the totals the API computes (rates with four decimals)', async () => {
+      const clientId = 'c0a80101-0000-4000-8000-000000000001';
+      vi.mocked(useClients).mockReturnValue({ data: [{ id: clientId, name: 'Client A' }], isLoading: false } as any);
+      const update = vi.fn().mockResolvedValue({});
+      vi.mocked(useUpdateInvoice).mockReturnValue({ mutateAsync: update } as any);
+      vi.mocked(useInvoice).mockReturnValue({
+        data: {
+          id: 'invoice-123',
+          clientId,
+          type: 'invoice',
+          status: 'draft',
+          issueDate: '2026-10-30T00:00:00.000Z',
+          currency: 'USD',
+          items: [
+            { id: 'l1', description: 'Loaded line', quantity: 2, unitPrice: '12.5000', taxRate: '8.8750', discountRate: '0.0000' },
+          ],
+        },
+        isLoading: false,
+      } as any);
+
+      render(
+        <EditRouteWrapper>
+          <InvoiceForm />
+        </EditRouteWrapper>,
+      );
+
+      // 2 x 12.50 = 25.00; 8.875% = 2.21875 -> 2.22; total 27.22
+      await waitFor(() => expect(screen.getAllByText('$27.22')).toHaveLength(2));
+      await userEvent.click(screen.getByRole('button', { name: /update invoice/i }));
+
+      await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+      const sent = update.mock.calls[0][0].data;
+      expect(sent.items).toHaveLength(1);
+      expect(sent.items[0]).toMatchObject({ description: 'Loaded line', quantity: 2, lineTotal: 27.22 });
+      expect(Number(sent.items[0].unitPrice)).toBe(12.5);
+      expect(Number(sent.items[0].taxRate)).toBe(8.875); // not rounded to 8.88
+    });
+
+    it('keeps a unit price above 10,000,000 as entered (no silent cap)', async () => {
+      render(
+        <TestWrapper>
+          <InvoiceForm />
+        </TestWrapper>,
+      );
+      await userEvent.clear(screen.getByLabelText(/unit price/i));
+      await userEvent.type(screen.getByLabelText(/unit price/i), '25000000');
+      await waitFor(() => expect(screen.getAllByText('$25,000,000.00').length).toBeGreaterThan(0));
+      expect(screen.queryByText('$10,000,000.00')).not.toBeInTheDocument();
+    });
+
+    it('a line with entered data but no description blocks submit with a clear message', async () => {
+      render(
+        <TestWrapper>
+          <InvoiceForm />
+        </TestWrapper>,
+      );
+      await userEvent.clear(screen.getByLabelText(/unit price/i));
+      await userEvent.type(screen.getByLabelText(/unit price/i), '5');
+
+      await waitFor(() => expect(screen.getByText('Line 1: description is required')).toBeInTheDocument());
+      expect(screen.getByRole('button', { name: /create invoice/i })).toBeDisabled();
+    });
+
     it('should show store stock warnings when quantity exceeds store stock', async () => {
       // Mock store stock hook to return low stock
       vi.mock('../../hooks/useStoreStock', () => ({

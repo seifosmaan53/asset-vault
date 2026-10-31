@@ -7,6 +7,7 @@ import {
   ValidateNested,
   IsDateString,
   MaxLength,
+  Matches,
   Min,
   Max,
   IsBoolean,
@@ -31,6 +32,8 @@ export class InvoiceItemDto {
     maxLength: 1000,
   })
   @IsString()
+  // Every submitted line needs a description; the web form requires the same.
+  @Matches(/\S/, { message: 'Description is required' })
   @MaxLength(1000, { message: 'Description must not exceed 1000 characters' })
   description: string;
 

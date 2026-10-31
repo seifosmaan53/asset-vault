@@ -17,6 +17,10 @@ import { Organization } from '../organizations/entities/organization.entity';
 import { UserOrganization } from '../organizations/entities/user-organization.entity';
 import { Store } from '../inventory/entities/store.entity';
 import { OrganizationsService } from '../organizations/organizations.service';
+import {
+  computeInvoiceTotalsCents,
+  invoiceTotalsToMoney,
+} from '../invoices/utils/invoice-totals.util';
 
 @Injectable()
 export class SampleDataService {
@@ -773,8 +777,19 @@ export class SampleDataService {
       const dueDate = new Date(issueDate.getTime() + 30 * 24 * 60 * 60 * 1000);
 
       const numItems = Math.floor(Math.random() * 5) + 1;
-      let subtotal = 0;
-      let taxTotal = 0;
+
+      // Lines and totals first (shared invoice-money rules), so nothing is saved if they fail
+      const lines = Array.from({ length: numItems }, (_, j) => {
+        const item = inventoryItems[(i * numItems + j) % inventoryItems.length];
+        return {
+          item,
+          quantity: Math.floor(Math.random() * 10) + 1,
+          unitPrice: Math.round(Number(item.defaultUnitPrice) * 100) / 100,
+          taxRate: Number(item.defaultTaxRate) || 0,
+          discountRate: 0,
+        };
+      });
+      const totals = invoiceTotalsToMoney(computeInvoiceTotalsCents(lines));
 
       const invoice = this.invoiceRepository.create({
         userId,
@@ -794,46 +809,28 @@ export class SampleDataService {
               )
             : undefined,
         currency: 'USD',
-        subtotal: 0, // Will calculate
-        taxTotal: 0, // Will calculate
-        discountTotal: 0,
-        total: 0, // Will calculate
+        subtotal: totals.invoice.subtotal,
+        taxTotal: totals.invoice.tax,
+        discountTotal: totals.invoice.discount,
+        total: totals.invoice.total,
       });
 
       const savedInvoice = await this.invoiceRepository.save(invoice);
 
-      // Create invoice items
-      for (let j = 0; j < numItems; j++) {
-        const item = inventoryItems[(i * numItems + j) % inventoryItems.length];
-        const quantity = Math.floor(Math.random() * 10) + 1;
-        const unitPrice = Number(item.defaultUnitPrice);
-        const taxRate = Number(item.defaultTaxRate);
-        const lineSubtotal = quantity * unitPrice;
-        const lineTax = lineSubtotal * (taxRate / 100);
-        const lineTotal = lineSubtotal + lineTax;
-
-        subtotal += lineSubtotal;
-        taxTotal += lineTax;
-
+      for (const [j, line] of lines.entries()) {
         await this.invoiceItemRepository.save(
           this.invoiceItemRepository.create({
             invoiceId: savedInvoice.id,
-            inventoryItemId: item.id,
-            description: item.name,
-            quantity: quantity,
-            unitPrice: unitPrice,
-            taxRate: taxRate,
+            inventoryItemId: line.item.id,
+            description: line.item.name,
+            quantity: line.quantity,
+            unitPrice: line.unitPrice,
+            taxRate: line.taxRate,
             discountRate: 0,
-            lineTotal: Math.round(lineTotal * 100) / 100, // Calculate and round line total
+            lineTotal: totals.lines[j].lineTotal,
           }),
         );
       }
-
-      // Update invoice totals
-      savedInvoice.subtotal = Math.round(subtotal * 100) / 100;
-      savedInvoice.taxTotal = Math.round(taxTotal * 100) / 100;
-      savedInvoice.total = Math.round((subtotal + taxTotal) * 100) / 100;
-      await this.invoiceRepository.save(savedInvoice);
 
       invoices.push(savedInvoice);
     }

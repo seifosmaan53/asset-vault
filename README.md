@@ -51,6 +51,13 @@ Each item below maps to code in `backend/src/` and `frontend/src/` — no unveri
 - **Invoice templates** — saved, reusable invoice layouts
 - **Read cache** — a small IndexedDB layer in the frontend (`frontend/src/utils/indexedDB.ts`) caches reads. The app does not work offline: writes always need the API.
 - **Dark/light mode, keyboard shortcuts, draggable sidebar** — frontend UX conveniences in `frontend/src/components`
+- **One invoice-money implementation** — validation and totals are a single module, `backend/src/common/money/invoice-money.ts`, used by both the API and the invoice form.
+  - Exact integer-cent arithmetic, rounding half away from zero.
+  - Rates up to four decimals, stored as `numeric(7,4)`.
+  - Every input and computed amount is limited to what the `numeric(12,4)` columns store (99,999,999.99).
+  - Two decimals for every currency, an existing limitation.
+
+  See [docs/INVOICE-MONEY.md](docs/INVOICE-MONEY.md).
 
 ---
 
@@ -155,7 +162,8 @@ Tests come in three kinds, and the difference matters:
 | Unit tests | `npm test` | **Mocked** repositories (no PostgreSQL) | Service and utility logic |
 | Access-control tests | `npm run test:integration` | **Real PostgreSQL**, schema built from the repo's own migrations | Authentication, per-user ownership, users, storage keys, organization membership. The real application is booted. **Clerk token verification is mocked here**: `verifyToken` is replaced by an HMAC check and the Clerk user lookup by an in-memory directory, so this suite proves the application's authorization rules, not Clerk's cryptography. The ESM-only tRPC module and the headless-Chrome PDF service are also stubbed (`backend/test/support/access-control-harness.ts`) |
 | Clerk SDK configuration test | `npm test` (`src/auth/clerk-auth.guard.spec.ts`) | none | The guard against the **real** `@clerk/backend` `verifyToken`, using an RSA key pair generated in the test (offline via `CLERK_JWT_KEY`) and an intercepted JWKS request. Checks that valid tokens are accepted and that wrong-key, algorithm-confusion, `alg: none`, expired, not-yet-valid, tampered and subject-less tokens are rejected before any Clerk user lookup. No Clerk account, network or paid call is involved |
-| Frontend tests | `npm test` (from `frontend/`) | n/a | Component and utility tests (Vitest) |
+| Invoice-money tests | `npm run test:integration` (`test/invoice-money.db.spec.ts`) | **Real PostgreSQL** | Invoices created and edited through the API: stored totals and rates, limits rejected with nothing written, migration `1761000000000` down and up |
+| Frontend tests | `npm test` (from `frontend/`) | n/a | Component and utility tests (Vitest), including the invoice form's totals, validation and submitted payload |
 
 ```bash
 # Backend unit tests (mocked database)
@@ -202,7 +210,8 @@ cd frontend && npm test
 - `JwtAuthGuard` and `passport-jwt` are unused leftovers from the pre-Clerk auth system.
 - The organization-context decorators (`@OrganizationId()`) are deprecated and always return `null`; call sites remain in two controllers.
 - The `users` page and API client in `frontend/src` are not routed or linked from the UI.
-- The unit suite uses mocked repositories; the integration tests cover access control, not business logic such as totals, taxes or stock arithmetic against a real database.
+- The unit suite uses mocked repositories. Against a real database, the integration tests cover access control and invoice totals, rates and limits (`test/invoice-money.db.spec.ts`), but not stock arithmetic.
+- Every currency is handled with two decimal places (JPY and KWD included). This is an existing limitation, not a deliberate currency policy; see [docs/INVOICE-MONEY.md](docs/INVOICE-MONEY.md).
 - CI builds the Docker images and smoke-tests the frontend image, but the full Compose stack (API with a database and Clerk) is not run.
 
 **Deployment and recovery.** These fixes are merged into the repository; the application was not deployed as part of this work and no deployment of it is known. If you deploy it and a release fails, do **not** treat redeploying the code from before this change as a rollback: that code accepted unsigned tokens and exposed other accounts' data, so it restores the vulnerabilities. Keep access restricted instead:
@@ -210,7 +219,7 @@ cd frontend && npm test
 2. Fix forward. The usual causes are configuration: `CLERK_SECRET_KEY` unset (the API refuses to start, which is the intended fail-closed behavior), a wrong key, or a Clerk outage. Set `CLERK_JWT_KEY` to verify tokens without reaching Clerk's key endpoint.
 3. If service must be restored before a fix is ready, restore a build that contains the token-verification fix, or serve a maintenance response. Never serve a build older than this change.
 4. After any incident, rotate `CLERK_SECRET_KEY` if it may have been exposed, and review access logs for the exposure window.
-5. Schema migrations are forward-only; take a database backup before applying them.
+5. Take a database backup before applying migrations. Migration `1761000000000` (invoice line rates to `numeric(7,4)`) must run before an API with the four-decimal rate rules serves requests; its `down` rounds rates back to two decimals.
 
 ---
 
