@@ -1,7 +1,7 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 // Utility to clear React Query cache and localStorage
 
-import { QueryClient } from '@tanstack/react-query';
+import type { QueryClient } from '@tanstack/react-query';
 import { logger } from './logger';
 
 /**

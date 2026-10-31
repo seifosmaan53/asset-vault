@@ -54,16 +54,12 @@ export class StoreItemSettingsController {
     @Body() createDto: CreateStoreItemSettingsDto,
     @Request() req,
   ) {
-    try {
-      // Organizations removed - data is user-scoped
-      const result = this.storeItemSettingsService.createOrUpdate(
-        req.user.userId,
-        createDto,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    // Organizations removed - data is user-scoped
+    const result = this.storeItemSettingsService.createOrUpdate(
+      req.user.userId,
+      createDto,
+    );
+    return result;
   }
 
   @Get('store/:storeId')
@@ -108,17 +104,13 @@ export class StoreItemSettingsController {
     @Body() updateDto: UpdateStoreItemSettingsDto,
     @Request() req,
   ) {
-    try {
-      // Organizations removed - data is user-scoped
-      const result = this.storeItemSettingsService.update(
-        id,
-        req.user.userId,
-        updateDto,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    // Organizations removed - data is user-scoped
+    const result = this.storeItemSettingsService.update(
+      id,
+      req.user.userId,
+      updateDto,
+    );
+    return result;
   }
 
   @Post(':id/stock')
@@ -137,15 +129,11 @@ export class StoreItemSettingsController {
     @Body() updateStockDto: UpdateStockDto,
     @Request() req,
   ) {
-    try {
-      // Organizations removed - data is user-scoped
-      const result = this.storeItemSettingsService.update(id, req.user.userId, {
-        currentStock: updateStockDto.quantity,
-      });
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    // Organizations removed - data is user-scoped
+    const result = this.storeItemSettingsService.update(id, req.user.userId, {
+      currentStock: updateStockDto.quantity,
+    });
+    return result;
   }
 
   @Post('store/:storeId/item/:itemId/stock')
@@ -164,18 +152,14 @@ export class StoreItemSettingsController {
     @Body() updateStockDto: UpdateStockDto,
     @Request() req,
   ) {
-    try {
-      // Organizations removed - data is user-scoped
-      const result = this.storeItemSettingsService.updateStock(
-        storeId,
-        itemId,
-        updateStockDto.quantity,
-        req.user.userId,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    // Organizations removed - data is user-scoped
+    const result = this.storeItemSettingsService.updateStock(
+      storeId,
+      itemId,
+      updateStockDto.quantity,
+      req.user.userId,
+    );
+    return result;
   }
 
   @Get('store/:storeId/report')

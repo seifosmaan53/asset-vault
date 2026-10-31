@@ -362,6 +362,113 @@ describe('access control (real app + real PostgreSQL)', () => {
       );
       expect(rows.length).toBe(0);
     });
+
+    // The test above sends a store too, and the store check alone rejects it. Found by the
+    // full-stack CI job: with only a client id, POST /invoices accepted another user's client.
+    const oneLine = [
+      {
+        description: 'X',
+        quantity: 1,
+        unitPrice: 1,
+        taxRate: 0,
+        discountRate: 0,
+      },
+    ];
+    const invoiceFor = (clientId: string) => ({
+      clientId,
+      type: 'invoice',
+      issueDate: '2026-10-30',
+      currency: 'USD',
+      items: oneLine,
+    });
+
+    it("another user cannot attach Alice's client to their invoice (client id alone)", async () => {
+      // Positive control: the same body is accepted for the client's owner.
+      const own = await h
+        .http()
+        .post('/invoices')
+        .set(auth(alice.token))
+        .send(invoiceFor(aliceClientId));
+      expect(own.status).toBe(201);
+
+      const r = await h
+        .http()
+        .post('/invoices')
+        .set(auth(bob.token))
+        .send(invoiceFor(aliceClientId));
+      expect(r.status).toBeGreaterThanOrEqual(400);
+      expect(r.status).toBeLessThan(500);
+      const leaked = await rows(
+        h,
+        `select 1 from invoices where "userId" = $1 and "clientId" = $2`,
+        [bob.userId, aliceClientId],
+      );
+      expect(leaked).toHaveLength(0);
+    });
+
+    // Found in the final review: a draft skips the stock deduction (the only ownership check on
+    // line items at create), and GET /invoices/:id joins the item, returning the owner's row.
+    it("another user cannot put Alice's inventory item on their draft invoice", async () => {
+      const withItem = (clientId: string) => ({
+        ...invoiceFor(clientId),
+        items: [{ ...oneLine[0], inventoryItemId: aliceItemId }],
+      });
+      // Positive control: Alice can reference her own item on a draft.
+      const own = await h
+        .http()
+        .post('/invoices')
+        .set(auth(alice.token))
+        .send(withItem(aliceClientId));
+      expect(own.status).toBe(201);
+
+      const bobClient = await h
+        .http()
+        .post('/clients')
+        .set(auth(bob.token))
+        .send({ name: 'Bob Own Client', email: 'bob-own@access-test.invalid' });
+      expect(bobClient.status).toBe(201);
+      const r = await h
+        .http()
+        .post('/invoices')
+        .set(auth(bob.token))
+        .send(withItem(bobClient.body.id ?? bobClient.body.data?.id));
+      expect(r.status).toBe(400);
+      expect(JSON.stringify(r.body)).not.toMatch(/Alice Item/);
+      const leaked = await rows(
+        h,
+        `select 1 from invoice_items ii join invoices i on i.id = ii."invoiceId"
+          where i."userId" = $1 and ii."inventoryItemId" = $2`,
+        [bob.userId, aliceItemId],
+      );
+      expect(leaked).toHaveLength(0);
+    });
+
+    it("editing another user's invoice is a 404, not a server error, and changes nothing", async () => {
+      const created = await h
+        .http()
+        .post('/invoices')
+        .set(auth(alice.token))
+        .send(invoiceFor(aliceClientId));
+      expect(created.status).toBe(201);
+      const body = created.body as Body;
+      const id = body.id ?? (body.data as { id?: string } | undefined)?.id;
+
+      const r = await h
+        .http()
+        .patch(`/invoices/${id}`)
+        .set(auth(bob.token))
+        .send({
+          items: [{ ...oneLine[0], description: 'Hijack', unitPrice: 999 }],
+        });
+      expect(r.status).toBe(404);
+
+      const after = await rows<{ total: string }>(
+        h,
+        `select total from invoices where id = $1`,
+        [id],
+      );
+      expect(Number(after[0].total)).toBe(1);
+    });
   });
 
   describe('users routes (per-user model: an account only ever sees and edits itself)', () => {

@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import type { AxiosError } from 'axios';
 import { subscriptionsApi, type Subscription, type Usage } from '../api/subscriptions';
 import { logger } from '../utils/logger';
 
@@ -79,7 +80,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           
           // Don't log 400 errors as errors - they're expected when user has no subscription
           // or subscription doesn't have a Stripe ID yet
-          const axiosError = error as any;
+          const axiosError = error as AxiosError | undefined;
           if (axiosError?.response?.status === 400) {
             // 400 means no subscription or no Stripe ID - this is expected for new users
             // Don't log as error, just silently fail

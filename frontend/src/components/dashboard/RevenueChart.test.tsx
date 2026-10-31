@@ -45,7 +45,7 @@ describe('RevenueChart', () => {
         },
       ],
       isLoading: false,
-    } as any);
+    } as unknown as ReturnType<typeof useInvoices>);
 
     render(
       <TestWrapper>
@@ -72,7 +72,7 @@ describe('RevenueChart', () => {
         },
       ],
       isLoading: false,
-    } as any);
+    } as unknown as ReturnType<typeof useInvoices>);
 
     render(
       <TestWrapper>
@@ -87,7 +87,7 @@ describe('RevenueChart', () => {
   it('shows an empty state rather than an empty chart when there is no revenue', () => {
     /* This expected the Line toggle with no data. Rendering an axis-only chart for
        nothing is worse than saying so plainly, and the component now says so. */
-    vi.mocked(useInvoices).mockReturnValue({ data: [], isLoading: false } as any);
+    vi.mocked(useInvoices).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useInvoices>);
 
     render(
       <TestWrapper>

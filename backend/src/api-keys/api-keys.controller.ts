@@ -34,12 +34,8 @@ export class ApiKeysController {
 
   @Post()
   create(@Body() createDto: CreateApiKeyDto, @Request() req) {
-    try {
-      const result = this.apiKeysService.create(req.user.userId, createDto);
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    const result = this.apiKeysService.create(req.user.userId, createDto);
+    return result;
   }
 
   @Patch(':id')
@@ -48,12 +44,8 @@ export class ApiKeysController {
     @Body() updateDto: UpdateApiKeyDto,
     @Request() req,
   ) {
-    try {
-      const result = this.apiKeysService.update(id, req.user.userId, updateDto);
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    const result = this.apiKeysService.update(id, req.user.userId, updateDto);
+    return result;
   }
 
   @Delete(':id')

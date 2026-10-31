@@ -41,8 +41,8 @@ import LightModeIcon from '@mui/icons-material/LightMode';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import { logger } from '../../utils/logger';
 import { useToast } from '../../contexts/ToastContext';
-import type { DragEndEvent } from '@dnd-kit/core';
 import {
+  type DragEndEvent,
   DndContext,
   closestCenter,
   KeyboardSensor,
@@ -109,6 +109,25 @@ const VaultLogo = ({ size = 32 }: { size?: number }) => (
     <line x1="12.8" y1="23.2" x2="9.5"  y2="26.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeOpacity="0.65"/>
   </svg>
 );
+
+// Apply the drag-and-drop order saved in localStorage; items not in it go last.
+const applySavedOrder = (items: MenuItem[]): MenuItem[] => {
+  try {
+    const savedOrder = localStorage.getItem(MENU_ORDER_STORAGE_KEY);
+    if (savedOrder) {
+      const orderArray: string[] = JSON.parse(savedOrder);
+      const itemMap = new Map(items.map(item => [item.text, item]));
+      const ordered = orderArray
+        .map(text => itemMap.get(text))
+        .filter((item): item is MenuItem => item !== undefined);
+      const newItems = items.filter(item => !orderArray.includes(item.text));
+      return [...ordered, ...newItems];
+    }
+  } catch (error) {
+    logger.error('Error loading menu order:', error);
+  }
+  return items;
+};
 
 // ─── Sortable Nav Item ────────────────────────────────────────────────────────
 interface SortableMenuItemProps {
@@ -284,28 +303,17 @@ const AppLayout = () => {
     [isAdmin, isOwner, user?.role]
   );
 
-  const [orderedMenuItems, setOrderedMenuItems] = useState<MenuItem[]>([]);
-
-  useEffect(() => {
-    const applySavedOrder = (items: MenuItem[]) => {
-      try {
-        const savedOrder = localStorage.getItem(MENU_ORDER_STORAGE_KEY);
-        if (savedOrder) {
-          const orderArray: string[] = JSON.parse(savedOrder);
-          const itemMap = new Map(items.map(item => [item.text, item]));
-          const ordered = orderArray
-            .map(text => itemMap.get(text))
-            .filter((item): item is MenuItem => item !== undefined);
-          const newItems = items.filter(item => !orderArray.includes(item.text));
-          return [...ordered, ...newItems];
-        }
-      } catch (error) {
-        logger.error('Error loading menu order:', error);
-      }
-      return items;
-    };
+  /* Re-apply the saved order whenever the visible menu changes (state adjusted during
+     render, so the sidebar never renders an empty list first). Drag-and-drop then
+     reorders orderedMenuItems directly. */
+  const [orderSource, setOrderSource] = useState(filteredMenuItems);
+  const [orderedMenuItems, setOrderedMenuItems] = useState<MenuItem[]>(() =>
+    applySavedOrder(filteredMenuItems),
+  );
+  if (orderSource !== filteredMenuItems) {
+    setOrderSource(filteredMenuItems);
     setOrderedMenuItems(applySavedOrder(filteredMenuItems));
-  }, [filteredMenuItems]);
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -349,13 +357,14 @@ const AppLayout = () => {
   };
 
   // User avatar initials
+  const userEmail = user?.email;
   const userInitials = useMemo(() => {
-    if (!user?.email) return 'AV';
-    const parts = user.email.split('@')[0].split(/[._-]/);
+    if (!userEmail) return 'AV';
+    const parts = userEmail.split('@')[0].split(/[._-]/);
     return parts.length >= 2
       ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
-      : user.email.slice(0, 2).toUpperCase();
-  }, [user?.email]);
+      : userEmail.slice(0, 2).toUpperCase();
+  }, [userEmail]);
 
   const sidebarBg = isDark
     ? 'linear-gradient(180deg, rgba(10,14,26,0.98) 0%, rgba(8,11,20,0.98) 100%)'

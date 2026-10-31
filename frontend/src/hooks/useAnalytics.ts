@@ -1,6 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { analyticsApi } from '../api/analytics';
 import { useAuthStore } from '../store/authStore';
+
+const isCanceledOrDeduplicated = (error: unknown): boolean => {
+  const e = error as { code?: string; name?: string; message?: string } | null | undefined;
+  return e?.code === 'ERR_CANCELED' || e?.name === 'CanceledError' || !!e?.message?.includes('deduplicated');
+};
 // Organizations removed - data is now user-scoped
 
 export const useInvoicesByStatus = () => {
@@ -125,9 +130,9 @@ export const useSalesByCategory = (
     staleTime: 0, // Consider data stale immediately so it refetches on invalidation
     refetchOnWindowFocus: true,
     refetchOnMount: true,
-    retry: (failureCount, error: any) => {
+    retry: (failureCount, error) => {
       // Don't retry on canceled/deduplicated requests
-      if (error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError' || error?.message?.includes('deduplicated')) {
+      if (isCanceledOrDeduplicated(error)) {
         return false;
       }
       return failureCount < 2;
@@ -152,9 +157,9 @@ export const useRevenueByPaymentMethod = (
     staleTime: 0, // Consider data stale immediately so it refetches on invalidation
     refetchOnWindowFocus: true,
     refetchOnMount: true,
-    retry: (failureCount, error: any) => {
+    retry: (failureCount, error) => {
       // Don't retry on canceled/deduplicated requests
-      if (error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError' || error?.message?.includes('deduplicated')) {
+      if (isCanceledOrDeduplicated(error)) {
         return false;
       }
       return failureCount < 2;

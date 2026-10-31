@@ -26,8 +26,8 @@ describe('formatters', () => {
     });
 
     it('should handle string numbers', () => {
-      expect(formatCurrency('1000' as any)).toBe('$1,000.00');
-      expect(formatCurrency('1234.56' as any)).toBe('$1,234.56');
+      expect(formatCurrency('1000' as unknown as number)).toBe('$1,000.00');
+      expect(formatCurrency('1234.56' as unknown as number)).toBe('$1,234.56');
     });
   });
 });

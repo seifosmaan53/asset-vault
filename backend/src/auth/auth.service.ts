@@ -15,8 +15,7 @@ import { Webhook } from 'svix';
 import { createClerkClient } from '@clerk/backend';
 import { UsersService } from '../users/users.service';
 import { OrganizationsService } from '../organizations/organizations.service';
-import { OrganizationRole } from '../organizations/entities/organization-role.enum';
-import { User, UserRole } from '../users/entities/user.entity';
+import { User } from '../users/entities/user.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
 @Injectable()

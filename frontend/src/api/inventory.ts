@@ -1,6 +1,7 @@
 import { apiClient } from './apiClient';
 import { logger } from '../utils/logger';
 import type { InventoryItem, StockMovement } from '../types/inventory';
+import type { Invoice } from '../types/invoice';
 
 export interface CreateInventoryItemDto {
   sku: string;
@@ -39,7 +40,7 @@ export interface CreateInventoryItemDto {
   averageWeeklyUsage?: number;
 }
 
-export interface UpdateInventoryItemDto extends Partial<CreateInventoryItemDto> {}
+export type UpdateInventoryItemDto = Partial<CreateInventoryItemDto>;
 
 export interface CreateStockMovementDto {
   type: 'purchase' | 'sale' | 'adjustment';
@@ -106,8 +107,8 @@ export const inventoryApi = {
     return response.data;
   },
 
-  getLinkedInvoices: async (id: string): Promise<any[]> => {
-    const response = await apiClient.get<any[]>(`/inventory/items/${id}/invoices`);
+  getLinkedInvoices: async (id: string): Promise<Invoice[]> => {
+    const response = await apiClient.get<Invoice[]>(`/inventory/items/${id}/invoices`);
     return response.data;
   },
 
@@ -126,12 +127,12 @@ export const inventoryApi = {
     }
   },
 
-  import: async (file: File): Promise<{ created: number; failed: Array<{ row: number; data: any; errors: string[] }> }> => {
+  import: async (file: File): Promise<{ created: number; failed: Array<{ row: number; data: Record<string, unknown>; errors: string[] }> }> => {
     const formData = new FormData();
     formData.append('file', file);
     
     try {
-      const response = await apiClient.post<{ created: number; failed: Array<{ row: number; data: any; errors: string[] }> }>('/inventory/items/import', formData, {
+      const response = await apiClient.post<{ created: number; failed: Array<{ row: number; data: Record<string, unknown>; errors: string[] }> }>('/inventory/items/import', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

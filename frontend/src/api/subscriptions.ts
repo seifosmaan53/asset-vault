@@ -10,7 +10,7 @@ export interface Subscription {
     name: string;
     price: number;
     billingCycle: 'monthly' | 'yearly';
-    features: Record<string, any>;
+    features: Record<string, unknown>;
   };
   currentPeriodStart: string | null;
   currentPeriodEnd: string | null;

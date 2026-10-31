@@ -15,19 +15,17 @@ export default function SubscriptionSuccess() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { loadSubscription, checkAccess } = useSubscriptionStore();
+  const sessionId = searchParams.get('session_id');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const retryCountRef = useRef(0);
+  // Mirrors retryCountRef for rendering: a ref change alone never re-renders the page.
+  const [attempt, setAttempt] = useState(0);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const sessionId = searchParams.get('session_id');
-    
-    if (!sessionId) {
-      setError('Invalid session. Please try again.');
-      setLoading(false);
-      return;
-    }
+    // A missing session id is rendered directly below; there is nothing to poll.
+    if (!sessionId) return;
 
     const verifyAndPoll = async () => {
       try {
@@ -52,6 +50,7 @@ export default function SubscriptionSuccess() {
 
         // If not verified yet or no access, retry
         retryCountRef.current += 1;
+        setAttempt(retryCountRef.current);
         
         if (retryCountRef.current >= MAX_RETRIES) {
           // Max retries reached, try one more time with just loadSubscription
@@ -78,6 +77,7 @@ export default function SubscriptionSuccess() {
         
         // On error, try to load subscription anyway
         retryCountRef.current += 1;
+        setAttempt(retryCountRef.current);
         if (retryCountRef.current >= MAX_RETRIES) {
           try {
             await loadSubscription();
@@ -91,7 +91,7 @@ export default function SubscriptionSuccess() {
               setError('Failed to verify subscription. Please check your billing page or try refreshing.');
               setLoading(false);
             }
-          } catch (loadErr) {
+          } catch {
             setError('Failed to verify subscription. Please check your billing page.');
             setLoading(false);
           }
@@ -114,29 +114,31 @@ export default function SubscriptionSuccess() {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [searchParams, loadSubscription, navigate, checkAccess]);
+  }, [sessionId, loadSubscription, navigate, checkAccess]);
 
-  if (loading) {
+  const displayError = sessionId ? error : 'Invalid session. Please try again.';
+
+  if (sessionId && loading) {
     return (
       <Container maxWidth="sm" sx={{ py: 4, textAlign: 'center' }}>
         <CircularProgress />
         <Typography variant="body1" sx={{ mt: 2 }}>
           Verifying your subscription...
         </Typography>
-        {retryCountRef.current > 0 && (
+        {attempt > 0 && (
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            Attempt {retryCountRef.current} of {MAX_RETRIES}...
+            Attempt {attempt} of {MAX_RETRIES}...
           </Typography>
         )}
       </Container>
     );
   }
 
-  if (error) {
+  if (displayError) {
     return (
       <Container maxWidth="sm" sx={{ py: 4 }}>
         <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
+          {displayError}
         </Alert>
         <Button variant="contained" onClick={() => navigate('/subscription/billing')}>
           Go to Billing

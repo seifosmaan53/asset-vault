@@ -1,16 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Invoice } from '../invoices/entities/invoice.entity';
 import { InvoiceItem } from '../invoices/entities/invoice-item.entity';
 import { Client } from '../clients/entities/client.entity';
 import { InventoryItem } from '../inventory/entities/inventory-item.entity';
 import { Store } from '../inventory/entities/store.entity';
-import {
-  ReportFiltersDto,
-  ReportType,
-  PeriodType,
-} from './dto/report-filters.dto';
+import { ReportFiltersDto, PeriodType } from './dto/report-filters.dto';
 
 @Injectable()
 export class ReportsService {
@@ -64,7 +60,7 @@ export class ReportsService {
       .reduce((sum, inv) => sum + Number(inv.total), 0);
 
     // Calculate costs (from inventory items)
-    const costs = await this.calculateCosts(userId, invoices, dateFilter);
+    const costs = await this.calculateCosts(userId, invoices);
 
     // Calculate profit
     const profit = revenue - costs;
@@ -230,12 +226,8 @@ export class ReportsService {
 
     const items = await query.getMany();
 
-    // Get store settings separately if needed
-    const storeSettings: any[] = [];
-    if (storeId) {
-      // Note: StoreItemSettings would need to be injected separately
-      // For now, we'll use defaultUnitPrice and currentStock
-    }
+    // Valuation uses defaultUnitPrice and currentStock. The storeId filter is not
+    // applied yet: per-store settings would need StoreItemSettings injected here.
 
     const valuation = items.map((item) => {
       const unitPrice = Number(item.defaultUnitPrice || 0);
@@ -451,7 +443,6 @@ export class ReportsService {
   private async calculateCosts(
     userId: string,
     invoices: Invoice[],
-    dateFilter: { start: Date | null; end: Date | null },
   ): Promise<number> {
     // Get all invoice items for these invoices
     const invoiceIds = invoices.map((inv) => inv.id);
@@ -489,18 +480,20 @@ export class ReportsService {
         case PeriodType.DAILY:
           key = date.toISOString().split('T')[0];
           break;
-        case PeriodType.WEEKLY:
+        case PeriodType.WEEKLY: {
           const weekStart = new Date(date);
           weekStart.setDate(date.getDate() - date.getDay());
           key = weekStart.toISOString().split('T')[0];
           break;
+        }
         case PeriodType.MONTHLY:
           key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
           break;
-        case PeriodType.QUARTERLY:
+        case PeriodType.QUARTERLY: {
           const quarter = Math.floor(date.getMonth() / 3) + 1;
           key = `${date.getFullYear()}-Q${quarter}`;
           break;
+        }
         case PeriodType.YEARLY:
           key = String(date.getFullYear());
           break;

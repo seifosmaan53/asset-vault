@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { clientsApi } from '../api/clients';
-import type { CreateClientDto, UpdateClientDto } from '../api/clients';
+import { clientsApi, type CreateClientDto, type UpdateClientDto } from '../api/clients';
 import { useAuthStore } from '../store/authStore';
 import { logger } from '../utils/logger';
 

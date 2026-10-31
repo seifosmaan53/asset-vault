@@ -3,27 +3,18 @@ import { formatDate as formatDateUtil, formatDateTime as formatDateTimeUtil } fr
 
 /**
  * Hook to format dates using user's settings
- * Automatically applies user's date format, time format, and timezone preferences
+ * Applies the user's date and time format preferences. The timezone preference is
+ * returned for display but not applied to formatting yet.
  */
 export const useFormattedDate = () => {
   const { settings } = useSettings();
 
   const formatDate = (date: string | Date): string => {
-    return formatDateUtil(
-      date,
-      settings.dateFormat,
-      settings.timeFormat,
-      settings.timezone,
-    );
+    return formatDateUtil(date, settings.dateFormat);
   };
 
   const formatDateTime = (date: string | Date): string => {
-    return formatDateTimeUtil(
-      date,
-      settings.dateFormat,
-      settings.timeFormat,
-      settings.timezone,
-    );
+    return formatDateTimeUtil(date, settings.dateFormat, settings.timeFormat);
   };
 
   return {

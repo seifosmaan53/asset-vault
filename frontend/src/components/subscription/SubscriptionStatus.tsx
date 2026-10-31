@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Chip, Link, Tooltip } from '@mui/material';
 import { useSubscriptionStore } from '../../store/subscriptionStore';
+import type { AxiosError } from 'axios';
 
 export function SubscriptionStatus() {
   const navigate = useNavigate();
@@ -17,12 +18,10 @@ export function SubscriptionStatus() {
     });
   }, [loadSubscription]);
 
-  // Track if subscription was null after initial load
-  useEffect(() => {
-    if (hasLoadedOnce && !isLoading) {
-      setSubscriptionWasNull(!subscription);
-    }
-  }, [hasLoadedOnce, isLoading, subscription]);
+  // Track if subscription was null after initial load (kept while a reload is in flight)
+  if (hasLoadedOnce && !isLoading && subscriptionWasNull !== !subscription) {
+    setSubscriptionWasNull(!subscription);
+  }
 
   // Auto-refresh if status is pending (to catch webhook updates)
   // Use syncSubscription to actively fetch latest status from Stripe
@@ -71,7 +70,8 @@ export function SubscriptionStatus() {
 
       try {
         await syncSubscription();
-      } catch (error: any) {
+      } catch (caught) {
+        const error = caught as AxiosError | undefined;
         // Stop syncing immediately on 400 errors (bad request - no subscription or no Stripe ID)
         // This indicates a permanent issue, not a temporary one
         if (error?.response?.status === 400) {

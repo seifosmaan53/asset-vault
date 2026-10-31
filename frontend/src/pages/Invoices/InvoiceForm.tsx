@@ -2056,7 +2056,7 @@ const InvoiceForm = () => {
                   const maxVisiblePages = 5;
                   
                   let startPage = Math.max(1, currentPageNum - Math.floor(maxVisiblePages / 2));
-                  let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+                  const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
                   
                   // Adjust if we're near the end
                   if (endPage - startPage < maxVisiblePages - 1) {

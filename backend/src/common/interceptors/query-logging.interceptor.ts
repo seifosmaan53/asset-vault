@@ -28,12 +28,6 @@ export class QueryLoggingInterceptor implements NestInterceptor {
     const request = context.switchToHttp().getRequest();
     const startTime = Date.now();
 
-    // Enable query logging for this request if in development
-    const originalLogger = this.dataSource.options.logging;
-    if (process.env.NODE_ENV === 'development') {
-      // TypeORM will log queries automatically in development
-    }
-
     return next.handle().pipe(
       tap({
         next: () => {

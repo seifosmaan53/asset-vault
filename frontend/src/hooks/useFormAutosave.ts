@@ -53,7 +53,7 @@ export const useFormAutosave = <T extends object>(
     let formDataString: string;
     try {
       formDataString = JSON.stringify(formData);
-    } catch (error) {
+    } catch {
       // If stringification fails, skip this update
       return;
     }

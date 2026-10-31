@@ -1,5 +1,4 @@
-import type { TestingModule } from '@nestjs/testing';
-import { Test } from '@nestjs/testing';
+import { type TestingModule, Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
@@ -7,7 +6,6 @@ import { InvoiceStatusHistory } from './entities/invoice-status-history.entity';
 import { InventoryItem } from '../inventory/entities/inventory-item.entity';
 import { UsageService } from '../subscriptions/usage.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
-import type { Repository } from 'typeorm';
 import { InvoicesService } from './invoices.service';
 import { Invoice } from './entities/invoice.entity';
 import { InvoiceItem } from './entities/invoice-item.entity';
@@ -58,10 +56,6 @@ let lastInvoiceQb: ReturnType<typeof mockQueryBuilder0>;
 
 describe('InvoicesService', () => {
   let service: InvoicesService;
-  let invoicesRepository: Repository<Invoice>;
-  let invoiceItemsRepository: Repository<InvoiceItem>;
-  let inventoryService: InventoryService;
-  let storeService: StoreService;
 
   const mockInvoicesRepository = {
     // returned undefined, so the service's `invoice.subtotal = ...` blew up with
@@ -144,6 +138,9 @@ describe('InvoicesService', () => {
     getSettings: jest.fn(),
   };
 
+  /* create() checks the client belongs to the caller before anything else. */
+  const mockClientsRepository = { exists: jest.fn() };
+
   const mockQueryRunner = {
     connect: jest.fn(),
     startTransaction: jest.fn(),
@@ -220,7 +217,7 @@ describe('InvoicesService', () => {
          Default to "the row exists and is yours" — echoing back the id that was asked
          for — which is the precondition these tests are setting up, not the thing they
          are testing. A case that wants the opposite overrides getOne itself. */
-      createQueryBuilder: jest.fn((entity?: unknown, _alias?: unknown) => {
+      createQueryBuilder: jest.fn((entity?: unknown) => {
         const qb = mockQueryBuilder0();
         const seen: Record<string, unknown> = {};
         for (const m of ['where', 'andWhere']) {
@@ -231,16 +228,18 @@ describe('InvoicesService', () => {
             },
           );
         }
-        qb.getOne = jest.fn(async () => {
+        qb.getOne = jest.fn(() => {
           /* Two different jobs go through this one builder, and answering both the same
              way was wrong: update() LOADS THE INVOICE here, and echoing back a bare
              { id, userId } stripped its client and items — so the "sent" guard saw no
              client email and the store-stock path had no lines to check. Invoice reads
              delegate to the findOne stub the tests set up; only the client/store
              EXISTENCE probes get the synthesised row. */
-          if (entity === Invoice) return mockInvoicesRepository.findOne();
+          if (entity === Invoice) {
+            return Promise.resolve(mockInvoicesRepository.findOne());
+          }
           const id = seen.storeId ?? seen.clientId ?? seen.id;
-          return id ? { id, userId: seen.userId } : null;
+          return Promise.resolve(id ? { id, userId: seen.userId } : null);
         });
         return qb;
       }),
@@ -305,6 +304,24 @@ describe('InvoicesService', () => {
           useValue: {
             // hand back the same runner the tests already configure
             createQueryRunner: jest.fn(() => mockQueryRunner),
+            // create() checks line inventory ownership through the InventoryItem repository;
+            // these tests' items belong to the caller, so every requested id is returned.
+            getRepository: jest.fn((entity: unknown) => {
+              if (entity !== InventoryItem) return mockClientsRepository;
+              let ids: string[] = [];
+              const qb = {
+                select: jest.fn(() => qb),
+                where: jest.fn((_sql: string, params: { ids: string[] }) => {
+                  ids = params.ids;
+                  return qb;
+                }),
+                andWhere: jest.fn(() => qb),
+                getMany: jest.fn(() =>
+                  Promise.resolve(ids.map((id) => ({ id }))),
+                ),
+              };
+              return { createQueryBuilder: jest.fn(() => qb) };
+            }),
             transaction: jest.fn(),
           },
         },
@@ -352,14 +369,6 @@ describe('InvoicesService', () => {
     }).compile();
 
     service = module.get<InvoicesService>(InvoicesService);
-    invoicesRepository = module.get<Repository<Invoice>>(
-      getRepositoryToken(Invoice),
-    );
-    invoiceItemsRepository = module.get<Repository<InvoiceItem>>(
-      getRepositoryToken(InvoiceItem),
-    );
-    inventoryService = module.get<InventoryService>(InventoryService);
-    storeService = module.get<StoreService>(StoreService);
   });
 
   afterEach(() => {
@@ -580,6 +589,35 @@ describe('InvoicesService', () => {
         number: 'INV-2024-0001',
       });
       mockQueryRunner.query.mockResolvedValue(undefined);
+      mockClientsRepository.exists.mockResolvedValue(true);
+    });
+
+    it("rejects another user's client before starting a transaction", async () => {
+      mockClientsRepository.exists.mockResolvedValue(false);
+      mockQueryRunner.startTransaction.mockClear();
+
+      await expect(
+        service.create(userId, {
+          clientId: 'someone-elses-client',
+          type: 'invoice' as const,
+          issueDate: new Date().toISOString(),
+          currency: 'USD',
+          items: [
+            {
+              description: 'X',
+              quantity: 1,
+              unitPrice: 1,
+              taxRate: 0,
+              discountRate: 0,
+            },
+          ],
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(mockClientsRepository.exists).toHaveBeenCalledWith({
+        where: { id: 'someone-elses-client', userId },
+      });
+      expect(mockQueryRunner.startTransaction).not.toHaveBeenCalled();
+      expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
     });
 
     it('should create invoice with valid storeId', async () => {

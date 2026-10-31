@@ -46,7 +46,7 @@ export const useLogout = () => {
       // Then call backend logout (optional, but good for cleanup)
       try {
         await authApi.logout();
-      } catch (err) {
+      } catch {
         // Ignore backend logout errors - Clerk signOut is the important one
       }
     },
@@ -59,7 +59,7 @@ export const useLogout = () => {
       // Clear settings cache on logout
       try {
         clearSettingsCache();
-      } catch (err) {
+      } catch {
         // Ignore if settingsCache module fails to load
       }
     },

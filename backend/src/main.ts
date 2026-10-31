@@ -10,9 +10,34 @@ import * as express from 'express';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ConfigService } from '@nestjs/config';
+import { checkDatabaseSchema } from './database/schema-check';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
+
+  // Refuse to serve against a database that is unreachable or behind this build's
+  // migrations. The API never applies migrations itself (no `synchronize`, no
+  // `migrationsRun`); the operator runs them explicitly after a backup — see
+  // docs/operations/MIGRATIONS.md. Runs before the app connects or listens.
+  const schema = await checkDatabaseSchema();
+  if (!schema.ok) {
+    logger.error(
+      schema.reason === 'unreachable'
+        ? 'Startup aborted: database unreachable.'
+        : 'Startup aborted: database schema is not current.',
+    );
+    schema.message.split('\n').forEach((line) => logger.error(line));
+    process.exit(1);
+  }
+  if (schema.status.unknownApplied.length > 0) {
+    logger.warn(
+      `The database records migration(s) this build does not contain (is this build older than the schema?): ${schema.status.unknownApplied.join(', ')}`,
+    );
+  }
+  logger.log(
+    `Database schema is current (${schema.status.known} migrations applied).`,
+  );
+
   let app;
   try {
     app = await NestFactory.create(AppModule, {

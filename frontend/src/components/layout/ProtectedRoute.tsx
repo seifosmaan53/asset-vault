@@ -4,7 +4,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { useAuthStore } from '../../store/authStore';
 import { useSubscriptionStore } from '../../store/subscriptionStore';
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { Box, CircularProgress } from '@mui/material';
 
 interface ProtectedRouteProps {
@@ -20,15 +20,18 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { loadSubscription, checkAccess } = useSubscriptionStore();
   const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
 
-  // Set up global getToken function for API client
-  // Do this synchronously during render (not in effect) to avoid infinite loops
-  // Only set it once when Clerk is loaded
-  if (typeof window !== 'undefined' && getToken && isLoaded) {
-    const windowWithToken = window as Window & { __clerkGetToken?: () => Promise<string | null> };
-    if (!windowWithToken.__clerkGetToken) {
-      windowWithToken.__clerkGetToken = getToken;
+  // Set up the global getToken function for the API client, once, when Clerk is loaded.
+  // A layout effect runs before every passive effect of the same commit (including the
+  // syncUser effect below), so no request made from an effect can miss it; writing the
+  // global during render is not allowed.
+  useLayoutEffect(() => {
+    if (typeof window !== 'undefined' && getToken && isLoaded) {
+      const windowWithToken = window as Window & { __clerkGetToken?: () => Promise<string | null> };
+      if (!windowWithToken.__clerkGetToken) {
+        windowWithToken.__clerkGetToken = getToken;
+      }
     }
-  }
+  }, [getToken, isLoaded]);
 
   // Sync user data when signed in (always refresh to get latest role)
   useEffect(() => {

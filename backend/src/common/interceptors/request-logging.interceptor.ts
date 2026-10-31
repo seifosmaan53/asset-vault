@@ -41,7 +41,7 @@ export class RequestLoggingInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       tap({
-        next: (data) => {
+        next: () => {
           const duration = Date.now() - startTime;
           const statusCode = response.statusCode;
 

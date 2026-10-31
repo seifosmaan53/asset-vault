@@ -17,7 +17,7 @@ export interface CreateClientDto {
   avatarUrl?: string;
 }
 
-export interface UpdateClientDto extends Partial<CreateClientDto> {}
+export type UpdateClientDto = Partial<CreateClientDto>;
 
 // Helper function to validate and sanitize client data
 const sanitizeClient = (client: unknown): Client | null => {
@@ -218,12 +218,12 @@ export const clientsApi = {
     }
   },
 
-  import: async (file: File): Promise<{ created: number; failed: Array<{ row: number; data: any; errors: string[] }> }> => {
+  import: async (file: File): Promise<{ created: number; failed: Array<{ row: number; data: Record<string, unknown>; errors: string[] }> }> => {
     const formData = new FormData();
     formData.append('file', file);
     
     try {
-      const response = await apiClient.post<{ created: number; failed: Array<{ row: number; data: any; errors: string[] }> }>('/clients/import', formData, {
+      const response = await apiClient.post<{ created: number; failed: Array<{ row: number; data: Record<string, unknown>; errors: string[] }> }>('/clients/import', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

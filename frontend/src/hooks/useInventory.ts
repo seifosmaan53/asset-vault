@@ -1,10 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { InventoryItem } from '../types/inventory';
-import { inventoryApi } from '../api/inventory';
-import type {
-  CreateInventoryItemDto,
-  UpdateInventoryItemDto,
-  CreateStockMovementDto,
+import {
+  inventoryApi,
+  type CreateInventoryItemDto,
+  type UpdateInventoryItemDto,
+  type CreateStockMovementDto,
 } from '../api/inventory';
 import { useAuthStore } from '../store/authStore';
 // Organizations removed - data is now user-scoped

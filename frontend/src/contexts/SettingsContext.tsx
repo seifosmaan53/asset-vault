@@ -1,5 +1,4 @@
-import { createContext, useContext, useEffect, useMemo } from 'react';
-import type { ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { settingsApi, type UserSettings } from '../api/settings';
 import { setGlobalSettings } from '../utils/dates';

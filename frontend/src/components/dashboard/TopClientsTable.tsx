@@ -6,6 +6,7 @@ import { useInventory } from '../../hooks/useInventory';
 import { formatCurrency } from '../../utils/formatters';
 import PersonIcon from '@mui/icons-material/Person';
 import { useMemo } from 'react';
+import type { Invoice } from '../../types/invoice';
 
 const TopClientsTable = () => {
   const navigate = useNavigate();
@@ -29,13 +30,13 @@ const TopClientsTable = () => {
     }
 
     // Helper function to calculate actual revenue (profit) for an invoice
-    const calculateInvoiceProfit = (invoice: any): number => {
+    const calculateInvoiceProfit = (invoice: Invoice): number => {
       if (!invoice.items || !Array.isArray(invoice.items)) {
         return 0;
       }
 
       let profit = 0;
-      invoice.items.forEach((item: any) => {
+      invoice.items.forEach((item) => {
         const quantity = Number(item.quantity) || 0;
         const unitPrice = Number(item.unitPrice) || 0;
         const sellingPrice = quantity * unitPrice;
@@ -57,12 +58,12 @@ const TopClientsTable = () => {
     return data.map((client) => {
       // Find all invoices for this client
       const clientInvoices = Array.isArray(invoices)
-        ? invoices.filter((inv: any) => inv.clientId === client.clientId)
+        ? invoices.filter((inv) => inv.clientId === client.clientId)
         : [];
 
       // Calculate total profit for this client
       let totalProfit = 0;
-      clientInvoices.forEach((invoice: any) => {
+      clientInvoices.forEach((invoice) => {
         totalProfit += calculateInvoiceProfit(invoice);
       });
 

@@ -71,7 +71,7 @@ export class PuppeteerService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async onModuleInit(): Promise<void> {
+  onModuleInit(): void {
     // Pre-warm the browser on startup to avoid first request delay
     // Note: This helps but on Mac Silicon (arm64) with x64 Node.js,
     // browser launch will still be slower due to Rosetta translation.
@@ -103,7 +103,7 @@ export class PuppeteerService implements OnModuleInit, OnModuleDestroy {
     if (this.browserLaunchPromise) {
       try {
         await this.browserLaunchPromise;
-      } catch (error) {
+      } catch {
         // Pre-warm failed, try launching now
         this.logger.debug('Pre-warm failed, launching browser on demand');
       }
@@ -226,7 +226,7 @@ export class PuppeteerService implements OnModuleInit, OnModuleDestroy {
 
         await this.browser.close();
         this.logger.log('Puppeteer browser closed successfully');
-      } catch (error) {
+      } catch {
         // Browser may already be closed/disconnected
         this.logger.debug(
           'Browser already closed or disconnected during shutdown',

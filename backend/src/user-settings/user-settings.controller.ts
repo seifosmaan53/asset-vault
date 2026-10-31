@@ -7,7 +7,6 @@ import {
   UseGuards,
   Request,
   Res,
-  BadRequestException,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
@@ -17,7 +16,6 @@ import { UserSettingsService } from './user-settings.service';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
-import { OrganizationId } from '../organizations/organization-context.decorator';
 import { UsersService } from '../users/users.service';
 
 @ApiTags('settings')
@@ -31,7 +29,7 @@ export class UserSettingsController {
   ) {}
 
   @Get()
-  getSettings(@Request() req, @OrganizationId() organizationId: string | null) {
+  getSettings(@Request() req) {
     // Organizations removed - organizationId is always null, data is user-scoped
     return this.settingsService.getSettings(req.user.userId);
   }
@@ -40,41 +38,25 @@ export class UserSettingsController {
   // Fix Issue #15: Add rate limiting to prevent DoS attacks and spam updates
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 updates per 60 seconds per IP
   @ApiResponse({ status: 429, description: 'Too many requests - rate limited' })
-  updateSettings(
-    @Request() req,
-    @Body() data: UpdateSettingsDto,
-    @OrganizationId() organizationId: string | null,
-  ) {
-    try {
-      // Organizations removed - organizationId is always null, data is user-scoped
-      const result = this.settingsService.updateSettings(
-        req.user.userId,
-        data,
-        null,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+  updateSettings(@Request() req, @Body() data: UpdateSettingsDto) {
+    // Organizations removed - organizationId is always null, data is user-scoped
+    const result = this.settingsService.updateSettings(
+      req.user.userId,
+      data,
+      null,
+    );
+    return result;
   }
 
   @Post('backup')
-  createBackup(
-    @Request() req,
-    @Body() body?: { includeSqlBackup?: boolean },
-    @OrganizationId() organizationId?: string | null,
-  ) {
+  createBackup(@Request() req, @Body() body?: { includeSqlBackup?: boolean }) {
     // Organizations removed - organizationId is always null, data is user-scoped
-    try {
-      const result = this.settingsService.createBackup(
-        req.user.userId,
-        body,
-        null,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    const result = this.settingsService.createBackup(
+      req.user.userId,
+      body,
+      null,
+    );
+    return result;
   }
 
   @Post('backup/export')
@@ -82,7 +64,6 @@ export class UserSettingsController {
     @Request() req,
     @Res() res: Response,
     @Body() body?: { format?: string },
-    @OrganizationId() organizationId?: string | null,
   ) {
     // Organizations removed - organizationId is always null, data is user-scoped
     const format = body?.format || 'json';
@@ -195,14 +176,10 @@ export class UserSettingsController {
       emailFromName?: string;
     },
   ) {
-    try {
-      const result = await this.settingsService.testEmailConnection(
-        req.user.userId,
-        body,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    const result = await this.settingsService.testEmailConnection(
+      req.user.userId,
+      body,
+    );
+    return result;
   }
 }

@@ -1,15 +1,7 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
-import {
-  InvoiceTemplate,
-  TemplateData,
-} from './entities/invoice-template.entity';
+import { InvoiceTemplate } from './entities/invoice-template.entity';
 import { CreateInvoiceTemplateDto, UpdateInvoiceTemplateDto } from './dto';
 
 @Injectable()
@@ -157,7 +149,7 @@ export class InvoiceTemplatesService {
   /**
    * Render invoice using template
    */
-  renderInvoice(template: InvoiceTemplate, invoiceData: any): string {
+  renderInvoice(template: InvoiceTemplate): string {
     // This would generate HTML for the invoice using the template
     // For now, return a basic structure
     // In a full implementation, this would use a templating engine like Handlebars or Mustache

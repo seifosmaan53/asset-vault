@@ -36,7 +36,16 @@ const StoreDetail = () => {
   const [searchParams] = useSearchParams();
   const { data: store, isLoading } = useStore(id || '');
   const { trackView } = useRecentItems();
-  const [activeTab, setActiveTab] = useState(0);
+  /* ?tab=inventory / ?tab=alerts opens that tab, on arrival and whenever the param
+     changes; manual tab switches are kept otherwise. */
+  const tabParam = searchParams.get('tab');
+  const tabFromParam = tabParam === 'inventory' ? 1 : tabParam === 'alerts' ? 2 : null;
+  const [activeTab, setActiveTab] = useState(tabFromParam ?? 0);
+  const [prevTabParam, setPrevTabParam] = useState(tabParam);
+  if (tabParam !== prevTabParam) {
+    setPrevTabParam(tabParam);
+    if (tabFromParam !== null) setActiveTab(tabFromParam);
+  }
 
   // Track store view in recent items
   useEffect(() => {
@@ -44,22 +53,6 @@ const StoreDetail = () => {
       trackView(id, 'store', store.name, `/stores/${id}`);
     }
   }, [store, id, trackView]);
-
-  // Check if we should open a specific tab from URL parameter
-  useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab === 'inventory') {
-      setActiveTab(1);
-    } else if (tab === 'alerts') {
-      setActiveTab(2);
-    } else if (!tab) {
-      // Only reset to 0 if there's no tab param and we're not already on a tab
-      // This prevents resetting when user manually switches tabs
-      if (activeTab !== 0 && activeTab !== 1 && activeTab !== 2) {
-        setActiveTab(0);
-      }
-    }
-  }, [searchParams]); // Removed activeTab from deps to prevent loops
 
   if (isLoading) {
     return (

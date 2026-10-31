@@ -154,7 +154,7 @@ export const settingsApi = {
         try {
           const errorData = JSON.parse(text);
           throw new Error(errorData.message || `Failed to export data as ${format}`);
-        } catch (parseError) {
+        } catch {
           throw new Error(`Failed to export data as ${format}. Server returned status ${response.status}`);
         }
       }

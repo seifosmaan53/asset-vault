@@ -11,7 +11,7 @@ export class QueryMetricsLogger implements TypeORMLogger {
 
   constructor(private metricsService: MetricsService) {}
 
-  logQuery(query: string, parameters?: any[]) {
+  logQuery() {
     // This method is called before a query is executed
     // We'll track execution time in logQueryError or logSlowQuery
   }
@@ -27,20 +27,20 @@ export class QueryMetricsLogger implements TypeORMLogger {
     );
   }
 
-  logQuerySlow(time: number, query: string, parameters?: any[]) {
+  logQuerySlow(time: number, query: string) {
     // Track slow queries
     this.metricsService.recordQuery(time, query);
   }
 
-  logSchemaBuild(message: string) {
+  logSchemaBuild() {
     // Schema build logs (not critical for metrics)
   }
 
-  logMigration(message: string) {
+  logMigration() {
     // Migration logs (not critical for metrics)
   }
 
-  log(level: 'log' | 'info' | 'warn', message: any) {
+  log(level: 'log' | 'info' | 'warn') {
     // General logs
     if (level === 'log' || level === 'info') {
       // Can extract query execution time from message if needed

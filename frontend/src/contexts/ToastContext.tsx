@@ -1,5 +1,4 @@
-import { createContext, useContext, useState, useCallback, useRef } from 'react';
-import type { ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react';
 import { Snackbar, Alert, Button, Box } from '@mui/material';
 
 type ToastSeverity = 'success' | 'error' | 'warning' | 'info';
@@ -62,10 +61,6 @@ export const ToastProvider = ({ children, maxToasts = 5 }: ToastProviderProps) =
     }
   }, []);
 
-  const showToast = useCallback((msg: string, sev: ToastSeverity = 'info') => {
-    showToastWithAction(msg, { severity: sev });
-  }, []);
-
   const showToastWithAction = useCallback((msg: string, options: ToastOptions = {}) => {
     const id = `toast-${Date.now()}-${Math.random()}`;
     const {
@@ -103,6 +98,10 @@ export const ToastProvider = ({ children, maxToasts = 5 }: ToastProviderProps) =
     return id;
   }, [maxToasts, dismissToast]);
 
+  const showToast = useCallback((msg: string, sev: ToastSeverity = 'info') => {
+    showToastWithAction(msg, { severity: sev });
+  }, [showToastWithAction]);
+
   const handleClose = useCallback((id: string) => {
     dismissToast(id);
   }, [dismissToast]);
@@ -129,7 +128,7 @@ export const ToastProvider = ({ children, maxToasts = 5 }: ToastProviderProps) =
           maxWidth: '400px',
         }}
       >
-        {toasts.map((toast, _index) => (
+        {toasts.map((toast) => (
           <Snackbar
             key={toast.id}
             open={true}

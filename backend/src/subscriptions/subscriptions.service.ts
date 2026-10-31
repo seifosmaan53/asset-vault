@@ -16,10 +16,6 @@ import {
 import { Plan } from './entities/plan.entity';
 import { StripeService } from './stripe.service';
 import { User } from '../users/entities/user.entity';
-import {
-  SubscriptionRequiredException,
-  TrialExpiredException,
-} from '../common/exceptions/subscription.exception';
 
 @Injectable()
 export class SubscriptionsService {

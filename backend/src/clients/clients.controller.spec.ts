@@ -1,5 +1,4 @@
-import type { TestingModule } from '@nestjs/testing';
-import { Test } from '@nestjs/testing';
+import { type TestingModule, Test } from '@nestjs/testing';
 import { ClientsController } from './clients.controller';
 import { ClientsService } from './clients.service';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
@@ -12,7 +11,6 @@ import type { ExecutionContext } from '@nestjs/common';
    this a controller unit test rather than an auth-stack integration test. */
 describe('ClientsController', () => {
   let controller: ClientsController;
-  let service: ClientsService;
 
   const mockClientsService = {
     findAll: jest.fn(),
@@ -45,7 +43,6 @@ describe('ClientsController', () => {
       .compile();
 
     controller = module.get<ClientsController>(ClientsController);
-    service = module.get<ClientsService>(ClientsService);
   });
 
   afterEach(() => {
@@ -67,7 +64,10 @@ describe('ClientsController', () => {
       expect(result).toEqual(mockClients);
       // findAll gained a second `filters` argument (search / date range); it is
       // undefined when the request carries no query parameters.
-      expect(service.findAll).toHaveBeenCalledWith('user-123', undefined);
+      expect(mockClientsService.findAll).toHaveBeenCalledWith(
+        'user-123',
+        undefined,
+      );
     });
   });
 
@@ -81,7 +81,10 @@ describe('ClientsController', () => {
       } as any);
 
       expect(result).toEqual(mockClient);
-      expect(service.findOne).toHaveBeenCalledWith('client-1', 'user-123');
+      expect(mockClientsService.findOne).toHaveBeenCalledWith(
+        'client-1',
+        'user-123',
+      );
     });
   });
 
@@ -96,7 +99,10 @@ describe('ClientsController', () => {
       } as any);
 
       expect(result).toEqual(mockClient);
-      expect(service.create).toHaveBeenCalledWith('user-123', createDto);
+      expect(mockClientsService.create).toHaveBeenCalledWith(
+        'user-123',
+        createDto,
+      );
     });
   });
 
@@ -111,7 +117,7 @@ describe('ClientsController', () => {
       } as any);
 
       expect(result).toEqual(mockClient);
-      expect(service.update).toHaveBeenCalledWith(
+      expect(mockClientsService.update).toHaveBeenCalledWith(
         'client-1',
         'user-123',
         updateDto,
@@ -127,7 +133,10 @@ describe('ClientsController', () => {
         user: { userId: 'user-123' },
       } as any);
 
-      expect(service.remove).toHaveBeenCalledWith('client-1', 'user-123');
+      expect(mockClientsService.remove).toHaveBeenCalledWith(
+        'client-1',
+        'user-123',
+      );
     });
   });
 });

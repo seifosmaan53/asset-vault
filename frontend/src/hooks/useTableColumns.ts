@@ -1,6 +1,6 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { logger } from '../utils/logger';
 
 export interface ColumnPreferences {
@@ -25,7 +25,7 @@ export const useTableColumns = (
 ) => {
   const storageKey = `${STORAGE_PREFIX}${tableId}`;
 
-  const [preferences, setPreferences] = useState<TableColumnPreferences>(() => {
+  const [storedPreferences, setPreferences] = useState<TableColumnPreferences>(() => {
     try {
       const stored = localStorage.getItem(storageKey);
       if (stored) {
@@ -37,30 +37,19 @@ export const useTableColumns = (
     return defaultPreferences || {};
   });
 
-  // Initialize preferences for columns that don't have them
-  useEffect(() => {
-    const updated = { ...preferences };
-    let hasChanges = false;
-
+  /* Columns without a stored preference default to visible, in their default position.
+     Derived rather than written back from an effect; savePreferences persists the full
+     set the first time anything is changed. */
+  const preferences = useMemo(() => {
+    let withDefaults: TableColumnPreferences | null = null;
     defaultColumns.forEach((columnId, index) => {
-      if (!updated[columnId]) {
-        updated[columnId] = {
-          visible: true,
-          order: index,
-        };
-        hasChanges = true;
+      if (!storedPreferences[columnId]) {
+        withDefaults ??= { ...storedPreferences };
+        withDefaults[columnId] = { visible: true, order: index };
       }
     });
-
-    if (hasChanges) {
-      setPreferences(updated);
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(updated));
-      } catch (error) {
-        logger.warn('Failed to save column preferences:', error);
-      }
-    }
-  }, [defaultColumns, storageKey, preferences]);
+    return withDefaults ?? storedPreferences;
+  }, [storedPreferences, defaultColumns]);
 
   // Save preferences to localStorage
   const savePreferences = useCallback(

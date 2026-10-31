@@ -8,7 +8,6 @@ import {
   Param,
   UseGuards,
   Request,
-  BadRequestException,
 } from '@nestjs/common';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { OrganizationsService } from './organizations.service';
@@ -66,16 +65,12 @@ export class OrganizationsController {
 
   @Post()
   async create(@Request() req, @Body() dto: CreateOrganizationDto) {
-    try {
-      const result = await this.organizationsService.create(
-        dto.name,
-        req.user.userId,
-        dto.companyName,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    const result = await this.organizationsService.create(
+      dto.name,
+      req.user.userId,
+      dto.companyName,
+    );
+    return result;
   }
 
   @Get()
@@ -95,16 +90,12 @@ export class OrganizationsController {
     @Request() req,
     @Body() dto: UpdateOrganizationDto,
   ) {
-    try {
-      const result = await this.organizationsService.update(
-        id,
-        req.user.userId,
-        dto,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    const result = await this.organizationsService.update(
+      id,
+      req.user.userId,
+      dto,
+    );
+    return result;
   }
 
   @Delete(':id')
@@ -127,17 +118,13 @@ export class OrganizationsController {
     @Request() req,
     @Body() dto: AddUserToOrganizationDto,
   ) {
-    try {
-      const result = await this.organizationsService.addUserToOrganization(
-        id,
-        dto.userId,
-        dto.role,
-        req.user.userId,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    const result = await this.organizationsService.addUserToOrganization(
+      id,
+      dto.userId,
+      dto.role,
+      req.user.userId,
+    );
+    return result;
   }
 
   @Patch(':id/users/:userId/role')
@@ -148,17 +135,13 @@ export class OrganizationsController {
     @Request() req,
     @Body() dto: UpdateUserRoleDto,
   ) {
-    try {
-      const result = await this.organizationsService.updateUserRole(
-        id,
-        userId,
-        dto.role,
-        req.user.userId,
-      );
-      return result;
-    } catch (error: any) {
-      throw error;
-    }
+    const result = await this.organizationsService.updateUserRole(
+      id,
+      userId,
+      dto.role,
+      req.user.userId,
+    );
+    return result;
   }
 
   @Delete(':id/users/:userId')

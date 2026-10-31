@@ -102,21 +102,21 @@ describe('InvoiceForm', () => {
     vi.mocked(useInvoice).mockReturnValue({
       data: undefined,
       isLoading: false,
-    } as any);
+    } as unknown as ReturnType<typeof useInvoice>);
     vi.mocked(useClients).mockReturnValue({
       data: mockClients,
       isLoading: false,
-    } as any);
+    } as unknown as ReturnType<typeof useClients>);
     vi.mocked(useStores).mockReturnValue({
       data: mockStores,
       isLoading: false,
-    } as any);
+    } as unknown as ReturnType<typeof useStores>);
     vi.mocked(useCreateInvoice).mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue({}),
-    } as any);
+    } as unknown as ReturnType<typeof useCreateInvoice>);
     vi.mocked(useUpdateInvoice).mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue({}),
-    } as any);
+    } as unknown as ReturnType<typeof useUpdateInvoice>);
   });
 
   it('should render invoice form', () => {
@@ -224,7 +224,7 @@ describe('InvoiceForm', () => {
   it('should show stock warning when quantity exceeds available stock', async () => {
     // Mock inventory select to return item with low stock
     vi.mock('../../components/inventory/InventorySelect', () => ({
-      default: ({ onChange }: any) => (
+      default: ({ onChange }: { onChange: (item: unknown) => void }) => (
         <button
           onClick={() =>
             onChange({
@@ -348,7 +348,7 @@ describe('InvoiceForm', () => {
         items: [],
       };
 
-      vi.mocked(useInvoice).mockReturnValue({ data: mockInvoice, isLoading: false } as any);
+      vi.mocked(useInvoice).mockReturnValue({ data: mockInvoice, isLoading: false } as unknown as ReturnType<typeof useInvoice>);
 
       render(
         <EditRouteWrapper>
@@ -375,7 +375,7 @@ describe('InvoiceForm', () => {
           { id: 'line-1', description: 'Loaded line', quantity: 2, unitPrice: '12.5000', taxRate: '17.50', discountRate: '0.00' },
         ],
       };
-      vi.mocked(useInvoice).mockReturnValue({ data: mockInvoice, isLoading: false } as any);
+      vi.mocked(useInvoice).mockReturnValue({ data: mockInvoice, isLoading: false } as unknown as ReturnType<typeof useInvoice>);
 
       render(
         <EditRouteWrapper>
@@ -393,9 +393,9 @@ describe('InvoiceForm', () => {
 
     it('submits a loaded invoice with the totals the API computes (rates with four decimals)', async () => {
       const clientId = 'c0a80101-0000-4000-8000-000000000001';
-      vi.mocked(useClients).mockReturnValue({ data: [{ id: clientId, name: 'Client A' }], isLoading: false } as any);
+      vi.mocked(useClients).mockReturnValue({ data: [{ id: clientId, name: 'Client A' }], isLoading: false } as unknown as ReturnType<typeof useClients>);
       const update = vi.fn().mockResolvedValue({});
-      vi.mocked(useUpdateInvoice).mockReturnValue({ mutateAsync: update } as any);
+      vi.mocked(useUpdateInvoice).mockReturnValue({ mutateAsync: update } as unknown as ReturnType<typeof useUpdateInvoice>);
       vi.mocked(useInvoice).mockReturnValue({
         data: {
           id: 'invoice-123',
@@ -409,7 +409,7 @@ describe('InvoiceForm', () => {
           ],
         },
         isLoading: false,
-      } as any);
+      } as unknown as ReturnType<typeof useInvoice>);
 
       render(
         <EditRouteWrapper>

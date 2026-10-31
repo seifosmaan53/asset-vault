@@ -30,6 +30,8 @@ import {
   TableSortLabel,
   InputAdornment,
   Checkbox,
+  alpha,
+  useTheme,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -53,7 +55,6 @@ import { useUndo } from '../../hooks/useUndo';
 import { getErrorMessage } from '../../utils/errorHandling';
 import { exportToCSV } from '../../utils/export';
 import { formatCurrency } from '../../utils/formatters';
-import { alpha, useTheme } from '@mui/material';
 import BulkAddInventoryDialog from '../../components/inventory/BulkAddInventoryDialog';
 import { ItemStoresDialog } from '../../components/inventory/ItemStoresDialog';
 import Grid from '../../components/common/Grid';
@@ -61,7 +62,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useDebounce } from '../../utils/useDebounce';
 import { inventoryApi, type CreateInventoryItemDto } from '../../api/inventory';
 import type { InventoryItem } from '../../types/inventory';
-import type { ImportResult } from '../../utils/import';
+import type { ImportResult, ImportRow, ImportRowError } from '../../utils/import';
 import { logger } from '../../utils/logger';
 import { EmptyState } from '../../components/common/EmptyState';
 import { useTableColumns } from '../../hooks/useTableColumns';
@@ -497,7 +498,7 @@ const InventoryList = () => {
   }, [filteredItems]);
 
   // Import handlers
-  const handleImportFileSelect = useCallback((data: any[], file: File) => {
+  const handleImportFileSelect = useCallback((data: ImportRow[], file: File) => {
     setImportFile(file);
     
     // Transform data to inventory item format
@@ -521,7 +522,7 @@ const InventoryList = () => {
 
     // Validate
     const valid: Partial<InventoryItem>[] = [];
-    const invalid: Array<{ row: number; data: any; errors: string[] }> = [];
+    const invalid: ImportRowError[] = [];
     
     transformed.forEach((row, index) => {
       const errors: string[] = [];
@@ -545,7 +546,7 @@ const InventoryList = () => {
     setImportPreviewOpen(true);
   }, []);
 
-  const handleImportConfirm = useCallback(async (_data: Partial<InventoryItem>[]) => {
+  const handleImportConfirm = useCallback(async () => {
     if (!importFile) return;
     
     setIsImporting(true);

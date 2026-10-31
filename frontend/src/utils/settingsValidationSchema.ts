@@ -160,7 +160,7 @@ export const settingsSchema = z.object({
       'Tax ID must not exceed 100 characters'
     )
     .refine(
-      (val) => !val || val === '' || /^[A-Z0-9\-]*$/i.test(val),
+      (val) => !val || val === '' || /^[A-Z0-9-]*$/i.test(val),
       'Tax ID can only contain letters, numbers, and hyphens'
     )
     .transform((val) => (val === '' ? undefined : val)),
@@ -173,7 +173,7 @@ export const settingsSchema = z.object({
       'Registration number must not exceed 100 characters'
     )
     .refine(
-      (val) => !val || val === '' || /^[A-Z0-9\-]*$/i.test(val),
+      (val) => !val || val === '' || /^[A-Z0-9-]*$/i.test(val),
       'Registration number can only contain letters, numbers, and hyphens'
     )
     .transform((val) => (val === '' ? undefined : val)),
@@ -186,7 +186,7 @@ export const settingsSchema = z.object({
       'VAT number must not exceed 100 characters'
     )
     .refine(
-      (val) => !val || val === '' || /^[A-Z0-9\-]*$/i.test(val),
+      (val) => !val || val === '' || /^[A-Z0-9-]*$/i.test(val),
       'VAT number can only contain letters, numbers, and hyphens'
     )
     .transform((val) => (val === '' ? undefined : val)),
@@ -199,7 +199,7 @@ export const settingsSchema = z.object({
       'Tax registration number must not exceed 100 characters'
     )
     .refine(
-      (val) => !val || val === '' || /^[A-Z0-9\-]*$/i.test(val),
+      (val) => !val || val === '' || /^[A-Z0-9-]*$/i.test(val),
       'Tax registration number can only contain letters, numbers, and hyphens'
     )
     .transform((val) => (val === '' ? undefined : val)),
@@ -391,7 +391,7 @@ export const settingsSchema = z.object({
     .string()
     .optional()
     .refine(
-      (val) => !val || val === '' || /^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}$/.test(val),
+      (val) => !val || val === '' || /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/.test(val),
       'Phone number must be in valid format (e.g., +1 (555) 123-4567 or 555-123-4567)'
     )
     .transform((val) => (val === '' ? undefined : val)),

@@ -2,7 +2,7 @@ import { Box, Typography, Paper, CircularProgress, Card, CardContent, Button, Ch
 import Grid from '../components/common/Grid';
 import { logger } from '../utils/logger';
 import { useNavigate } from 'react-router-dom';
-import { useInvoiceStats } from '../hooks/useInvoices';
+import { useInvoiceStats, useInvoices } from '../hooks/useInvoices';
 import { useLowStock, useInventory } from '../hooks/useInventory';
 import { formatCurrency } from '../utils/formatters';
 import RevenueChart from '../components/dashboard/RevenueChart';
@@ -27,11 +27,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { invoicesApi } from '../api/invoices';
 import { subMonths, format, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO, startOfDay, endOfDay } from 'date-fns';
 import { validateDateRange } from '../utils/dates';
-import { useInvoices } from '../hooks/useInvoices';
 import { exportToCSV } from '../utils/export';
 import { getErrorMessage } from '../utils/errorHandling';
 import { useToast } from '../contexts/ToastContext';
 import { TIMEOUTS } from '../constants/timeouts';
+import type { Invoice } from '../types/invoice';
 // Cache clearing is done manually below
 
 const Dashboard = () => {
@@ -141,7 +141,7 @@ const Dashboard = () => {
 
   // Helper function to calculate actual revenue (profit) for an invoice
   // Moved outside useMemo for better performance and reusability
-  const calculateInvoiceProfit = useCallback((invoice: any, costMap: Map<string, number>): number => {
+  const calculateInvoiceProfit = useCallback((invoice: Invoice, costMap: Map<string, number>): number => {
     if (!invoice.items || !Array.isArray(invoice.items) || invoice.items.length === 0) {
       return 0;
     }
@@ -348,7 +348,7 @@ const Dashboard = () => {
           showToast('Failed to update invoice payment dates. Revenue calculations may be incomplete.', 'warning');
         });
     }
-  }, [computedStats, statsLoading, refetch]);
+  }, [computedStats, statsLoading, refetch, showToast]);
 
   // Check if there's any data at all
   // Show dashboard if there are any invoices, even if all amounts are 0 (e.g., draft invoices)
@@ -368,7 +368,7 @@ const Dashboard = () => {
            stats.monthlyTotal > 0 || 
            stats.totalAmount > 0;
     return hasStats;
-  }, [stats, invoices, statsLoading, invoicesLoading]);
+  }, [stats, invoices]);
 
   // Show loading if either stats or invoices are loading
   // This prevents showing welcome message prematurely when invoices exist but stats haven't loaded yet
@@ -1127,7 +1127,7 @@ const Dashboard = () => {
                       return stockA - stockB;
                     })
                     .slice(0, 5)
-                    .map((item, _index) => {
+                    .map((item) => {
                       const currentStock = Math.max(0, item.currentStock || 0);
                       const reorderLevel = item.reorderLevel || 0;
                       const deficit = Math.max(0, reorderLevel - currentStock);

@@ -1,7 +1,15 @@
-import { Box, Button, Typography, Paper, IconButton, Tooltip } from '@mui/material';
+import {
+  Box,
+  Button,
+  Typography,
+  Paper,
+  IconButton,
+  Tooltip,
+  alpha,
+  useTheme,
+} from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ClearIcon from '@mui/icons-material/Clear';
-import { alpha, useTheme } from '@mui/material';
 
 interface BulkActionsBarProps {
   selectedCount: number;

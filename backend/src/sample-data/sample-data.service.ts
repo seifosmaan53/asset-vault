@@ -7,7 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 import { Client } from '../clients/entities/client.entity';
 import { InventoryItem } from '../inventory/entities/inventory-item.entity';
@@ -421,25 +421,6 @@ export class SampleDataService {
       'Bronze',
       'Silicon',
     ];
-    const printTypes = [
-      'Roma',
-      'Milano',
-      'Vista',
-      'Rustica',
-      'Plain',
-      'Custom',
-      'Full Color',
-      'Spot Color',
-    ];
-    const containerTypes = [
-      'box',
-      'pallet',
-      'crate',
-      'skid',
-      'carton',
-      'tote',
-      'bin',
-    ];
     const bundleUnits = ['piece', 'box', 'pack', 'set'];
     const statuses: ('active' | 'inactive')[] = [
       'active',
@@ -457,8 +438,6 @@ export class SampleDataService {
       const category = categories[i % categories.length];
       const unit = units[i % units.length];
       const material = materials[i % materials.length];
-      const printType = printTypes[i % printTypes.length];
-      const containerType = containerTypes[i % containerTypes.length];
       const bundleUnit = bundleUnits[i % bundleUnits.length];
       const status = statuses[i % statuses.length];
 
@@ -887,16 +866,7 @@ export class SampleDataService {
     // Sample inventory: SKUs matching pattern "ITEM-####"
     // Sample invoices: We'll delete all invoices for this user (since they're all sample)
 
-    // Get all user data - include soft-deleted invoices too
-    const allInvoices = await this.invoiceRepository
-      .createQueryBuilder('invoice')
-      .withDeleted() // Include soft-deleted invoices
-      .where(
-        'invoice.userId = :userId', // Organizations removed - filter by userId only
-        { userId },
-      )
-      .getMany();
-
+    // Get all user data
     const allClients = await this.clientRepository
       .createQueryBuilder('client')
       .where(

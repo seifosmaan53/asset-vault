@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState } from 'react';
 import {
   Autocomplete,
   TextField,
@@ -29,28 +29,16 @@ const InventorySelect = ({ value, onChange, disabled, storeId, storeStocks }: In
     status: 'active',
   });
   
-  // CRITICAL FIX: Stabilize value reference to prevent infinite loops
-  // Use a ref to store the last stable value to prevent unnecessary reference changes
-  const stableValueRef = useRef<InventoryItem | null>(null);
-  
-  // CRITICAL FIX: Memoize the value to prevent reference changes on every render
-  const stableValue = useMemo(() => {
-    if (!value) {
-      stableValueRef.current = null;
-      return null;
-    }
-    
-    // If we have a cached value with the same ID, use it to prevent reference changes
-    if (stableValueRef.current?.id === value.id) {
-      return stableValueRef.current;
-    }
-    
-    // Find the value in the items array to use the same reference
-    const foundItem = items?.find(item => item.id === value.id);
-    const result = foundItem || value;
-    stableValueRef.current = result;
-    return result;
-  }, [value?.id, items]);
+  /* Keep the selected value's reference stable: Autocomplete must not see a "new" value
+     on every parent render (that used to loop). The first object resolved for an id
+     (preferably the matching option) is held until the selected id changes. This is
+     state adjusted during render, React's pattern for deriving from a changing prop. */
+  const resolveValue = (): InventoryItem | null =>
+    value ? (items?.find((item) => item.id === value.id) ?? value) : null;
+  const [stableValue, setStableValue] = useState<InventoryItem | null>(resolveValue);
+  if ((value?.id ?? null) !== (stableValue?.id ?? null)) {
+    setStableValue(resolveValue());
+  }
 
   const availableStock = (item: InventoryItem) => {
     return Math.max(0, item.currentStock || 0);
@@ -79,7 +67,7 @@ const InventorySelect = ({ value, onChange, disabled, storeId, storeStocks }: In
         onChange={(_, newValue) => {
           onChange(newValue);
         }}
-        onInputChange={(_, _newInputValue, _reason) => {
+        onInputChange={() => {
           // CRITICAL FIX: Only update searchQuery when user types and presses Enter
           // Don't control inputValue to prevent infinite loops
           // The Autocomplete will manage inputValue internally based on the selected value

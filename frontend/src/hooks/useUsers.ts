@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { usersApi } from '../api/users';
-import type { CreateUserDto, UpdateUserDto } from '../api/users';
+import { usersApi, type CreateUserDto, type UpdateUserDto } from '../api/users';
 
 export const useUsers = () => {
   return useQuery({
@@ -26,7 +25,7 @@ export const useCreateUser = () => {
       queryClient.invalidateQueries({ queryKey: ['users'], exact: false });
       await queryClient.refetchQueries({ queryKey: ['users'], exact: false });
     },
-    onError: (_error) => {
+    onError: () => {
       // Error handling - could show toast notification here if needed
       // The error will be handled by the component using this hook
     },
@@ -43,7 +42,7 @@ export const useUpdateUser = () => {
       queryClient.invalidateQueries({ queryKey: ['users'], exact: false });
       await queryClient.refetchQueries({ queryKey: ['users'], exact: false });
     },
-    onError: (_error) => {
+    onError: () => {
       // Error handling - could show toast notification here if needed
       // The error will be handled by the component using this hook
     },
