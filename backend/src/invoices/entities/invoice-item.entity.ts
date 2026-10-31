@@ -37,10 +37,12 @@ export class InvoiceItem {
   @Column({ type: 'decimal', precision: 12, scale: 4 })
   unitPrice: number;
 
-  @Column({ type: 'decimal', precision: 5, scale: 2, default: 0 })
+  // Up to four decimal places, as the shared invoice-money rules accept
+  // (migration 1761000000000).
+  @Column({ type: 'decimal', precision: 7, scale: 4, default: 0 })
   taxRate: number;
 
-  @Column({ type: 'decimal', precision: 5, scale: 2, default: 0 })
+  @Column({ type: 'decimal', precision: 7, scale: 4, default: 0 })
   discountRate: number;
 
   @Column({ type: 'decimal', precision: 12, scale: 4 })

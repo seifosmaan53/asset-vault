@@ -14,12 +14,18 @@
    Keep this file free of imports (NestJS, React, Node built-ins): both builds
    compile it as plain TypeScript.
 
-   Rules (those of the API's earlier implementation):
-   - Amounts have two decimal places in every currency: the API validates and
-     stores all currencies that way. Internally everything is integer cents.
+   Rules:
+   - Amounts have two decimal places in every currency (an existing
+     limitation, not currency-specific minor units). Internally everything is
+     integer cents.
    - Quantity: an integer from 1 to 1,000,000. Unit price: 0 to
-     999,999,999,999.99 with at most two decimals. Tax and discount rates:
-     optional, 0 to 100.
+     99,999,999.99 with at most two decimals.
+   - Every computed amount (each line's subtotal, discount, tax and total, and
+     the invoice's subtotal, discount, tax and total) is at most 99,999,999.99:
+     amounts are stored as numeric(12,4), so anything larger cannot be saved.
+     Checked before anything is written.
+   - Tax and discount rates: optional, 0 to 100, at most four decimal places
+     (stored as numeric(7,4); 8.875% stays 8.875%).
    - Per line: the discount is its rate of the line subtotal; tax is charged
      on the amount after discount ('afterDiscount', the default) or on the
      subtotal ('beforeDiscount'). Each is rounded to the cent, half away from
@@ -30,10 +36,12 @@
      when it is larger.
 */
 
-/** Largest money value the API accepts. */
-export const MAX_SAFE_FINANCIAL_VALUE = 999999999999.99;
-/** The same limit in cents; also bounds every computed line and invoice amount. */
-export const MAX_SAFE_CENTS = Math.round(MAX_SAFE_FINANCIAL_VALUE * 100);
+/** Largest amount that can be stored (numeric(12,4) columns), for every input and computed amount. */
+export const MAX_INVOICE_AMOUNT = 99999999.99;
+/** The same limit in cents. */
+export const MAX_INVOICE_AMOUNT_CENTS = 9999999999;
+/** Decimal places a tax or discount rate may have (stored as numeric(7,4)). */
+export const MAX_RATE_DECIMALS = 4;
 /** Largest quantity per line. */
 export const MAX_QUANTITY = 1000000;
 
@@ -169,7 +177,7 @@ function checkNumber(
 function checkMoneyCents(value: unknown, field: string): Checked {
   const checked = checkNumber(value, field, {
     min: 0,
-    max: MAX_SAFE_FINANCIAL_VALUE,
+    max: MAX_INVOICE_AMOUNT,
     nonNegative: true,
     strictString: true,
   });
@@ -184,20 +192,27 @@ function checkMoneyCents(value: unknown, field: string): Checked {
   if (Math.abs(rounded - cents / 100) > 1e-8) {
     return fail(field, 'cannot be represented safely in cents');
   }
-  if (Math.abs(cents) > MAX_SAFE_CENTS) return fail(field, 'is too large');
   return { ok: true, value: cents };
 }
 
-/** An optional percentage (absent = 0). */
+/** An optional percentage (absent = 0) with at most MAX_RATE_DECIMALS decimals. */
 function checkPercentage(value: unknown, field: string): Checked {
   if (value === null || value === undefined) return { ok: true, value: 0 };
-  return checkNumber(value, field, {
+  const checked = checkNumber(value, field, {
     required: false,
     min: 0,
     max: 100,
     nonNegative: true,
     strictString: true,
   });
+  if (!checked.ok) return checked;
+  if (
+    toDecimalFraction(checked.value).denominator >
+    10n ** BigInt(MAX_RATE_DECIMALS)
+  ) {
+    return fail(field, `must have at most ${MAX_RATE_DECIMALS} decimal places`);
+  }
+  return checked;
 }
 
 /* ------------------------------------------------------------------ *
@@ -255,7 +270,7 @@ export interface InvoiceTotalsPreview {
   issues: InvoiceMoneyIssue[];
 }
 
-const TOO_LARGE = `amount must be at most ${MAX_SAFE_CENTS}`;
+const LIMIT_TEXT = MAX_INVOICE_AMOUNT.toFixed(2);
 
 function evaluate(
   items:
@@ -287,9 +302,9 @@ function evaluate(
   let lineDiscounts = 0n;
   let tax = 0n;
 
-  const bounded = (field: string, ...amounts: bigint[]) => {
-    if (amounts.some((a) => a > BigInt(MAX_SAFE_CENTS))) {
-      amountIssues.push({ field, message: TOO_LARGE });
+  const bounded = (field: string, message: string, ...amounts: bigint[]) => {
+    if (amounts.some((a) => a > BigInt(MAX_INVOICE_AMOUNT_CENTS))) {
+      amountIssues.push({ field, message });
     }
   };
 
@@ -322,7 +337,14 @@ function evaluate(
       taxRate.value,
     );
     const lineTotal = afterDiscount + lineTax;
-    bounded(`items[${i}]`, lineSubtotal, lineDiscount, lineTax, lineTotal);
+    bounded(
+      `items[${i}]`,
+      `items[${i}] amounts must not exceed ${LIMIT_TEXT} (quantity x unit price, discount, tax and line total)`,
+      lineSubtotal,
+      lineDiscount,
+      lineTax,
+      lineTotal,
+    );
 
     lines.push({
       lineSubtotalCents: Number(lineSubtotal),
@@ -346,7 +368,14 @@ function evaluate(
     }
   }
   const total = subtotal - discount + tax;
-  bounded('invoice', subtotal, discount, tax, total);
+  bounded(
+    'invoice',
+    `invoice totals must not exceed ${LIMIT_TEXT} (subtotal, discount, tax and total)`,
+    subtotal,
+    discount,
+    tax,
+    total,
+  );
 
   return {
     totals: {

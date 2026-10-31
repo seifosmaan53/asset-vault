@@ -51,10 +51,11 @@ import type { InventoryItem } from '../../types/inventory';
 import type { Invoice, InvoiceItem } from '../../types/invoice';
 import {
   centsToMoney,
+  checkInvoiceFormLines,
   invoiceTotalsToMoney,
+  isPlaceholderLine,
   previewInvoiceTotalsCents,
   submittedMoneyFields,
-  validateInvoiceItems,
 } from '../../utils/invoice-totals.util';
 import { formatCurrency } from '../../utils/formatters';
 import { formatDate } from '../../utils/dates';
@@ -352,9 +353,13 @@ const InvoiceForm = () => {
   // Line total from the shared invoice-money module (the API's own arithmetic);
   // a line the API would reject shows 0 and is listed in totalsBlockers.
   const calculateLineTotal = (item: InvoiceItemForm) => {
+    if (isPlaceholderLine(item)) return 0;
     const { totals } = previewInvoiceTotalsCents([submittedMoneyFields(item)]);
     return centsToMoney(totals.lines[0]?.lineTotalCents || 0);
   };
+
+  // Which lines are submitted (placeholders are not), what blocks submit, and their totals.
+  const formCheck = checkInvoiceFormLines(watchedItems);
 
   // FIX #101: Use shared calculation utility that matches backend exactly
   /* Computed on every render, not memoized on watchedItems: react-hook-form's
@@ -373,9 +378,9 @@ const InvoiceForm = () => {
       };
     }
 
-    // The shared invoice-money module (the API's own arithmetic) on the values
-    // the form submits; lines the API would reject count as 0 (see totalsBlockers).
-    const totalsResult = previewInvoiceTotalsCents(watchedItems.map(submittedMoneyFields)).totals;
+    // The shared invoice-money module (the API's own arithmetic) on exactly the
+    // lines and values the form submits; rejected lines count as 0 (see totalsBlockers).
+    const totalsResult = formCheck.preview.totals;
     const calculatedTotals = invoiceTotalsToMoney(totalsResult);
 
     // Calculate overall percentages for display
@@ -399,7 +404,7 @@ const InvoiceForm = () => {
   /* The totals above never throw, so the form stays responsive while someone is
      mid-keystroke. These are the reasons the API would reject the values the form
      submits (the same module and messages); submit stays disabled until there are none. */
-  const totalsBlockers = validateInvoiceItems((watchedItems ?? []).map(submittedMoneyFields));
+  const totalsBlockers = formCheck.issues;
 
   // FIX #148: Batch setValue calls to prevent multiple re-renders
   const handleInventorySelect = (index: number, item: InventoryItem | null) => {
@@ -544,26 +549,21 @@ const InvoiceForm = () => {
         return;
       }
 
-      // FIX #187, #192, #193, #194, #195: Enhanced validation matching backend
-      // FIX #195: lines without a description (or over 1000 chars) are not submitted.
-      const validItems = data.items.filter(
-        (item) => !!item.description && item.description.trim() !== '' && item.description.length <= 1000,
-      );
+      // Every line except untouched placeholders is submitted; a line with entered
+      // data needs a description, and the money rules are the API's (shared module).
+      // Submit is normally disabled already while any issue applies.
+      const check = checkInvoiceFormLines(data.items);
+      const validItems = check.submitted.map((index) => data.items[index]);
 
       if (validItems.length === 0) {
-        showToast('At least one valid item with description, quantity > 0, and unit price is required', 'error');
+        showToast('Add at least one line with a description, quantity and unit price', 'error');
         return;
       }
-
-      // Money rules: the shared invoice-money module, the API's own validation
-      // (submit is normally disabled already while any of these apply).
-      const submittedMoney = validItems.map(submittedMoneyFields);
-      const moneyIssues = validateInvoiceItems(submittedMoney);
-      if (moneyIssues.length > 0) {
-        showToast(moneyIssues[0].message, 'error');
+      if (check.issues.length > 0) {
+        showToast(check.issues[0].message, 'error');
         return;
       }
-      const submittedLines = previewInvoiceTotalsCents(submittedMoney).totals.lines;
+      const submittedLines = check.preview.totals.lines;
 
       // FIX #188, #197: Date validation with UTC handling to match backend
       if (data.dueDate && data.issueDate) {
@@ -1133,11 +1133,19 @@ const InvoiceForm = () => {
                         <Controller
                           name={`items.${index}.description`}
                           control={control}
-                          rules={{ required: true }}
-                          render={({ field }) => (
+                          // Required on every line that is submitted; an untouched placeholder line is not.
+                          rules={{
+                            validate: (value, formValues) =>
+                              isPlaceholderLine(formValues.items?.[index]) ||
+                              (typeof value === 'string' && value.trim() !== '') ||
+                              'Description is required',
+                          }}
+                          render={({ field, fieldState }) => (
                         <TextField
                               {...field}
                           fullWidth
+                          error={!!fieldState.error}
+                          helperText={fieldState.error?.message}
                           label="Description *"
                           variant="outlined"
                           size="medium"
@@ -1282,7 +1290,7 @@ const InvoiceForm = () => {
                             fullWidth
                             label="Tax %"
                             type="number"
-                            inputProps={{ step: '0.01', min: 0, max: 100 }}
+                            inputProps={{ step: '0.0001', min: 0, max: 100 }}
                             onChange={(e) => {
                               const inputValue = e.target.value;
                               // Allow empty input while typing
@@ -1342,7 +1350,7 @@ const InvoiceForm = () => {
                             fullWidth
                             label="Discount %"
                             type="number"
-                            inputProps={{ step: '0.01', min: 0, max: 100 }}
+                            inputProps={{ step: '0.0001', min: 0, max: 100 }}
                             onChange={(e) => {
                               const inputValue = e.target.value;
                               // Allow empty input while typing
@@ -1558,7 +1566,7 @@ const InvoiceForm = () => {
                   These values will be rejected when saved. Fix them to continue:
                   <ul style={{ margin: '8px 0 0', paddingInlineStart: '20px' }}>
                     {totalsBlockers.map((blocker) => (
-                      <li key={blocker.field}>{blocker.message}</li>
+                      <li key={`${blocker.field}:${blocker.message}`}>{blocker.message}</li>
                     ))}
                   </ul>
                 </Alert>

@@ -12,7 +12,7 @@ import {
   computeInvoiceTotalsCents,
   InvoiceMoneyError,
   invoiceTotalsToMoney,
-  MAX_SAFE_CENTS,
+  MAX_INVOICE_AMOUNT,
   previewInvoiceTotalsCents,
   validateInvoiceItems,
   type InvoiceTotalsResult,
@@ -147,7 +147,8 @@ function pick<T>(r: () => number, xs: readonly T[]): T {
   return xs[Math.floor(r() * xs.length)];
 }
 
-/** Valid amounts: up to $99,999.99 with two decimals; rates with up to two decimals. */
+/** Valid lines that stay storable even five at a time with 100% tax: unit price
+ * up to 9,999.99, quantity up to 1,000; rates with up to two decimals. */
 interface NumericItem {
   quantity: number;
   unitPrice: number;
@@ -157,8 +158,8 @@ interface NumericItem {
 
 function validItem(r: () => number): NumericItem {
   const item: NumericItem = {
-    quantity: 1 + Math.floor(r() * (r() < 0.9 ? 20 : 1000000)),
-    unitPrice: Math.floor(r() * 10000000) / 100,
+    quantity: 1 + Math.floor(r() * (r() < 0.9 ? 20 : 1000)),
+    unitPrice: Math.floor(r() * 1000000) / 100,
   };
   if (r() < 0.7) item.taxRate = Math.floor(r() * 10001) / 100;
   if (r() < 0.5) item.discountRate = Math.floor(r() * 10001) / 100;
@@ -220,6 +221,13 @@ function oddItem(r: () => number): Record<string, unknown> {
     item.discountRate =
       r() < 0.5 ? pick(r, ODD_VALUES) : Math.floor(r() * 10001) / 100;
   return item;
+}
+
+/** Whether a number written out in decimal has five or more decimal places. */
+function hasFiveOrMoreDecimals(n: number): boolean {
+  const m = /^(\d+)(?:\.(\d+))?(?:e-(\d+))?$/.exec(n.toString());
+  if (!m) return false;
+  return (m[2]?.length ?? 0) + Number(m[3] ?? 0) > 4;
 }
 
 /** Independent integer oracle: `bp` basis points (percent x 100) of `cents`, half away from zero. */
@@ -319,25 +327,106 @@ describe('invoice money (shared by the API and the web app)', () => {
       );
     });
 
-    it('rejects amounts beyond the safe limit with the API message', () => {
-      const issues = validateInvoiceItems([
-        { quantity: 1000000, unitPrice: 999999999.99 },
-      ]);
-      // The line is too large, and so are the invoice totals; the API responds with the first.
-      expect(issues).toEqual([
-        {
+    describe('storage limit: every input and computed amount fits numeric(12,4)', () => {
+      const LINE = (i: number) =>
+        `items[${i}] amounts must not exceed 99999999.99 (quantity x unit price, discount, tax and line total)`;
+      const INVOICE =
+        'invoice totals must not exceed 99999999.99 (subtotal, discount, tax and total)';
+
+      it('accepts amounts exactly at the limit', () => {
+        expect(MAX_INVOICE_AMOUNT).toBe(99999999.99);
+        expect(
+          computeInvoiceTotalsCents([{ quantity: 1, unitPrice: 99999999.99 }])
+            .invoice.totalCents,
+        ).toBe(9999999999);
+        // 9,090,909.09 x 11 = 99,999,999.99
+        expect(
+          validateInvoiceItems([{ quantity: 11, unitPrice: 9090909.09 }]),
+        ).toEqual([]);
+      });
+
+      it('rejects a unit price above the limit', () => {
+        expect(
+          validateInvoiceItems([{ quantity: 1, unitPrice: 100000000 }]),
+        ).toEqual([
+          {
+            field: 'items[0].unitPrice',
+            message: 'items[0].unitPrice must be at most 99999999.99',
+          },
+        ]);
+      });
+
+      it('rejects valid-looking inputs whose product is too large', () => {
+        // 2 x 50,000,000.00 = 100,000,000.00
+        expect(
+          validateInvoiceItems([{ quantity: 2, unitPrice: 50000000 }])[0],
+        ).toEqual({
           field: 'items[0]',
-          message: `amount must be at most ${MAX_SAFE_CENTS}`,
-        },
-        {
-          field: 'invoice',
-          message: `amount must be at most ${MAX_SAFE_CENTS}`,
-        },
-      ]);
-      expect(
-        legacyOutcome([{ quantity: 1000000, unitPrice: 999999999.99 }]),
-      ).toEqual({
-        error: `amount must be at most ${MAX_SAFE_CENTS}`,
+          message: LINE(0),
+        });
+        // At the limit before tax, over it with tax
+        expect(
+          validateInvoiceItems([
+            { quantity: 1, unitPrice: 99999999.99, taxRate: 1 },
+          ])[0],
+        ).toEqual({ field: 'items[0]', message: LINE(0) });
+        // A 100% discount does not make a too-large subtotal storable
+        expect(
+          validateInvoiceItems([
+            { quantity: 2, unitPrice: 99999999.99, discountRate: 100 },
+          ])[0],
+        ).toEqual({ field: 'items[0]', message: LINE(0) });
+      });
+
+      it('rejects lines that fit one by one but not summed (aggregate overflow)', () => {
+        const items = [
+          { quantity: 1, unitPrice: 60000000 },
+          { quantity: 1, unitPrice: 60000000 },
+        ];
+        expect(validateInvoiceItems(items)).toEqual([
+          { field: 'invoice', message: INVOICE },
+        ]);
+        expect(() => apiComputeInvoiceTotalsCents(items)).toThrow(INVOICE);
+      });
+    });
+
+    describe('rate precision: up to four decimal places, applied exactly', () => {
+      it('accepts four decimals and applies them exactly', () => {
+        // 1000 x 8.8751% = 88.751 -> 89; 10000 x 7.0625% = 706.25 -> 706
+        expect(
+          computeInvoiceTotalsCents([
+            { quantity: 1, unitPrice: 10, taxRate: 8.8751 },
+          ]).invoice.taxCents,
+        ).toBe(89);
+        expect(
+          computeInvoiceTotalsCents([
+            { quantity: 1, unitPrice: 100, discountRate: 7.0625 },
+          ]).invoice.discountCents,
+        ).toBe(706);
+      });
+
+      it('rejects a fifth decimal place instead of rounding it away', () => {
+        expect(
+          validateInvoiceItems([
+            { quantity: 1, unitPrice: 10, taxRate: 8.87512 },
+          ]),
+        ).toEqual([
+          {
+            field: 'items[0].taxRate',
+            message: 'items[0].taxRate must have at most 4 decimal places',
+          },
+        ]);
+        expect(
+          validateInvoiceItems([
+            { quantity: 1, unitPrice: 10, discountRate: 1e-7 },
+          ])[0].message,
+        ).toBe('items[0].discountRate must have at most 4 decimal places');
+        // A loaded numeric(7,4) value is the same rate.
+        expect(
+          validateInvoiceItems([
+            { quantity: 1, unitPrice: 10, taxRate: '8.8750' },
+          ]),
+        ).toEqual([]);
       });
     });
 
@@ -426,22 +515,30 @@ describe('invoice money (shared by the API and the web app)', () => {
       }
     });
 
-    it('exact: rates with up to four decimals and tiny rates printed in exponent form (20,000 lines)', () => {
+    it('exact: rates with up to four decimals (20,000 lines); smaller fractions are rejected', () => {
       const r = rng(5);
       for (let n = 0; n < 20000; n++) {
-        const cents = Math.floor(r() * 1e9);
-        // k / 10000 percent, or a tiny rate such as 3e-7 (Number#toString uses an exponent)
-        const tiny = r() < 0.2;
-        const k = tiny ? 1 + Math.floor(r() * 9) : Math.floor(r() * 1000001);
-        const rate = tiny ? k * 1e-7 : k / 10000;
-        const scale = tiny ? 10n ** 9n : 10n ** 6n; // percent -> fraction of one
-        const exact = (BigInt(cents) * BigInt(k) * 2n + scale) / (2n * scale);
+        const cents = Math.floor(r() * 4e9); // up to 40,000,000.00 so 100% tax still fits
+        const k = Math.floor(r() * 1000001); // k / 10000 percent: 0.0000 .. 100.0000
+        const rate = k / 10000;
+        const exact =
+          (BigInt(cents) * BigInt(k) * 2n + 10n ** 6n) / (2n * 10n ** 6n);
         const result = computeInvoiceTotalsCents(
           [{ quantity: 1, unitPrice: cents / 100, taxRate: rate }],
           undefined,
           r() < 0.5 ? 'beforeDiscount' : 'afterDiscount',
         );
         expect(result.lines[0].lineTaxCents).toBe(Number(exact));
+        // A rate with a fifth decimal (printed in exponent form when tiny) is rejected.
+        const tooFine =
+          r() < 0.5 ? rate + 0.00001 : (1 + Math.floor(r() * 9)) * 1e-7;
+        if (tooFine <= 100 && hasFiveOrMoreDecimals(tooFine)) {
+          expect(
+            validateInvoiceItems([
+              { quantity: 1, unitPrice: 1, taxRate: tooFine },
+            ])[0]?.message,
+          ).toBe('items[0].taxRate must have at most 4 decimal places');
+        }
       }
     });
 
@@ -478,9 +575,17 @@ describe('invoice money (shared by the API and the web app)', () => {
       }
     });
 
-    it('preserved: accepts and rejects exactly what the API accepted and rejected, with the same message (30,000 inputs)', () => {
+    it('preserved: accepts and rejects what the API did, with the same message, except the new storage and rate limits (30,000 inputs)', () => {
       const r = rng(3);
       let rejected = 0;
+      let newlyLimited = 0;
+      // The only intended differences: amounts above what numeric(12,4) stores, and rates
+      // with more than four decimals, are now rejected (before: failed on write or stored rounded).
+      const isNewLimit = (message: string | undefined) =>
+        !!message &&
+        (/unitPrice must be at most 99999999\.99$/.test(message) ||
+          /must have at most 4 decimal places$/.test(message) ||
+          /must not exceed 99999999\.99 /.test(message));
       for (let n = 0; n < 30000; n++) {
         // Sometimes no lines at all (the invoice discount is then not checked).
         const items = Array.from(
@@ -494,12 +599,19 @@ describe('invoice money (shared by the API and the web app)', () => {
         const issues = validateInvoiceItems(items, invoiceDiscount, taxPolicy);
         if ('error' in before) {
           rejected++;
-          expect(issues[0]?.message).toBe(before.error);
-        } else {
-          expect(issues).toEqual([]);
+          // Never accepted where the API rejected.
+          expect(issues.length).toBeGreaterThan(0);
+          if (issues[0].message !== before.error) {
+            expect(isNewLimit(issues[0].message)).toBe(true);
+            newlyLimited++;
+          }
+        } else if (issues.length > 0) {
+          expect(isNewLimit(issues[0].message)).toBe(true);
+          newlyLimited++;
         }
       }
       expect(rejected).toBeGreaterThan(10000); // the generator really exercises rejections
+      expect(newlyLimited).toBeGreaterThan(0); // and the new limits
     });
 
     it('preserved: totals equal the previous implementation except at exact half cents, where they now round away from zero', () => {

@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import * as shared from '@invoice-money/invoice-money';
 import { INVOICE_MONEY_CASES } from '@invoice-money/invoice-money.cases';
 import {
+  checkInvoiceFormLines,
+  isPlaceholderLine,
   computeInvoiceTotalsCents,
   invoiceTotalsToMoney,
   previewInvoiceTotalsCents,
@@ -202,5 +204,63 @@ describe('computeInvoiceTotalsCents', () => {
     const r = computeInvoiceTotalsCents([]);
     expect(r.invoice.totalCents).toBe(0);
     expect(r.lines).toEqual([]);
+  });
+});
+
+describe('invoice form lines: placeholders, descriptions, and totals that match the payload', () => {
+  const placeholder = { description: '', quantity: 1, unitPrice: 0, taxRate: 0, discountRate: 0 };
+  const line = (o: Record<string, unknown>) => ({ ...placeholder, description: 'Work', ...o });
+
+  it('an untouched "Add item" line is a placeholder; anything entered makes it a real line', () => {
+    expect(isPlaceholderLine(placeholder)).toBe(true);
+    expect(isPlaceholderLine({ ...placeholder, quantity: '', unitPrice: '', taxRate: NaN })).toBe(true);
+    for (const entered of [{ unitPrice: 5 }, { quantity: 2 }, { taxRate: 8 }, { discountRate: 5 }, { description: 'x' }, { inventoryItemId: 'i1' }]) {
+      expect(isPlaceholderLine({ ...placeholder, ...entered })).toBe(false);
+    }
+  });
+
+  it('leaves placeholders out of totals and payload; a line with data but no description blocks submit', () => {
+    const check = checkInvoiceFormLines([
+      line({ unitPrice: 10 }),
+      placeholder,
+      { ...placeholder, unitPrice: 5 }, // entered a price, no description
+    ]);
+    expect(check.submitted).toEqual([0, 2]);
+    expect(check.issues).toEqual([
+      { line: 3, field: 'items[2].description', message: 'Line 3: description is required' },
+    ]);
+    // Totals include the line that will be sent (once described), never the placeholder.
+    expect(check.preview.totals.invoice.totalCents).toBe(1500);
+  });
+
+  it('rejects a description over 1,000 characters instead of dropping the line', () => {
+    expect(checkInvoiceFormLines([line({ unitPrice: 1, description: 'x'.repeat(1001) })]).issues[0].message)
+      .toBe('Line 1: description must not exceed 1000 characters');
+  });
+
+  it('names the form line, not the position in the payload', () => {
+    const check = checkInvoiceFormLines([placeholder, line({ quantity: 2.5, unitPrice: 10 })]);
+    expect(check.issues).toEqual([
+      { line: 2, field: 'items[0].quantity', message: 'Line 2: quantity must be an integer' },
+    ]);
+  });
+
+  it('blocks amounts that cannot be stored, per line and summed', () => {
+    expect(checkInvoiceFormLines([line({ quantity: 2, unitPrice: 50000000 })]).issues[0].message).toBe(
+      'Line 1: amounts must not exceed 99999999.99 (quantity x unit price, discount, tax and line total)',
+    );
+    expect(
+      checkInvoiceFormLines([line({ unitPrice: 60000000 }), line({ unitPrice: 60000000 })]).issues[0].message,
+    ).toBe('Invoice totals must not exceed 99999999.99 (subtotal, discount, tax and total)');
+  });
+
+  it('the totals shown equal what the API computes for the submitted payload', () => {
+    const items = [line({ quantity: 2, unitPrice: '12.5000', taxRate: '8.8750' }), placeholder, line({ unitPrice: 1.8, taxRate: 17.5 })];
+    const check = checkInvoiceFormLines(items);
+    // The API receives only the submitted lines, after JSON and its number conversion.
+    const payload = JSON.parse(JSON.stringify(check.submitted.map((i) => items[i])));
+    const api = computeInvoiceTotalsCents(payload.map(submittedMoneyFields));
+    expect(check.preview.totals).toEqual(api);
+    expect(api.invoice.totalCents).toBe(2722 + 212); // 2500 + 221.875 -> 222; 180 + 31.5 -> 32
   });
 });
