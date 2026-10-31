@@ -6,6 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Usage } from './entities/usage.entity';
 import { startOfMonth } from 'date-fns';
+import { errorMessage, errorStack } from '../invoices/utils/error-details.util';
 
 @Injectable()
 export class UsageResetScheduler {
@@ -34,10 +35,10 @@ export class UsageResetScheduler {
       this.logger.log(
         `Reset usage for ${result.affected || 0} records from ${previousMonthStart.toISOString()}`,
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        `Failed to reset monthly usage: ${error.message}`,
-        error.stack,
+        `Failed to reset monthly usage: ${errorMessage(error)}`,
+        errorStack(error),
       );
     }
   }

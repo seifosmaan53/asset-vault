@@ -3,6 +3,7 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
+import { errorMessage, errorStack } from '../invoices/utils/error-details.util';
 
 @Injectable()
 export class StripeService {
@@ -47,13 +48,13 @@ export class StripeService {
         `Created Stripe customer ${customer.id} for user ${userId}`,
       );
       return customer;
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        `Failed to create Stripe customer: ${error.message}`,
-        error.stack,
+        `Failed to create Stripe customer: ${errorMessage(error)}`,
+        errorStack(error),
       );
       throw new BadRequestException(
-        `Failed to create customer: ${error.message}`,
+        `Failed to create customer: ${errorMessage(error)}`,
       );
     }
   }
@@ -79,13 +80,13 @@ export class StripeService {
         `Created Stripe subscription ${subscription.id} for customer ${customerId}`,
       );
       return subscription;
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        `Failed to create Stripe subscription: ${error.message}`,
-        error.stack,
+        `Failed to create Stripe subscription: ${errorMessage(error)}`,
+        errorStack(error),
       );
       throw new BadRequestException(
-        `Failed to create subscription: ${error.message}`,
+        `Failed to create subscription: ${errorMessage(error)}`,
       );
     }
   }
@@ -116,13 +117,13 @@ export class StripeService {
 
       this.logger.log(`Updated Stripe subscription ${subscriptionId}`);
       return updatedSubscription;
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        `Failed to update Stripe subscription: ${error.message}`,
-        error.stack,
+        `Failed to update Stripe subscription: ${errorMessage(error)}`,
+        errorStack(error),
       );
       throw new BadRequestException(
-        `Failed to update subscription: ${error.message}`,
+        `Failed to update subscription: ${errorMessage(error)}`,
       );
     }
   }
@@ -146,13 +147,13 @@ export class StripeService {
         `Canceled Stripe subscription ${subscriptionId} at period end`,
       );
       return subscription;
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        `Failed to cancel Stripe subscription: ${error.message}`,
-        error.stack,
+        `Failed to cancel Stripe subscription: ${errorMessage(error)}`,
+        errorStack(error),
       );
       throw new BadRequestException(
-        `Failed to cancel subscription: ${error.message}`,
+        `Failed to cancel subscription: ${errorMessage(error)}`,
       );
     }
   }
@@ -166,13 +167,13 @@ export class StripeService {
       return (await this.stripe.customers.retrieve(
         customerId,
       )) as Stripe.Customer;
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        `Failed to retrieve Stripe customer: ${error.message}`,
-        error.stack,
+        `Failed to retrieve Stripe customer: ${errorMessage(error)}`,
+        errorStack(error),
       );
       throw new BadRequestException(
-        `Failed to retrieve customer: ${error.message}`,
+        `Failed to retrieve customer: ${errorMessage(error)}`,
       );
     }
   }
@@ -184,13 +185,13 @@ export class StripeService {
 
     try {
       return await this.stripe.subscriptions.retrieve(subscriptionId);
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        `Failed to retrieve Stripe subscription: ${error.message}`,
-        error.stack,
+        `Failed to retrieve Stripe subscription: ${errorMessage(error)}`,
+        errorStack(error),
       );
       throw new BadRequestException(
-        `Failed to retrieve subscription: ${error.message}`,
+        `Failed to retrieve subscription: ${errorMessage(error)}`,
       );
     }
   }
@@ -231,13 +232,13 @@ export class StripeService {
         `Created Stripe checkout session ${session.id} for user ${userId}`,
       );
       return session;
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        `Failed to create Stripe checkout session: ${error.message}`,
-        error.stack,
+        `Failed to create Stripe checkout session: ${errorMessage(error)}`,
+        errorStack(error),
       );
       throw new BadRequestException(
-        `Failed to create checkout session: ${error.message}`,
+        `Failed to create checkout session: ${errorMessage(error)}`,
       );
     }
   }
@@ -259,13 +260,13 @@ export class StripeService {
         `Created Stripe portal session ${session.id} for customer ${customerId}`,
       );
       return session;
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        `Failed to create Stripe portal session: ${error.message}`,
-        error.stack,
+        `Failed to create Stripe portal session: ${errorMessage(error)}`,
+        errorStack(error),
       );
       throw new BadRequestException(
-        `Failed to create portal session: ${error.message}`,
+        `Failed to create portal session: ${errorMessage(error)}`,
       );
     }
   }
@@ -282,13 +283,13 @@ export class StripeService {
       });
 
       return invoices.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        `Failed to retrieve customer invoices: ${error.message}`,
-        error.stack,
+        `Failed to retrieve customer invoices: ${errorMessage(error)}`,
+        errorStack(error),
       );
       throw new BadRequestException(
-        `Failed to retrieve invoices: ${error.message}`,
+        `Failed to retrieve invoices: ${errorMessage(error)}`,
       );
     }
   }
@@ -304,13 +305,13 @@ export class StripeService {
       return await this.stripe.checkout.sessions.retrieve(sessionId, {
         expand: ['subscription'],
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        `Failed to retrieve checkout session: ${error.message}`,
-        error.stack,
+        `Failed to retrieve checkout session: ${errorMessage(error)}`,
+        errorStack(error),
       );
       throw new BadRequestException(
-        `Failed to retrieve checkout session: ${error.message}`,
+        `Failed to retrieve checkout session: ${errorMessage(error)}`,
       );
     }
   }
@@ -326,12 +327,12 @@ export class StripeService {
 
     try {
       return this.stripe.webhooks.constructEvent(payload, signature, secret);
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        `Webhook signature verification failed: ${error.message}`,
+        `Webhook signature verification failed: ${errorMessage(error)}`,
       );
       throw new BadRequestException(
-        `Webhook signature verification failed: ${error.message}`,
+        `Webhook signature verification failed: ${errorMessage(error)}`,
       );
     }
   }
