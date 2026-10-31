@@ -7,6 +7,8 @@ import helmet from 'helmet';
 import compression from 'compression';
 import { v4 as uuidv4 } from 'uuid';
 import * as express from 'express';
+import type { NextFunction, Request, Response } from 'express';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ConfigService } from '@nestjs/config';
@@ -38,9 +40,9 @@ async function bootstrap() {
     `Database schema is current (${schema.status.known} migrations applied).`,
   );
 
-  let app;
+  let app: NestExpressApplication;
   try {
-    app = await NestFactory.create(AppModule, {
+    app = await NestFactory.create<NestExpressApplication>(AppModule, {
       bodyParser: true, // Enable body parser
       rawBody: true, // Enable raw body for webhooks
     });
@@ -54,7 +56,7 @@ async function bootstrap() {
   }
 
   const configService = app.get(ConfigService);
-  const isProduction = configService.get('NODE_ENV') === 'production';
+  const isProduction = configService.get<string>('NODE_ENV') === 'production';
 
   // Security: Request body size limits (Issue #2)
   const expressApp = app.getHttpAdapter().getInstance();
@@ -63,7 +65,7 @@ async function bootstrap() {
 
   // Security: HTTPS enforcement in production
   if (isProduction) {
-    app.use((req, res, next) => {
+    app.use((req: Request, res: Response, next: NextFunction) => {
       if (
         req.headers['x-forwarded-proto'] !== 'https' &&
         req.protocol !== 'https'
@@ -75,7 +77,7 @@ async function bootstrap() {
   }
 
   // Security: Request timeout (Issue #8) - 30 seconds
-  app.use((req, res, next) => {
+  app.use((req: Request, res: Response, next: NextFunction) => {
     req.setTimeout(30000, () => {
       res.status(408).json({ message: 'Request timeout' });
     });
@@ -86,7 +88,7 @@ async function bootstrap() {
   // FIX #167: Enable gzip compression for large JSON responses
   app.use(
     compression({
-      filter: (req, res) => {
+      filter: (req: Request, res: Response) => {
         // Compress responses larger than 1KB
         if (req.headers['x-no-compression']) {
           return false;
@@ -103,9 +105,10 @@ async function bootstrap() {
   server.headersTimeout = 66000; // 66 seconds (must be > keepAliveTimeout)
 
   // Security: Request ID tracking for distributed tracing (Issue #13)
-  app.use((req, res, next) => {
+  app.use((req: Request, res: Response, next: NextFunction) => {
     const requestId = req.headers['x-request-id'] || uuidv4();
-    req['requestId'] = requestId;
+    // Read by RequestLoggingInterceptor and HttpExceptionFilter.
+    Object.assign(req, { requestId });
     res.setHeader('X-Request-ID', requestId);
     next();
   });
@@ -135,7 +138,7 @@ async function bootstrap() {
 
   // Enable CORS with proper security (works in all environments)
   const frontendUrl =
-    configService.get('FRONTEND_URL') || 'http://localhost:5173';
+    configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
   app.enableCors({
     origin: (origin, callback) => {
       // In production, strictly validate origins
@@ -199,7 +202,7 @@ async function bootstrap() {
   });
 
   // Request logging middleware
-  app.use((req, res, next) => {
+  app.use((req: Request, res: Response, next: NextFunction) => {
     const start = Date.now();
     res.on('finish', () => {
       const duration = Date.now() - start;
@@ -284,7 +287,7 @@ async function bootstrap() {
     customSiteTitle: 'Asset Vault API Documentation',
   });
 
-  const port = configService.get('PORT') || 3000;
+  const port = configService.get<number>('PORT') || 3000;
   const host = '0.0.0.0'; // Listen on all network interfaces (allows phone access on same Wi-Fi)
 
   try {
@@ -328,4 +331,7 @@ async function bootstrap() {
     process.exit(1);
   }
 }
-bootstrap();
+bootstrap().catch((error: unknown) => {
+  new Logger('Bootstrap').error('Unhandled startup failure', error);
+  process.exit(1);
+});
