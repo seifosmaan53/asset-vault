@@ -31,4 +31,11 @@ export default tseslint.config(
       globals: globals.browser,
     },
   },
+  {
+    // Build and CI helper scripts run in Node, not the browser.
+    files: ['scripts/**/*.{js,mjs}'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
 )

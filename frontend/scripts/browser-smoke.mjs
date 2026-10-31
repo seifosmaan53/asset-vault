@@ -9,7 +9,6 @@
 //
 //   npm i --no-save playwright && npx playwright install chromium
 //   node scripts/browser-smoke.mjs http://localhost:4173
-/* global process, console */
 
 import { chromium } from 'playwright';
 

@@ -14,8 +14,6 @@
 //   - GET that chunk and, transitively, the chunks and stylesheets it imports.
 // It also checks that the entry and its preloads are served. Exit code 1 on any failure.
 
-/* global process, console, fetch */
-
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
