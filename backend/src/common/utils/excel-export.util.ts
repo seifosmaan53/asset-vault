@@ -55,7 +55,7 @@ export async function createExcelWorkbook(
         if (column.eachCell) {
           let maxLength = 10;
           column.eachCell({ includeEmpty: false }, (cell) => {
-            const columnLength = cell.value ? cell.value.toString().length : 10;
+            const columnLength = cell.value ? cell.text.length : 10;
             if (columnLength > maxLength) {
               maxLength = columnLength;
             }
