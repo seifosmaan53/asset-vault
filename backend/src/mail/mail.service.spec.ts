@@ -119,6 +119,9 @@ describe('MailService.testConnection', () => {
     jest
       .spyOn(service, 'isValidSmtpHost')
       .mockImplementation((host) => host === '127.0.0.1');
+    jest
+      .spyOn(service, 'isAllowedSmtpAddress')
+      .mockImplementation((address) => address === '127.0.0.1');
   });
 
   afterEach(async () => {
@@ -182,5 +185,58 @@ describe('MailService.testConnection', () => {
     });
     expect(result.success).toBe(false);
     expect(result.message).toMatch(/Cannot connect/);
+  });
+
+  // Review finding: the old check was a substring blocklist, so these all reached the network.
+  it('refuses internal and metadata addresses, however written, without connecting', async () => {
+    jest.restoreAllMocks();
+    jest
+      .spyOn(service, 'isValidSmtpHost')
+      .mockImplementation((host) => host.length > 0);
+    for (const host of [
+      '127.1',
+      '0.0.0.0',
+      '10.0.0.5',
+      '169.254.169.254',
+      '172.18.0.2',
+      '192.168.1.10',
+      '100.64.0.1',
+      '::1',
+      '::ffff:127.0.0.1',
+      'fe80::1',
+      'fd00::1',
+    ]) {
+      const result = await service.testConnection({
+        host,
+        port: smtp.port,
+        user: 'alice',
+        password: 'right-pass',
+      });
+      expect([host, result.success]).toEqual([host, false]);
+      expect(result.message).toMatch(/public internet address/);
+    }
+    expect(smtp.connections).toBe(0);
+  });
+
+  it("never echoes a non-SMTP service's reply", async () => {
+    const banner = 'HTTP/1.1 400 Bad Request internal-service-banner';
+    const http = net.createServer((socket) => socket.end(`${banner}\r\n`));
+    await new Promise<void>((done) => http.listen(0, '127.0.0.1', done));
+    const address = http.address();
+    const port = typeof address === 'object' && address ? address.port : 0;
+    try {
+      const result = await service.testConnection({
+        host: '127.0.0.1',
+        port,
+        secure: false,
+        user: 'alice',
+        password: 'right-pass',
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).not.toContain('internal-service-banner');
+      expect(result.message).not.toContain('HTTP/1.1');
+    } finally {
+      await new Promise<void>((done) => http.close(() => done()));
+    }
   });
 });

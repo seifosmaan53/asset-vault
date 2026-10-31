@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 import * as sgMail from '@sendgrid/mail';
+import { isIP } from 'net';
+import { isPublicAddress, resolveHostAddresses } from './smtp-address.util';
 
 export type EmailProvider = 'smtp' | 'sendgrid';
 
@@ -216,6 +218,12 @@ export class MailService {
     return true;
   }
 
+  /** Public internet addresses only (see smtp-address.util). Public so tests that run a
+   *  synthetic SMTP server on 127.0.0.1 can allow exactly that address and nothing else. */
+  isAllowedSmtpAddress(address: string): boolean {
+    return isPublicAddress(address);
+  }
+
   /**
    * Check that a submitted SMTP configuration can connect and authenticate.
    *
@@ -234,8 +242,24 @@ export class MailService {
       };
     }
 
+    // Resolve once, require EVERY address to be public, and connect to the address that was
+    // checked, so a DNS answer cannot change between the check and the connection. One message
+    // for "does not resolve" and "not public", so this cannot confirm which internal names exist.
+    const addresses = await resolveHostAddresses(config.host);
+    if (
+      addresses.length === 0 ||
+      !addresses.every((address) => this.isAllowedSmtpAddress(address))
+    ) {
+      return {
+        success: false,
+        message: `SMTP host "${config.host}" could not be resolved to a public internet address.`,
+      };
+    }
+
     const testTransporter = nodemailer.createTransport({
-      host: config.host,
+      host: addresses[0],
+      // Certificates are checked against the name the user entered, not the address.
+      tls: isIP(config.host) ? undefined : { servername: config.host },
       port: config.port,
       secure: config.secure ?? config.port === 465,
       auth: { user: config.user, pass: config.password },
@@ -285,7 +309,8 @@ export class MailService {
         message +=
           'Connection timeout. Please check your SMTP settings and network connection.';
       } else {
-        message += errorMessage;
+        // Never echo the driver's text: for a non-SMTP service it carries that service's reply.
+        message += 'The server did not complete the SMTP connection test.';
       }
 
       this.logger.error('Email connection test failed:', {
