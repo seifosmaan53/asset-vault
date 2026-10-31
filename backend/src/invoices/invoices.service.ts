@@ -1435,6 +1435,7 @@ export class InvoicesService {
         dueDate?: string;
         paidAt?: string | undefined;
         notes?: string | undefined;
+        paymentMethodNote?: string | null;
         metadataJson?: InvoiceMetadata;
       }
 
@@ -1481,6 +1482,12 @@ export class InvoicesService {
           typeof data.notes === 'string'
             ? sanitizeString(data.notes, 10000)
             : undefined;
+      }
+      // Accepted by UpdateInvoiceDto and shown on the invoice and in the payment-method
+      // report, but never copied here, so it was silently dropped. Empty clears it.
+      if (data.paymentMethodNote !== undefined) {
+        updateData.paymentMethodNote =
+          sanitizeString(data.paymentMethodNote, 1000) || null;
       }
 
       // Sanitize text inputs
