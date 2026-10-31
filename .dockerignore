@@ -7,9 +7,11 @@
 frontend/node_modules
 frontend/dist
 frontend/coverage
-frontend/.env
-frontend/.env.local
-frontend/.env.*.local
+# Every env file is excluded except the committed example and the production file
+# (which a builder may use to supply build-time values such as the publishable key).
+frontend/.env*
+!frontend/.env.example
+!frontend/.env.production
 frontend/**/*.test.ts
 frontend/**/*.test.tsx
 frontend/**/*.log
