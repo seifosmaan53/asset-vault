@@ -28,6 +28,7 @@ import { OrganizationsModule } from './organizations/organizations.module';
 import { SampleDataModule } from './sample-data/sample-data.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { StorageModule } from './storage/storage.module';
+import { MIGRATIONS_GLOB } from './database/database-options';
 import { TrpcModule } from './trpc/trpc.module';
 import { TrpcController } from './trpc/trpc.controller';
 import { ClerkAuthGuard } from './auth/clerk-auth.guard';
@@ -141,8 +142,14 @@ import { DataSource } from 'typeorm';
       // DB_DATABASE to use any name you like — see README "Database name".
       database: process.env.DB_DATABASE || 'invoiceme',
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      migrations: [__dirname + '/../migrations/*{.ts,.js}'],
-      synchronize: false, // Always false - use migrations instead
+      // Shared with the migration runner; resolves to <src|dist>/migrations. (This used to be
+      // `__dirname + '/../migrations'`, which from dist/app.module.js pointed at
+      // backend/migrations and matched nothing.)
+      migrations: [MIGRATIONS_GLOB],
+      // Both hard-coded off, read from no environment variable: the schema changes only through
+      // the explicit migration runner, and main.ts refuses to start while any are pending.
+      synchronize: false,
+      migrationsRun: false,
       logging: process.env.NODE_ENV === 'development',
       // Issue #17: Database connection pool limits
       // Issue #22: Database query timeout configuration

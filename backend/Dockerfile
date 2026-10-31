@@ -33,6 +33,10 @@ COPY --from=builder /app/dist ./dist
 # Expose port
 EXPOSE 3000
 
-# Start the application
+# Start the application. It checks the schema first and exits 1, naming the pending
+# migrations, if the database is behind this build; it never applies them itself.
+# Apply them explicitly (after a backup) with the same image:
+#   docker run --rm --env-file <api env file> <image> node dist/database/migration-runner.js
+# Procedure: docs/operations/MIGRATIONS.md
 CMD ["node", "dist/main"]
 

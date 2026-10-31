@@ -285,3 +285,179 @@ jobs:
       - name: Frontend audit
         working-directory: ./frontend
         run: npm audit --audit-level=high || true
+
+  # GATING. The migration release procedure (docs/operations/MIGRATIONS.md) on real containers:
+  # the production backend image (compiled JS, production dependencies only) against a disposable
+  # PostgreSQL 16 container. Proves: an outdated schema blocks API startup; a failing migration
+  # stops docs/operations/release.sh before the API starts and leaves the database untouched; the
+  # documented image command applies 1761000000000; the API then starts and serves /api/v1/health;
+  # a rerun changes nothing; invoice_items rates and invoice totals are unchanged by the upgrade.
+  migration-release:
+    name: Migration release (backend image + PostgreSQL)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        # Explicit bash = `bash -eo pipefail`: a failure piped into tee still fails the step.
+        shell: bash
+    env:
+      NET: av-release
+      DB: asset_vault_release
+      LAST: WidenInvoiceItemRatePrecision1761000000000
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the backend image and start a disposable PostgreSQL
+        run: |
+          docker build -t av-backend backend
+          docker network create "$NET"
+          docker run -d --name av-pg --network "$NET" -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB="$DB" \
+            --health-cmd pg_isready --health-interval 2s postgres:16-alpine
+          for i in $(seq 1 60); do [ "$(docker inspect -f '{{.State.Health.Status}}' av-pg)" = healthy ] && break; sleep 1; done
+          docker exec av-pg psql -U postgres -d "$DB" -c 'select version()'
+          cat > api.env <<EOF
+          DB_HOST=av-pg
+          DB_PORT=5432
+          DB_USERNAME=postgres
+          DB_PASSWORD=postgres
+          DB_DATABASE=$DB
+          CLERK_SECRET_KEY=sk_test_ci_not_a_real_key
+          NODE_ENV=production
+          FRONTEND_URL=http://localhost
+          EOF
+          sed -i 's/^ *//' api.env
+          # Helpers for later steps.
+          cat > sql.sh <<'EOF'
+          #!/usr/bin/env bash
+          docker exec -i av-pg psql -v ON_ERROR_STOP=1 -U postgres -d "$DB" -At -F'|' "$@"
+          EOF
+          sed -i 's/^ *//' sql.sh && chmod +x sql.sh
+
+      - name: Outdated schema - every migration except the last, plus invoice data
+        run: |
+          # The released image's own runner, with the newest migration removed inside a throwaway container.
+          docker run --rm --network "$NET" --env-file api.env --entrypoint sh av-backend \
+            -c "rm dist/migrations/1761000000000-* && node dist/database/migration-runner.js"
+          test "$(./sql.sh -c 'select count(*) from migrations')" = 40
+          test "$(./sql.sh -c "select count(*) from migrations where name = '$LAST'")" = 0
+          test "$(./sql.sh -c "select numeric_precision||','||numeric_scale from information_schema.columns where table_name='invoice_items' and column_name='taxRate'")" = 5,2
+          ./sql.sh <<'SQL'
+          INSERT INTO users (id, email, name) VALUES ('00000000-0000-4000-8000-000000000001', 'release@migration-test.invalid', 'Release check');
+          INSERT INTO clients (id, "userId", name) VALUES ('00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000001', 'Release check client');
+          INSERT INTO invoices (id, "userId", "clientId", type, number, status, "issueDate", subtotal, "taxTotal", "discountTotal", total)
+          VALUES ('00000000-0000-4000-8000-000000000003', '00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000002',
+                  'invoice', 'MIG-0001', 'draft', '2026-10-01', 200.0100, 17.7612, 10.0000, 207.7712);
+          INSERT INTO invoice_items ("invoiceId", description, quantity, "unitPrice", "taxRate", "discountRate", "lineTotal") VALUES
+            ('00000000-0000-4000-8000-000000000003', 'A two-decimal rates', 1, 100.0000, 8.88, 5.00, 103.4400),
+            ('00000000-0000-4000-8000-000000000003', 'B max rates', 2, 50.0000, 999.99, 999.99, 104.3200),
+            ('00000000-0000-4000-8000-000000000003', 'C tiny values', 1, 0.0100, 0.01, 0.00, 0.0100),
+            ('00000000-0000-4000-8000-000000000003', 'D zero rates', 3, 33.3333, 0, 0, 99.9999);
+          SQL
+          cat > snapshot.sql <<'SQL'
+          SELECT 'item', description, quantity, "unitPrice"::text, round("taxRate", 4)::text, round("discountRate", 4)::text, "lineTotal"::text FROM invoice_items ORDER BY description;
+          SELECT 'invoice', number, subtotal::text, "taxTotal"::text, "discountTotal"::text, total::text, coalesce("amountPaid", 0)::text FROM invoices ORDER BY number;
+          SQL
+          ./sql.sh < snapshot.sql | tee before.txt
+          test "$(wc -l < before.txt)" = 5
+
+      - name: (a) The API refuses to start on the outdated schema
+        run: |
+          set +e
+          docker run --name av-api-outdated --network "$NET" --env-file api.env av-backend > outdated.log 2>&1
+          code=$?
+          set -e
+          cat outdated.log
+          echo "exit code: $code"; test "$code" -ne 0
+          grep -F 'Startup aborted: database schema is not current.' outdated.log
+          grep -F "  - $LAST" outdated.log
+          grep -F 'node dist/database/migration-runner.js' outdated.log
+          if grep -F 'Nest application successfully started' outdated.log; then echo 'the API started'; exit 1; fi
+          # The check is read-only.
+          test "$(./sql.sh -c 'select count(*) from migrations')" = 40
+
+      - name: (a) The API refuses to start when the database is unreachable
+        run: |
+          set +e
+          docker run --rm --network "$NET" --env-file api.env -e DB_PORT=5999 av-backend > unreachable.log 2>&1
+          code=$?
+          set -e
+          cat unreachable.log
+          echo "exit code: $code"; test "$code" -ne 0
+          grep -F 'Startup aborted: database unreachable.' unreachable.log
+          grep -F 'Cannot connect to the database at av-pg:5999' unreachable.log
+
+      - name: (e) A failing migration stops the release before the API starts
+        run: |
+          # Test-only image: the released image plus a harmless migration and one that must fail.
+          # Never committed to backend/src/migrations.
+          mkdir failing && cd failing
+          cat > 1799999999998-ReleaseCheckMarker.js <<'EOF'
+          "use strict";
+          Object.defineProperty(exports, "__esModule", { value: true });
+          class ReleaseCheckMarker1799999999998 { constructor() { this.name = 'ReleaseCheckMarker1799999999998'; }
+            async up(q) { await q.query('CREATE TABLE "release_check_marker" (id int)'); }
+            async down(q) { await q.query('DROP TABLE "release_check_marker"'); } }
+          exports.ReleaseCheckMarker1799999999998 = ReleaseCheckMarker1799999999998;
+          EOF
+          cat > 1799999999999-ReleaseCheckMustFail.js <<'EOF'
+          "use strict";
+          Object.defineProperty(exports, "__esModule", { value: true });
+          class ReleaseCheckMustFail1799999999999 { constructor() { this.name = 'ReleaseCheckMustFail1799999999999'; }
+            async up(q) { await q.query('ALTER TABLE "invoice_items" ALTER COLUMN "taxRate" TYPE numeric(7,4) USING ("taxRate" / 0)'); }
+            async down() {} }
+          exports.ReleaseCheckMustFail1799999999999 = ReleaseCheckMustFail1799999999999;
+          EOF
+          printf 'FROM av-backend\nCOPY *.js dist/migrations/\n' > Dockerfile
+          docker build -t av-backend-failing .
+          cd ..
+          set +e
+          DOCKER_NETWORK="$NET" BACKUP_DIR=backups-failing API_CONTAINER=av-api-failing API_PORT=3001 \
+            docs/operations/release.sh av-backend-failing api.env > failing.log 2>&1
+          code=$?
+          set -e
+          cat failing.log
+          echo "release exit code: $code"; test "$code" -ne 0
+          grep -F 'pending: WidenInvoiceItemRatePrecision1761000000000' failing.log
+          grep -F 'Migration FAILED; the transaction was rolled back' failing.log
+          if grep -F '== 3/4' failing.log; then echo 'the release continued past the failed migration'; exit 1; fi
+          test -z "$(docker ps -aq --filter name=^av-api-failing$)" && echo 'API container never created'
+          # Nothing from the failed run was kept: not the marker, not 1761000000000.
+          test "$(./sql.sh -c 'select count(*) from migrations')" = 40
+          test "$(./sql.sh -c "select to_regclass('release_check_marker') is null")" = t
+          test "$(./sql.sh -c "select numeric_precision||','||numeric_scale from information_schema.columns where table_name='invoice_items' and column_name='taxRate'")" = 5,2
+          ./sql.sh < snapshot.sql | diff before.txt -
+
+      - name: (b)(c) Release - backup, the documented image command, startup, health
+        run: |
+          DOCKER_NETWORK="$NET" BACKUP_DIR=backups API_CONTAINER=av-api API_PORT=3000 \
+            docs/operations/release.sh av-backend api.env | tee release.log
+          grep -F 'backup written and readable' release.log
+          grep -F 'Database av-pg:5432/asset_vault_release as postgres: 41 migration(s) in this build, 1 pending.' release.log
+          grep -F 'Applied 1 migration(s):' release.log
+          grep -F "  - $LAST" release.log
+          grep -F '"status":"ok"' release.log
+          ls -l backups/*.dump
+          docker logs av-api 2>&1 | grep -F 'Database schema is current (41 migrations applied).'
+          code=$(curl -sS -o health.json -w '%{http_code}' -H 'X-Forwarded-Proto: https' http://127.0.0.1:3000/api/v1/health)
+          cat health.json; echo; echo "HTTP $code"; test "$code" = 200
+          test "$(./sql.sh -c "select count(*) from migrations where name = '$LAST'")" = 1
+
+      - name: (f) Rates and totals unchanged across the upgrade
+        run: |
+          ./sql.sh < snapshot.sql | tee after.txt
+          diff before.txt after.txt && echo 'invoice_items rates and invoice totals identical'
+          test "$(./sql.sh -c "select string_agg(column_name||' '||numeric_precision||','||numeric_scale, '; ' order by column_name) from information_schema.columns where table_name='invoice_items' and column_name in ('taxRate','discountRate')")" = 'discountRate 7,4; taxRate 7,4'
+          # The new precision is usable (inside a transaction that is rolled back).
+          ./sql.sh -c "begin; update invoice_items set \"taxRate\" = 8.875 where description = 'A two-decimal rates'; select \"taxRate\" from invoice_items where description = 'A two-decimal rates'; rollback;" | grep -x '8.8750'
+
+      - name: (d) Rerunning the migration command changes nothing
+        run: |
+          docker exec av-pg pg_dump -U postgres -d "$DB" > dump-before.sql
+          docker run --rm --network "$NET" --env-file api.env av-backend node dist/database/migration-runner.js | tee rerun.log
+          grep -Fx 'No pending migrations. Nothing was changed.' rerun.log
+          docker exec av-pg pg_dump -U postgres -d "$DB" > dump-after.sql
+          cmp dump-before.sql dump-after.sql && echo 'schema and data byte-identical after the rerun'
+
+      - name: Container logs
+        if: always()
+        run: |
+          for c in av-api av-api-outdated; do echo "--- $c"; docker logs "$c" 2>&1 | tail -n 40 || true; done

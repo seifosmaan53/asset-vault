@@ -219,7 +219,7 @@ cd frontend && npm test
 2. Fix forward. The usual causes are configuration: `CLERK_SECRET_KEY` unset (the API refuses to start, which is the intended fail-closed behavior), a wrong key, or a Clerk outage. Set `CLERK_JWT_KEY` to verify tokens without reaching Clerk's key endpoint.
 3. If service must be restored before a fix is ready, restore a build that contains the token-verification fix, or serve a maintenance response. Never serve a build older than this change.
 4. After any incident, rotate `CLERK_SECRET_KEY` if it may have been exposed, and review access logs for the exposure window.
-5. Take a database backup before applying migrations. Migration `1761000000000` (invoice line rates to `numeric(7,4)`) must run before an API with the four-decimal rate rules serves requests; its `down` rounds rates back to two decimals.
+5. **Migrations.** Release in this order: back up the database, apply migrations with the production image (`docker run --rm --env-file api.env <backend image> node dist/database/migration-runner.js`), start the API, verify `/api/v1/health`. The API never migrates by itself: it refuses to start (exit 1, naming the pending migrations and that command) while any are pending, and when the database is unreachable. Recovery is restoring the pre-migration backup or fixing forward, **not** reverting: the `down` of `1761000000000` (invoice line rates to `numeric(7,4)`) rounds rates back to two decimals and loses any precision stored since. Exact commands: [docs/operations/MIGRATIONS.md](docs/operations/MIGRATIONS.md); scripted sequence: [docs/operations/release.sh](docs/operations/release.sh).
 
 ---
 
@@ -234,7 +234,12 @@ cd asset-vault
 printf 'CLERK_SECRET_KEY=sk_test_...\nVITE_CLERK_PUBLISHABLE_KEY=pk_test_...\n' > .env
 docker compose up -d --build
 ```
-Open [http://localhost](http://localhost). Apply the database migrations once from the host (`cd backend && npm ci && npm run migration:run`, with `backend/.env` pointing at `localhost:5432`); see [docs/setup/DOCKER_README.md](docs/setup/DOCKER_README.md).
+The API container exits until the schema is migrated (it logs the pending migrations). Apply them with the image's own runner, then start it again:
+```bash
+docker compose run --rm backend node dist/database/migration-runner.js
+docker compose up -d backend
+```
+Open [http://localhost](http://localhost). See [docs/operations/MIGRATIONS.md](docs/operations/MIGRATIONS.md) and [docs/setup/DOCKER_README.md](docs/setup/DOCKER_README.md).
 
 ### Option 2 — Local Development
 ```bash
