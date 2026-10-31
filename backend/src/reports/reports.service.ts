@@ -9,6 +9,15 @@ import { Store } from '../inventory/entities/store.entity';
 import { StoreItemSettings } from '../inventory/entities/store-item-settings.entity';
 import { ReportFiltersDto, PeriodType } from './dto/report-filters.dto';
 
+export interface ClientSalesLine {
+  clientId: string;
+  clientName: string;
+  invoiceCount: number;
+  totalRevenue: number;
+  paidRevenue: number;
+  unpaidRevenue: number;
+}
+
 export interface InventoryValuationLine {
   itemId: string;
   itemName: string;
@@ -226,20 +235,17 @@ export class ReportsService {
         }
         return acc;
       },
-      {} as Record<string, any>,
+      {} as Record<string, ClientSalesLine>,
     );
 
     const summary = Object.values(clientSales).sort(
-      (a: any, b: any) => b.totalRevenue - a.totalRevenue,
+      (a, b) => b.totalRevenue - a.totalRevenue,
     );
 
     return {
       summary,
       totalClients: summary.length,
-      totalRevenue: summary.reduce(
-        (sum: number, item: any) => sum + item.totalRevenue,
-        0,
-      ),
+      totalRevenue: summary.reduce((sum, item) => sum + item.totalRevenue, 0),
     };
   }
 
