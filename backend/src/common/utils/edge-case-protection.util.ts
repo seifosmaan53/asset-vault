@@ -1142,7 +1142,12 @@ export function sanitizeString(value: string): string {
  * Ensure transaction safety - validate queryRunner is active
  * Handles both function and property forms of isTransactionActive (TypeORM versions vary)
  */
-export function ensureTransactionActive(queryRunner: any): void {
+export function ensureTransactionActive(
+  queryRunner:
+    | { isTransactionActive: boolean | (() => boolean) }
+    | null
+    | undefined,
+): void {
   if (!queryRunner) {
     throw new InternalServerErrorException(
       'Transaction queryRunner is required but not provided',
