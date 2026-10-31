@@ -8,6 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from './roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
+import type { GuardRequest } from './interfaces/request-user.interface';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -25,12 +26,8 @@ export class RolesGuard implements CanActivate {
       return true; // no roles requirements
     }
 
-    const request = context.switchToHttp().getRequest();
-    const user = request.user as {
-      role?: UserRole;
-      userId?: string;
-      email?: string;
-    };
+    const request = context.switchToHttp().getRequest<GuardRequest>();
+    const user = request.user;
 
     if (!user || !user.role) {
       this.logger.warn(

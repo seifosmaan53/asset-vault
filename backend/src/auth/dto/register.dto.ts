@@ -8,6 +8,7 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsStrongPassword } from '../validators/password.validator';
 import { Transform } from 'class-transformer';
+import { normalizeEmail } from './normalize-email.transform';
 
 export class RegisterDto {
   @ApiProperty({
@@ -15,7 +16,7 @@ export class RegisterDto {
     description: 'User email address',
   })
   @IsEmail({}, { message: 'Please provide a valid email address' })
-  @Transform(({ value }) => value?.toLowerCase()?.trim())
+  @Transform(normalizeEmail)
   email: string;
 
   @ApiProperty({

@@ -39,7 +39,7 @@ describe('AuthService', () => {
 
   const usersService = {
     findById: jest.fn(),
-    update: jest.fn(),
+    update: jest.fn<Promise<User>, [string, Partial<User>]>(),
   };
 
   beforeEach(async () => {
