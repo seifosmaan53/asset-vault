@@ -10,6 +10,11 @@ import {
 } from '@nestjs/common';
 import type { Request as ExpressRequest, Response } from 'express';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import { positiveIntFromEnv } from '../common/utils/env-int.util';
+import {
+  SMTP_TEST_LIMITS,
+  SmtpTestThrottlerGuard,
+} from './smtp-test-throttler.guard';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { UserSettingsService } from './user-settings.service';
@@ -160,6 +165,26 @@ export class UserSettingsController {
   }
 
   @Post('test-email')
+  // Per address (global guard, before auth) and per verified user (route guard, after auth);
+  // MailService also caps tests in flight. All counts are per process; see .env.example.
+  @Throttle({
+    default: {
+      // A function, read per request: a value computed at import time would miss .env, which
+      // ConfigModule loads after this module is imported.
+      limit: () =>
+        positiveIntFromEnv(
+          'SMTP_TEST_IP_LIMIT_PER_MINUTE',
+          SMTP_TEST_LIMITS.perIpPerMinute,
+        ),
+      ttl: 60000,
+    },
+  })
+  @UseGuards(SmtpTestThrottlerGuard)
+  @ApiResponse({
+    status: 429,
+    description:
+      'Rate limited: per user (5/min, 20/h by default), per client address (20/min), or a test is already running for this account / the server is at its concurrent-test cap',
+  })
   @ApiOperation({
     summary: 'Test an SMTP configuration',
     description:

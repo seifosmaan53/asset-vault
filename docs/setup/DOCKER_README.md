@@ -158,6 +158,18 @@ Compose sets `stop_grace_period: 15s`. Whatever runs the container must allow lo
 `Shutdown: SIGTERM received; ...`, `Shutdown: HTTP server drained after N ms; ...`,
 `Shutdown: complete in N ms; exiting 0.` (or `... forcing exit 1.`).
 
+## SMTP connection-test limits
+
+`POST /user-settings/test-email` connects to a server the user names, so it is limited separately.
+Read by `MailService` and the endpoint's guards; set them in the root `.env` (Compose forwards
+them to the backend) or in the backend's environment. An invalid value stops the API at startup.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `SMTP_TEST_LIMIT_PER_MINUTE` / `SMTP_TEST_LIMIT_PER_HOUR` | 5 / 20 | `POST /user-settings/test-email` (SMTP connection test) per verified user. **Per process**: the throttler keeps counts in memory, so N replicas allow up to N× these numbers; a shared store would need a shared `ThrottlerModule` storage. |
+| `SMTP_TEST_IP_LIMIT_PER_MINUTE` | 20 | The same endpoint per client address, as `TRUST_PROXY` sees it (forwarded headers from untrusted peers are ignored). Per process. |
+| `SMTP_TEST_MAX_CONCURRENT` / `SMTP_TEST_TIMEOUT_MS` | 8 / 10000 | Connection tests in flight at once in this process (one per user; excess is 429 without a connection) and the whole-test deadline (1000–120000 ms) after which the socket is destroyed. |
+
 ## Hot-reload frontend (dev profile)
 
 `frontend-dev` runs the Vite dev server on http://localhost:5173 with the source mounted. It

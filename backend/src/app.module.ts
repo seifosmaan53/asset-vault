@@ -66,6 +66,16 @@ import { ContentNegotiationInterceptor } from './common/interceptors/content-neg
         // Public https origin of the API for the production HTTP->HTTPS redirect; defaults to
         // FRONTEND_URL's host (the proxied same-origin layout).
         API_PUBLIC_URL: Joi.string().uri().allow('').optional(),
+        // SMTP connection-test limits (per process); see .env.example
+        SMTP_TEST_LIMIT_PER_MINUTE: Joi.number().integer().min(1).optional(),
+        SMTP_TEST_LIMIT_PER_HOUR: Joi.number().integer().min(1).optional(),
+        SMTP_TEST_IP_LIMIT_PER_MINUTE: Joi.number().integer().min(1).optional(),
+        SMTP_TEST_MAX_CONCURRENT: Joi.number().integer().min(1).optional(),
+        SMTP_TEST_TIMEOUT_MS: Joi.number()
+          .integer()
+          .min(1000)
+          .max(120000)
+          .optional(),
         // Proxies whose X-Forwarded-* headers are believed: '' (none, default), a hop count,
         // or a comma list of IPs / CIDRs / loopback / linklocal / uniquelocal. Never 'true'.
         TRUST_PROXY: Joi.string().allow('').optional(),

@@ -64,6 +64,12 @@ services:
       # Graceful shutdown bound: in-flight requests get this long after SIGTERM, then exit 1.
       # Must stay below stop_grace_period, after which Docker sends SIGKILL.
       SHUTDOWN_TIMEOUT_MS: ${SHUTDOWN_TIMEOUT_MS:-8000}
+      # SMTP connection-test limits (per process); see docs/setup/DOCKER_README.md
+      SMTP_TEST_LIMIT_PER_MINUTE: ${SMTP_TEST_LIMIT_PER_MINUTE:-5}
+      SMTP_TEST_LIMIT_PER_HOUR: ${SMTP_TEST_LIMIT_PER_HOUR:-20}
+      SMTP_TEST_IP_LIMIT_PER_MINUTE: ${SMTP_TEST_IP_LIMIT_PER_MINUTE:-20}
+      SMTP_TEST_MAX_CONCURRENT: ${SMTP_TEST_MAX_CONCURRENT:-8}
+      SMTP_TEST_TIMEOUT_MS: ${SMTP_TEST_TIMEOUT_MS:-10000}
     # Not published on the host: reachable only through the proxy.
     expose:
       - "3000"
