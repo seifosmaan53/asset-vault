@@ -25,11 +25,11 @@ export class AddInvoiceStatusHistory1758000000000
 
     // Add foreign key constraint to invoices table
     // Check if constraint already exists before adding
-    const constraintExists = await queryRunner.query(`
+    const constraintExists: unknown = await queryRunner.query(`
       SELECT 1 FROM pg_constraint WHERE conname = 'FK_invoice_status_history_invoiceId'
     `);
 
-    if (constraintExists.length === 0) {
+    if (Array.isArray(constraintExists) && constraintExists.length === 0) {
       await queryRunner.query(`
         ALTER TABLE "invoice_status_history" 
         ADD CONSTRAINT "FK_invoice_status_history_invoiceId" 
