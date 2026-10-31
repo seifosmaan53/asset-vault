@@ -1,317 +1,122 @@
 # Docker Setup Guide
 
-## ✅ Docker Configuration Status
+What is verified, and how: CI (`.github/workflows/ci.yml`, job **Docker images**) builds
+`frontend/Dockerfile`, `frontend/Dockerfile.dev` and `backend/Dockerfile` from a clean
+checkout, runs the frontend image and checks what it serves, validates
+`docker-compose.yml`, and starts the `postgres` service. The full stack (backend talking to
+a database and to Clerk) is **not** run in CI.
 
-**Status:** ✅ **READY AND GUARANTEED TO WORK**
+## Requirements
 
-All Docker files are properly configured and tested. The application is ready to run in Docker containers.
+- Docker with the Compose v2 plugin (`docker compose`, not the old `docker-compose`).
+- A Clerk application (https://dashboard.clerk.com): its **secret** key for the API and
+  its **publishable** key for the web app.
 
----
+## Configuration: a root `.env`
 
-## Quick Start
-
-### Prerequisites
-- Docker installed (https://docs.docker.com/get-docker/)
-- Docker Compose installed (usually included with Docker Desktop)
-
-### Start All Services
-
-```bash
-docker-compose up -d
-```
-
-This will:
-1. Build backend and frontend images
-2. Start PostgreSQL database
-3. Wait for database to be healthy
-4. Start backend server
-5. Start frontend (nginx)
-
-### Access the Application
-
-- **Frontend:** http://localhost:80 (or http://localhost)
-- **Backend API:** http://localhost:3000/api/v1
-- **API Docs:** http://localhost:3000/api/docs
-
-### Stop All Services
-
-```bash
-docker-compose down
-```
-
-### View Logs
-
-```bash
-# All services
-docker-compose logs -f
-
-# Specific service
-docker-compose logs -f backend
-docker-compose logs -f frontend
-docker-compose logs -f postgres
-```
-
----
-
-## Configuration
-
-### Environment Variables
-
-Create a `.env` file in the project root (optional):
+`docker compose` reads variables from the shell or from a `.env` file in the repository
+root. It does **not** read `backend/.env` or `frontend/.env`.
 
 ```env
-DB_USERNAME=postgres
-DB_PASSWORD=your-secure-password
-DB_DATABASE=invoiceme
-JWT_SECRET=your-jwt-secret
-JWT_REFRESH_SECRET=your-refresh-secret
-NODE_ENV=production
+# Required. The API refuses to start without it.
+CLERK_SECRET_KEY=sk_test_...
+# Required. Baked into the web bundle at BUILD time; without it the image only shows a
+# configuration-error screen, so the frontend build fails instead. Public by design.
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
+
+# Optional (defaults shown).
+# DB_USERNAME=postgres
+# DB_PASSWORD=postgres
+# DB_DATABASE=invoiceme
+# CLERK_WEBHOOK_SECRET=
+# CLERK_JWT_KEY=
+# FRONTEND_URL=http://localhost       # the one origin the API's CORS allows in production
+# VITE_API_BASE_URL=http://localhost:3000/api/v1
 ```
 
-If not provided, defaults will be used (see docker-compose.yml).
+Because the `VITE_*` values are compiled into the bundle, rebuild after changing them:
+`docker compose build frontend`.
 
-### Port Configuration
+## Start
 
-Default ports:
-- **Frontend:** 80
-- **Backend:** 3000
-- **Database:** 5432
-
-To change ports, edit `docker-compose.yml`:
-
-```yaml
-ports:
-  - "8080:80"      # Change frontend port
-  - "3001:3000"    # Change backend port
+```bash
+docker compose up -d --build     # postgres, backend, frontend (nginx)
+docker compose ps
+docker compose logs -f backend
+docker compose down              # add -v to delete the database volume
 ```
 
----
+- Frontend: http://localhost (port 80)
+- API: http://localhost:3000/api/v1, docs at http://localhost:3000/api/docs
 
-## Services
+### Database schema
 
-### 1. PostgreSQL Database
+Nothing creates the schema automatically: the API does not run migrations at startup, and
+the backend image contains only the compiled app, not the migration runner. Run the
+migrations from the host against the published port 5432, once the `postgres` service is
+healthy:
 
-- **Image:** `postgres:15-alpine`
-- **Container:** `invoiceme-postgres`
-- **Port:** 5432
-- **Volume:** `postgres_data` (persistent storage)
-- **Health Check:** Enabled (waits for database to be ready)
+```bash
+cd backend
+npm ci
+cp .env.example .env   # DB_HOST=localhost, plus the DB_* values used by compose and CLERK_SECRET_KEY
+npm run migration:run
+```
 
-### 2. Backend API
+## Hot-reload frontend (dev profile)
 
-- **Image:** Built from `backend/Dockerfile`
-- **Container:** `invoiceme-backend`
-- **Port:** 3000
-- **Depends on:** PostgreSQL (waits for health check)
-- **Build:** Multi-stage build (optimized production image)
+`frontend-dev` runs the Vite dev server with the source mounted. It is behind the `dev`
+profile, so `docker compose up` does not start it:
 
-### 3. Frontend
+```bash
+cp frontend/.env.example frontend/.env   # set VITE_CLERK_PUBLISHABLE_KEY
+docker compose --profile dev up -d frontend-dev
+```
 
-- **Image:** Built from `frontend/Dockerfile`
-- **Container:** `invoiceme-frontend`
-- **Port:** 80
-- **Web Server:** Nginx (alpine)
-- **Depends on:** Backend
-- **Build:** Multi-stage build (optimized production image)
+It serves http://localhost:5173 and reads `VITE_*` from the mounted `frontend/.env`.
+Compose still needs `CLERK_SECRET_KEY` (for the backend it depends on). The API allows a
+single CORS origin in production, so set `FRONTEND_URL=http://localhost:5173` in the root
+`.env` while using the dev server, then `docker compose up -d backend` to apply it.
 
----
+## Building an image by hand
 
-## Docker Files
+Both frontend images build from the **repository root**, so they can include
+`backend/src/common/money/invoice-money.ts`, the invoice-money module shared with the API
+(the `@invoice-money` Vite alias):
 
-### ✅ All Files Present and Configured
+```bash
+docker build -f frontend/Dockerfile \
+  --build-arg VITE_CLERK_PUBLISHABLE_KEY=pk_test_... \
+  -t asset-vault-frontend .
+docker build -f frontend/Dockerfile.dev -t asset-vault-frontend-dev .
+docker build -t asset-vault-backend backend
+```
 
-1. **docker-compose.yml** - Main orchestration file
-   - ✅ All services configured
-   - ✅ Health checks enabled
-   - ✅ Dependencies set correctly
-   - ✅ Environment variables with defaults
+A `frontend/.env.production` that defines `VITE_CLERK_PUBLISHABLE_KEY` also works (the
+root `.dockerignore` keeps it); a non-empty build arg takes precedence.
 
-2. **backend/Dockerfile** - Backend container
-   - ✅ Multi-stage build (optimized)
-   - ✅ Production dependencies only
-   - ✅ Proper Node.js version (18-alpine)
+## Files
 
-3. **frontend/Dockerfile** - Frontend container
-   - ✅ Multi-stage build (optimized)
-   - ✅ Nginx for serving static files
-   - ✅ Proper build process
+| File | Role |
+|---|---|
+| `docker-compose.yml` | `postgres` (15-alpine), `backend`, `frontend`; `frontend-dev` in the `dev` profile |
+| `backend/Dockerfile` | `node:22-alpine`, multi-stage; context `backend/`, filtered by `backend/.dockerignore` |
+| `frontend/Dockerfile` | `node:22-alpine` build, then `nginx:alpine` serving `dist` |
+| `frontend/Dockerfile.dev` | `node:22-alpine` with dependencies installed; source is mounted |
+| `frontend/nginx.conf` | SPA fallback to `index.html`, gzip, long-lived caching for fingerprinted assets, security headers |
+| `.dockerignore` (root) | Build context of the frontend images: `frontend/` plus the one shared money file; excludes `node_modules`, `dist`, `.env`, `.env.local`, `.env.*.local` and tests |
 
-4. **frontend/nginx.conf** - Nginx configuration
-   - ✅ SPA routing configured
-   - ✅ Gzip compression enabled
-   - ✅ Security headers set
-   - ✅ Static asset caching
-
-5. **backend/.dockerignore** - Backend ignore file
-   - ✅ Excludes unnecessary files
-   - ✅ Reduces build context size
-
-6. **frontend/.dockerignore** - Frontend ignore file
-   - ✅ Excludes unnecessary files
-   - ✅ Reduces build context size
-
----
-
-## Build Process
-
-### Backend Build
-
-1. **Builder Stage:**
-   - Copies package files
-   - Installs all dependencies
-   - Copies source code
-   - Builds TypeScript to JavaScript
-
-2. **Production Stage:**
-   - Uses Node.js 18-alpine (small image)
-   - Installs only production dependencies
-   - Copies built application
-   - Exposes port 3000
-
-### Frontend Build
-
-1. **Builder Stage:**
-   - Copies package files
-   - Installs all dependencies
-   - Copies source code
-   - Builds React application
-
-2. **Production Stage:**
-   - Uses Nginx alpine (small image)
-   - Copies built files to nginx html directory
-   - Copies nginx configuration
-   - Exposes port 80
-
----
-
-## Database Initialization
-
-The database is automatically initialized with:
-- UUID extension enabled
-- Migrations run on first startup (via backend)
-- Optional: Seed data can be added
-
-**Note:** The `backend/scripts/init.sql` file is mounted to the PostgreSQL container and runs automatically on first startup.
-
----
+Node 22 because Vite 7 needs Node ^20.19 or >=22.12, and NestJS 11 and `@clerk/backend`
+need Node >=20 (the `engines` fields in the lockfiles); Node 18 cannot build either half.
 
 ## Troubleshooting
 
-### Issue: Port already in use
-
-**Solution:** Change ports in `docker-compose.yml` or stop the conflicting service.
-
-### Issue: Database connection fails
-
-**Solution:** 
-- Check PostgreSQL container is running: `docker-compose ps`
-- Check logs: `docker-compose logs postgres`
-- Verify environment variables are correct
-
-### Issue: Frontend can't connect to backend
-
-**Solution:**
-- Ensure backend is running: `docker-compose ps`
-- Check backend logs: `docker-compose logs backend`
-- Verify `FRONTEND_URL` in docker-compose.yml matches frontend URL
-
-### Issue: Build fails
-
-**Solution:**
-- Check Docker has enough resources (memory, disk)
-- Clear Docker cache: `docker system prune -a`
-- Rebuild: `docker-compose build --no-cache`
-
-### Issue: Containers keep restarting
-
-**Solution:**
-- Check logs: `docker-compose logs`
-- Verify all required environment variables are set
-- Check database is accessible from backend container
-
----
-
-## Production Deployment
-
-### Recommended Settings
-
-1. **Set Strong Secrets:**
-   ```env
-   JWT_SECRET=<strong-random-secret>
-   JWT_REFRESH_SECRET=<strong-random-secret>
-   DB_PASSWORD=<strong-password>
-   ```
-
-2. **Use Environment File:**
-   Create `.env` file with production values
-
-3. **Remove Volume Mounts:**
-   The docker-compose.yml is configured for production (no volume mounts for code)
-
-4. **Use Reverse Proxy:**
-   - Set up Nginx/Traefik in front of containers
-   - Configure HTTPS
-   - Update `FRONTEND_URL` to use HTTPS
-
-5. **Database Backups:**
-   - Set up regular backups of `postgres_data` volume
-   - Use: `docker run --rm -v invoiceme_postgres_data:/data -v $(pwd):/backup alpine tar czf /backup/backup.tar.gz /data`
-
----
-
-## Development Mode
-
-For development with hot-reload, modify `docker-compose.yml`:
-
-```yaml
-backend:
-  volumes:
-    - ./backend:/app
-    - /app/node_modules
-  command: npm run start:dev
-```
-
-This mounts your code and enables hot-reload.
-
----
-
-## Verification Checklist
-
-✅ **All Docker files present:**
-- docker-compose.yml
-- backend/Dockerfile
-- frontend/Dockerfile
-- frontend/nginx.conf
-- backend/.dockerignore
-- frontend/.dockerignore
-
-✅ **Configuration verified:**
-- Services properly configured
-- Health checks enabled
-- Dependencies set correctly
-- Environment variables with defaults
-- Port mappings correct
-
-✅ **Build process:**
-- Multi-stage builds for optimization
-- Production dependencies only
-- Proper base images (alpine for size)
-
-✅ **Ready to use:**
-- Just run `docker-compose up -d`
-- All services will start automatically
-- Application accessible on configured ports
-
----
-
-## Summary
-
-**Docker is 100% ready and guaranteed to work.**
-
-All configuration files are present, properly configured, and follow Docker best practices. The application can be deployed immediately using Docker Compose.
-
-**Next Steps:**
-1. Install Docker (if not already installed)
-2. Run `docker-compose up -d`
-3. Access application at http://localhost:80
-
+- **`required variable CLERK_SECRET_KEY is missing`**: compose refuses to parse the file
+  without it; set it in the root `.env`.
+- **Frontend build fails with `VITE_CLERK_PUBLISHABLE_KEY is not set`**: set it in the root
+  `.env` and run `docker compose build frontend`.
+- **The web app loads but API calls fail**: check `docker compose logs backend`, that the
+  migrations have been applied, and that `FRONTEND_URL` is exactly the origin you open the
+  app at (`http://localhost`, no `:80`); a mismatch shows as `CORS blocked request from origin`
+  in the backend log.
+- **Port already in use**: change the left-hand side of a `ports` entry, e.g. `"8080:80"`.
