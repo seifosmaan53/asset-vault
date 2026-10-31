@@ -29,6 +29,10 @@ for (const [network, prefix] of [
 for (const [network, prefix] of [
   ['::', 128], // unspecified
   ['::1', 128], // loopback
+  ['::', 96], // deprecated IPv4-compatible (::10.0.0.1)
+  ['64:ff9b::', 96], // NAT64 well-known prefix (embeds an IPv4 address)
+  ['2001::', 32], // Teredo (embeds an IPv4 address)
+  ['2002::', 16], // 6to4 (embeds an IPv4 address)
   ['64:ff9b:1::', 48], // local-use NAT64
   ['100::', 64], // discard
   ['2001:db8::', 32], // documentation

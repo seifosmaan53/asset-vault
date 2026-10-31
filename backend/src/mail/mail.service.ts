@@ -256,8 +256,11 @@ export class MailService {
       };
     }
 
+    // Prefer an IPv4 address when the host has both families, as nodemailer's own lookup did.
+    const target =
+      addresses.find((address) => isIP(address) === 4) ?? addresses[0];
     const testTransporter = nodemailer.createTransport({
-      host: addresses[0],
+      host: target,
       // Certificates are checked against the name the user entered, not the address.
       tls: isIP(config.host) ? undefined : { servername: config.host },
       port: config.port,
