@@ -34,7 +34,10 @@ import {
   computeInvoiceTotalsCents,
   invoiceTotalsToMoney,
 } from './utils/invoice-totals.util';
-import { centsToMoney } from '../common/utils/edge-case-protection.util';
+import {
+  centsToMoney,
+  validateDate,
+} from '../common/utils/edge-case-protection.util';
 import {
   validateStatusTransition,
   validateStatusBusinessRules,
@@ -42,7 +45,6 @@ import {
   InvoiceStatus,
 } from './utils/invoice-status.util';
 import { InvoiceStatusHistory } from './entities/invoice-status-history.entity';
-import { validateDate } from '../common/utils/edge-case-protection.util';
 import { validateCurrencyCode } from './utils/currency.util';
 import { Client } from '../clients/entities/client.entity';
 import { UsageService, UsageMetric } from '../subscriptions/usage.service';

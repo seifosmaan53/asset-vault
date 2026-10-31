@@ -1,8 +1,10 @@
 import { getMetadataArgsStorage } from 'typeorm';
-import { MASKED_SMTP_PASSWORD } from './user-settings.service';
+import {
+  MASKED_SMTP_PASSWORD,
+  UserSettingsService,
+} from './user-settings.service';
 import { UserSettings } from './entities/user-settings.entity';
 import { MailService } from '../mail/mail.service';
-import { UserSettingsService } from './user-settings.service';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -30,7 +32,9 @@ describe('stored SMTP password', () => {
 
     it('is replaced by a placeholder in responses, never returned raw', () => {
       const service = read('user-settings.service.ts');
-      expect(service).toContain('smtpPassword: settings.smtpPassword ? MASKED_SMTP_PASSWORD');
+      expect(service).toContain(
+        'smtpPassword: settings.smtpPassword ? MASKED_SMTP_PASSWORD',
+      );
       // The placeholder must not look like something a person would type as a password.
       expect(MASKED_SMTP_PASSWORD).toBe('***ENCRYPTED***');
     });
@@ -39,7 +43,10 @@ describe('stored SMTP password', () => {
       const service = read('user-settings.service.ts');
       const logsWithPassword = service
         .split('\n')
-        .filter((l) => /logger\.(log|warn|error|debug)/.test(l) && /smtpPassword/.test(l));
+        .filter(
+          (l) =>
+            /logger\.(log|warn|error|debug)/.test(l) && /smtpPassword/.test(l),
+        );
       expect(logsWithPassword).toEqual([]);
     });
   });

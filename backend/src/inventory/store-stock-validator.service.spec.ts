@@ -1,5 +1,4 @@
-import type { TestingModule } from '@nestjs/testing';
-import { Test } from '@nestjs/testing';
+import { type TestingModule, Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { StoreStockValidatorService } from './store-stock-validator.service';
 import { StoreItemSettings } from './entities/store-item-settings.entity';

@@ -7,8 +7,8 @@ import {
   UseGuards,
   Req,
   Headers,
+  type RawBodyRequest,
 } from '@nestjs/common';
-import type { RawBodyRequest } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import {

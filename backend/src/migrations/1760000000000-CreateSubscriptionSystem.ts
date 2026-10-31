@@ -1,7 +1,12 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import type { MigrationInterface, QueryRunner } from 'typeorm';
-import { Table, TableForeignKey, TableIndex } from 'typeorm';
+import {
+  type MigrationInterface,
+  type QueryRunner,
+  Table,
+  TableForeignKey,
+  TableIndex,
+} from 'typeorm';
 
 export class CreateSubscriptionSystem1760000000000
   implements MigrationInterface

@@ -15,8 +15,7 @@
  * Mocked: Clerk's users.getUser, the users/organizations services. Real: verifyToken, the guard.
  */
 import { createHmac, generateKeyPairSync } from 'crypto';
-import type { ExecutionContext } from '@nestjs/common';
-import { UnauthorizedException } from '@nestjs/common';
+import { type ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import * as jwt from 'jsonwebtoken';
 import { ClerkAuthGuard } from './clerk-auth.guard';
