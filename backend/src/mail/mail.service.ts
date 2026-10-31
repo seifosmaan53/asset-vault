@@ -1,10 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import SMTPConnection from 'nodemailer/lib/smtp-connection';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 import * as sgMail from '@sendgrid/mail';
+import * as net from 'net';
 import { isIP } from 'net';
 import { isPublicAddress, resolveHostAddresses } from './smtp-address.util';
+import { positiveIntFromEnv } from '../common/utils/env-int.util';
 
 export type EmailProvider = 'smtp' | 'sendgrid';
 
@@ -19,7 +22,11 @@ export interface SmtpTestConfig {
   password: string;
 }
 
-const SMTP_TEST_TIMEOUT_MS = 10000;
+/** Whole-test deadline default (SMTP_TEST_TIMEOUT_MS, 1000-120000) and in-flight cap default (SMTP_TEST_MAX_CONCURRENT). */
+export const SMTP_TEST_DEFAULTS = {
+  timeoutMs: 10000,
+  maxConcurrent: 8,
+} as const;
 
 function describeError(error: unknown): { message: string; code: string } {
   // Read structurally rather than with `instanceof Error`: socket errors can come from another
@@ -101,7 +108,22 @@ export class MailService {
     'mail.example.com',
   ];
 
+  private readonly testTimeoutMs: number;
+  private readonly maxConcurrentTests: number;
+
   constructor(private configService: ConfigService) {
+    const timeout = positiveIntFromEnv(
+      'SMTP_TEST_TIMEOUT_MS',
+      SMTP_TEST_DEFAULTS.timeoutMs,
+    );
+    if (timeout < 1000 || timeout > 120000) {
+      throw new Error('SMTP_TEST_TIMEOUT_MS must be between 1000 and 120000');
+    }
+    this.testTimeoutMs = timeout;
+    this.maxConcurrentTests = positiveIntFromEnv(
+      'SMTP_TEST_MAX_CONCURRENT',
+      SMTP_TEST_DEFAULTS.maxConcurrent,
+    );
     this.initializeEmailService();
   }
 
@@ -224,17 +246,63 @@ export class MailService {
     return isPublicAddress(address);
   }
 
+  /** Users with a connection test in flight in this process (one per user, capped overall). */
+  private readonly testsInFlight = new Set<string>();
+
+  /** Connection tests running in this process right now (for tests and diagnostics). */
+  get connectionTestsInFlight(): number {
+    return this.testsInFlight.size;
+  }
+
   /**
    * Check that a submitted SMTP configuration can connect and authenticate.
    *
    * Uses exactly the configuration passed in: nothing is read from the environment, so a
-   * submitted host can never receive the server's own SMTP_USER / SMTP_PASS. The check is the
-   * transport's verify() (connect, EHLO, STARTTLS when offered, AUTH, QUIT); no message is sent
-   * and nothing is stored.
+   * submitted host can never receive the server's own SMTP_USER / SMTP_PASS. The check is
+   * connect, EHLO, STARTTLS when the server offers it (as for real sending), AUTH, QUIT on
+   * a single SMTPConnection; no message is sent and nothing is stored.
+   *
+   * Bounds, all per process (see SMTP_TEST_* in .env.example): one test in flight per user,
+   * SMTP_TEST_MAX_CONCURRENT in flight overall, and SMTP_TEST_TIMEOUT_MS for the whole test,
+   * after which the socket is destroyed. Excess requests get 429 without opening a connection.
    */
   async testConnection(
+    userId: string,
     config: SmtpTestConfig,
   ): Promise<{ success: boolean; message: string }> {
+    if (this.testsInFlight.has(userId)) {
+      throw new HttpException(
+        'A connection test for this account is already running. Wait for it to finish.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+    if (this.testsInFlight.size >= this.maxConcurrentTests) {
+      throw new HttpException(
+        'Too many connection tests are running on this server. Try again in a moment.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+    this.testsInFlight.add(userId);
+    try {
+      return await this.runConnectionTest(config);
+    } finally {
+      this.testsInFlight.delete(userId);
+    }
+  }
+
+  /** Never in production: credentials only go over TLS. Public only so specs with a plaintext
+   *  synthetic server can allow it, as they allow loopback through isAllowedSmtpAddress. */
+  allowsPlaintextAuth(): boolean {
+    return false;
+  }
+
+  private async runConnectionTest(
+    config: SmtpTestConfig,
+  ): Promise<{ success: boolean; message: string }> {
+    // One deadline for the whole test: DNS, TCP, TLS, EHLO, AUTH.
+    const deadlineAt = Date.now() + this.testTimeoutMs;
+    const remaining = () => Math.max(1, deadlineAt - Date.now());
+
     if (!this.isValidSmtpHost(config.host)) {
       return {
         success: false,
@@ -245,7 +313,14 @@ export class MailService {
     // Resolve once, require EVERY address to be public, and connect to the address that was
     // checked, so a DNS answer cannot change between the check and the connection. One message
     // for "does not resolve" and "not public", so this cannot confirm which internal names exist.
-    const addresses = await resolveHostAddresses(config.host);
+    // A lookup still running at the deadline counts as "does not resolve".
+    const addresses = await new Promise<string[]>((resolve) => {
+      const timer = setTimeout(() => resolve([]), remaining());
+      void resolveHostAddresses(config.host).then((found) => {
+        clearTimeout(timer);
+        resolve(found);
+      });
+    });
     if (
       addresses.length === 0 ||
       !addresses.every((address) => this.isAllowedSmtpAddress(address))
@@ -259,29 +334,78 @@ export class MailService {
     // Prefer an IPv4 address when the host has both families, as nodemailer's own lookup did.
     const target =
       addresses.find((address) => isIP(address) === 4) ?? addresses[0];
-    const testTransporter = nodemailer.createTransport({
-      host: target,
-      // Certificates are checked against the name the user entered, not the address.
-      tls: isIP(config.host) ? undefined : { servername: config.host },
-      port: config.port,
-      secure: config.secure ?? config.port === 465,
-      auth: { user: config.user, pass: config.password },
-      connectionTimeout: SMTP_TEST_TIMEOUT_MS,
-      greetingTimeout: SMTP_TEST_TIMEOUT_MS,
-      socketTimeout: SMTP_TEST_TIMEOUT_MS,
-    });
+    const secure = config.secure ?? config.port === 465;
 
-    let timer: NodeJS.Timeout | undefined;
+    // This process owns the TCP socket, so the deadline can destroy it at any stage; a peer
+    // that keeps the SMTP exchange alive (e.g. endless 250- continuation lines) cannot hold it.
+    const socket = net.connect({ host: target, port: config.port });
+    let connection: SMTPConnection | undefined;
+    let succeeded = false;
+
     try {
-      await Promise.race([
-        testTransporter.verify(),
-        new Promise<never>((_, reject) => {
-          timer = setTimeout(
-            () => reject(new Error('SMTP verification timeout')),
-            SMTP_TEST_TIMEOUT_MS,
+      await new Promise<void>((resolve, reject) => {
+        let settled = false;
+        const settle = (error?: unknown) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(deadline);
+          if (error === undefined) resolve();
+          else {
+            // Keep the driver's code: instanceof Error can be false across realms (Jest).
+            const { message, code } = describeError(error);
+            reject(Object.assign(new Error(message), { code }));
+          }
+        };
+        const deadline = setTimeout(() => {
+          settle(
+            Object.assign(new Error('SMTP connection test timeout'), {
+              code: 'ETIMEDOUT',
+            }),
           );
-        }),
-      ]);
+          socket.destroy();
+        }, remaining());
+
+        socket.once('error', (error) => settle(error));
+        socket.once('connect', () => {
+          const smtp = new SMTPConnection({
+            connection: socket,
+            host: target,
+            port: config.port,
+            secure,
+            // STARTTLS is required when TLS is not implicit: credentials never go in clear.
+            requireTLS: !secure && !this.allowsPlaintextAuth(),
+            // Certificates are checked against the name the user entered, not the address.
+            tls: isIP(config.host) ? undefined : { servername: config.host },
+            connectionTimeout: remaining(),
+            greetingTimeout: remaining(),
+            socketTimeout: remaining(),
+            logger: false,
+            debug: false,
+          });
+          connection = smtp;
+          // Persistent listeners: a late 'error' after settling must never be unhandled.
+          smtp.on('error', (error) => settle(error));
+          smtp.on('end', () =>
+            settle(
+              Object.assign(new Error('Connection closed by the server'), {
+                code: 'ECONNECTION',
+              }),
+            ),
+          );
+          smtp.connect((error) => {
+            if (error) return settle(error);
+            smtp.login(
+              { user: config.user, pass: config.password },
+              (loginError) => {
+                if (loginError) return settle(loginError);
+                smtp.quit();
+                settle();
+              },
+            );
+          });
+        });
+      });
+      succeeded = true;
       return {
         success: true,
         message: `Connected to ${config.host}:${config.port} and authenticated as ${config.user}. No email was sent.`,
@@ -293,37 +417,42 @@ export class MailService {
       if (errorCode === 'EAUTH') {
         message +=
           'SMTP authentication failed. Please check the SMTP username and password.';
+      } else if (errorCode === 'ETIMEDOUT') {
+        message +=
+          'Connection timeout. Please check your SMTP settings and network connection.';
+      } else if (errorCode === 'ETLS') {
+        message +=
+          'The server did not offer a secure (TLS) connection, so the password was not sent.';
       } else if (
         errorCode === 'ECONNECTION' ||
-        errorCode === 'ETIMEDOUT' ||
         errorCode === 'ENOTFOUND' ||
+        errorCode === 'EDNS' ||
         errorCode === 'ECONNREFUSED' ||
+        errorCode === 'ECONNRESET' ||
+        errorCode === 'EHOSTUNREACH' ||
+        errorCode === 'ENETUNREACH' ||
         errorCode === 'ESOCKET'
       ) {
         message +=
           'Cannot connect to the SMTP server. Please check the SMTP host and port.';
-      } else if (
-        errorMessage.includes('Invalid login') ||
-        errorMessage.includes('authentication')
-      ) {
-        message +=
-          'Invalid SMTP credentials. Please check your username and password.';
-      } else if (errorMessage.includes('timeout')) {
-        message +=
-          'Connection timeout. Please check your SMTP settings and network connection.';
       } else {
         // Never echo the driver's text: for a non-SMTP service it carries that service's reply.
         message += 'The server did not complete the SMTP connection test.';
       }
 
-      this.logger.error('Email connection test failed:', {
-        error: errorMessage,
-        code: errorCode,
-      });
+      // Code only: the driver text can carry the remote service's reply.
+      this.logger.warn(
+        `SMTP connection test failed: ${errorCode || 'unknown'} (${errorMessage.length} chars of driver text withheld)`,
+      );
       return { success: false, message };
     } finally {
-      if (timer) clearTimeout(timer);
-      testTransporter.close();
+      connection?.close();
+      if (succeeded) {
+        // Let QUIT reach the server, but never wait on the peer for long.
+        setTimeout(() => socket.destroy(), 1000).unref();
+      } else {
+        socket.destroy();
+      }
     }
   }
 

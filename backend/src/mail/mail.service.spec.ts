@@ -122,6 +122,8 @@ describe('MailService.testConnection', () => {
     jest
       .spyOn(service, 'isAllowedSmtpAddress')
       .mockImplementation((address) => address === '127.0.0.1');
+    // The synthetic server is plaintext; production never allows AUTH without TLS.
+    jest.spyOn(service, 'allowsPlaintextAuth').mockReturnValue(true);
   });
 
   afterEach(async () => {
@@ -130,7 +132,7 @@ describe('MailService.testConnection', () => {
   });
 
   it('authenticates with the submitted credentials and sends no message', async () => {
-    const result = await service.testConnection({
+    const result = await service.testConnection('user-spec', {
       host: '127.0.0.1',
       port: smtp.port,
       secure: false,
@@ -145,7 +147,7 @@ describe('MailService.testConnection', () => {
   });
 
   it('reports a failed login and never falls back to the environment credentials', async () => {
-    const result = await service.testConnection({
+    const result = await service.testConnection('user-spec', {
       host: '127.0.0.1',
       port: smtp.port,
       secure: false,
@@ -161,7 +163,7 @@ describe('MailService.testConnection', () => {
   it('refuses placeholder and local hosts without opening a connection', async () => {
     jest.restoreAllMocks();
     for (const host of ['localhost', '127.0.0.1', 'smtp.example.com', 'x']) {
-      const result = await service.testConnection({
+      const result = await service.testConnection('user-spec', {
         host,
         port: smtp.port,
         user: 'alice',
@@ -176,7 +178,7 @@ describe('MailService.testConnection', () => {
     const closedPort = smtp.port;
     await smtp.close();
     smtp = await startSyntheticSmtp({ user: 'x', pass: 'y' });
-    const result = await service.testConnection({
+    const result = await service.testConnection('user-spec', {
       host: '127.0.0.1',
       port: closedPort,
       secure: false,
@@ -206,7 +208,7 @@ describe('MailService.testConnection', () => {
       'fe80::1',
       'fd00::1',
     ]) {
-      const result = await service.testConnection({
+      const result = await service.testConnection('user-spec', {
         host,
         port: smtp.port,
         user: 'alice',
@@ -218,6 +220,82 @@ describe('MailService.testConnection', () => {
     expect(smtp.connections).toBe(0);
   });
 
+  it('never sends credentials without TLS: a server without STARTTLS gets no AUTH', async () => {
+    // Production policy: the plaintext seam is restored to its real value (false).
+    jest.spyOn(service, 'allowsPlaintextAuth').mockRestore();
+    const result = await service.testConnection('user-spec', {
+      host: '127.0.0.1',
+      port: smtp.port,
+      secure: false,
+      user: 'alice',
+      password: 'right-pass',
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toMatch(/did not offer a secure \(TLS\) connection/);
+    expect(smtp.auths).toEqual([]);
+    expect(smtp.commands).not.toContain('AUTH');
+  });
+
+  // Review finding: a peer that keeps sending 250- continuation lines held the socket after the
+  // 10 s result, because verify()'s connection was never closed.
+  it('destroys the socket at the deadline even while the peer keeps the reply going', async () => {
+    process.env.SMTP_TEST_TIMEOUT_MS = '1200';
+    const short = new MailService(config);
+    delete process.env.SMTP_TEST_TIMEOUT_MS;
+    jest.spyOn(short, 'isValidSmtpHost').mockReturnValue(true);
+    jest
+      .spyOn(short, 'isAllowedSmtpAddress')
+      .mockImplementation((address) => address === '127.0.0.1');
+    jest.spyOn(short, 'allowsPlaintextAuth').mockReturnValue(true);
+    let open = 0;
+    const timers: NodeJS.Timeout[] = [];
+    const drip = net.createServer((socket) => {
+      open += 1;
+      socket.on('close', () => (open -= 1));
+      socket.on('error', () => undefined);
+      socket.write('220 drip ESMTP\r\n');
+      socket.once('data', () => {
+        const tick = setInterval(
+          () => socket.write('250-still going\r\n'),
+          100,
+        );
+        timers.push(tick);
+        socket.on('close', () => clearInterval(tick));
+      });
+    });
+    await new Promise<void>((done) => drip.listen(0, '127.0.0.1', done));
+    const address = drip.address();
+    const port = typeof address === 'object' && address ? address.port : 0;
+    try {
+      const started = Date.now();
+      const results = await Promise.all(
+        [1, 2, 3].map((n) =>
+          short.testConnection(`drip-${n}`, {
+            host: '127.0.0.1',
+            port,
+            secure: false,
+            user: 'alice',
+            password: 'right-pass',
+          }),
+        ),
+      );
+      expect(Date.now() - started).toBeLessThan(3000);
+      for (const result of results) {
+        expect(result.success).toBe(false);
+        expect(result.message).toMatch(/Connection timeout/);
+      }
+      const until = Date.now() + 1000;
+      while (open > 0 && Date.now() < until) {
+        await new Promise((r) => setTimeout(r, 20));
+      }
+      expect(open).toBe(0);
+      expect(short.connectionTestsInFlight).toBe(0);
+    } finally {
+      timers.forEach(clearInterval);
+      await new Promise<void>((done) => drip.close(() => done()));
+    }
+  });
+
   it("never echoes a non-SMTP service's reply", async () => {
     const banner = 'HTTP/1.1 400 Bad Request internal-service-banner';
     const http = net.createServer((socket) => socket.end(`${banner}\r\n`));
@@ -225,7 +303,7 @@ describe('MailService.testConnection', () => {
     const address = http.address();
     const port = typeof address === 'object' && address ? address.port : 0;
     try {
-      const result = await service.testConnection({
+      const result = await service.testConnection('user-spec', {
         host: '127.0.0.1',
         port,
         secure: false,

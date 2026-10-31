@@ -212,6 +212,14 @@ describe('POST /user-settings/test-email (real app + real PostgreSQL + synthetic
     jest
       .spyOn(MailService.prototype, 'isAllowedSmtpAddress')
       .mockImplementation((address: string) => address === '127.0.0.1');
+    // The synthetic server is plaintext; production never allows AUTH without TLS.
+    jest
+      .spyOn(MailService.prototype, 'allowsPlaintextAuth')
+      .mockReturnValue(true);
+    // This suite's own requests must not be rate limited; the limits have their own suite.
+    process.env.SMTP_TEST_LIMIT_PER_MINUTE = '1000';
+    process.env.SMTP_TEST_LIMIT_PER_HOUR = '1000';
+    process.env.SMTP_TEST_IP_LIMIT_PER_MINUTE = '1000';
     smtp = await startSyntheticSmtp({ user: 'alice', pass: 'right-pass' });
     h = await bootHarness();
     await cleanupSynthetic(h);

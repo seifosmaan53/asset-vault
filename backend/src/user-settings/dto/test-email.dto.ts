@@ -8,6 +8,7 @@ import {
   Max,
   MaxLength,
   Min,
+  Matches,
 } from 'class-validator';
 
 /**
@@ -20,6 +21,11 @@ import {
  * earlier version and new ones are no longer stored at all, so a stored value can never
  * authenticate, and sending it would only hand a stored secret to whichever server was named.
  */
+/** A DNS host name (letters, digits, hyphens, dots; optional trailing dot) or an IP literal
+ *  (IPv4 dotted, or IPv6 hex with colons). No spaces, control characters or other symbols. */
+export const SMTP_HOST_PATTERN =
+  /^(?:(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)*[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.?|[0-9A-Fa-f:.]*:[0-9A-Fa-f:.]*)$/;
+
 export class TestEmailConnectionDto {
   @ApiProperty({
     description: 'SMTP server host name',
@@ -27,6 +33,9 @@ export class TestEmailConnectionDto {
   })
   @IsString()
   @Length(1, 255, { message: 'SMTP host must be between 1 and 255 characters' })
+  @Matches(SMTP_HOST_PATTERN, {
+    message: 'SMTP host must be a host name or an IP address',
+  })
   smtpHost: string;
 
   @ApiPropertyOptional({ description: 'SMTP port (default 587)', default: 587 })

@@ -873,6 +873,7 @@ export class UserSettingsService {
     const password = dto.smtpPassword;
     if (
       password === undefined ||
+      password === null ||
       password === '' ||
       password === MASKED_SMTP_PASSWORD
     ) {
@@ -885,7 +886,7 @@ export class UserSettingsService {
     this.logger.log(
       `SMTP connection test requested by user ${userId} for ${dto.smtpHost}:${port}`,
     );
-    return this.mailService.testConnection({
+    return this.mailService.testConnection(userId, {
       host: dto.smtpHost,
       port,
       secure: dto.smtpSecure,
