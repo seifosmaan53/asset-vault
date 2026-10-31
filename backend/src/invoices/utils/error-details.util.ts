@@ -25,3 +25,18 @@ export function errorStack(error: unknown): string | undefined {
   }
   return undefined;
 }
+
+/**
+ * Read a string property of a caught value, e.g. the `code`, `detail`, `constraint`, `table`
+ * and `column` fields node-postgres puts on a database error. Anything else gives undefined.
+ */
+export function errorStringField(
+  error: unknown,
+  field: string,
+): string | undefined {
+  if (typeof error === 'object' && error !== null && field in error) {
+    const value: unknown = (error as Record<string, unknown>)[field];
+    return typeof value === 'string' ? value : undefined;
+  }
+  return undefined;
+}

@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, DataSource, QueryRunner } from 'typeorm';
-import { Invoice } from './entities/invoice.entity';
+import { Invoice, type InvoiceMetadata } from './entities/invoice.entity';
 import { InvoiceItem } from './entities/invoice-item.entity';
 import { CreateInvoiceDto, UpdateInvoiceDto, InvoiceItemDto } from './dto';
 import { InventoryService } from '../inventory/inventory.service';
@@ -51,6 +51,16 @@ import { UsageService, UsageMetric } from '../subscriptions/usage.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { QuotaExceededException } from '../common/exceptions/subscription.exception';
 import { MailService } from '../mail/mail.service';
+import {
+  errorMessage,
+  errorStack,
+  errorStringField,
+} from './utils/error-details.util';
+import {
+  type SerializedSettings,
+  settingNumber,
+  settingString,
+} from './utils/settings-fields.util';
 
 /** A tax or discount rate as stored: absent = 0, otherwise exactly as validated. */
 function storedRate(rate: unknown): number {
@@ -66,6 +76,23 @@ function recomputeLineTotal(item: {
 }): number {
   const [line] = computeInvoiceTotalsCents([item]).lines;
   return line.lineTotalCents / 100;
+}
+
+/** The `id` of the first row a raw `INSERT ... RETURNING "id"` query gave back, if any. */
+function firstReturnedId(result: unknown): string | undefined {
+  if (!Array.isArray(result)) {
+    return undefined;
+  }
+  const row: unknown = result[0];
+  if (
+    typeof row === 'object' &&
+    row !== null &&
+    'id' in row &&
+    typeof row.id === 'string'
+  ) {
+    return row.id;
+  }
+  return undefined;
 }
 
 @Injectable()
@@ -280,10 +307,10 @@ export class InvoicesService {
       }
 
       return results;
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        `[findAll] Error fetching invoices for userId ${userId}: ${error.message}`,
-        error.stack,
+        `[findAll] Error fetching invoices for userId ${userId}: ${errorMessage(error)}`,
+        errorStack(error),
       );
       // Re-throw HttpExceptions as-is, wrap other errors
       if (
@@ -294,7 +321,7 @@ export class InvoicesService {
       }
       // Wrap database and other errors in InternalServerErrorException
       throw new InternalServerErrorException(
-        `Failed to fetch invoices: ${error.message || 'Unknown error'}`,
+        `Failed to fetch invoices: ${errorMessage(error) || 'Unknown error'}`,
       );
     }
   }
@@ -530,7 +557,7 @@ export class InvoicesService {
       status?: string;
       paymentTermsDays?: number;
       terms?: string;
-      metadataJson?: any;
+      metadataJson?: InvoiceMetadata | null;
       isDuplicate?: boolean;
     },
   ): Promise<Invoice> {
@@ -684,7 +711,7 @@ export class InvoicesService {
       const paymentTermsDays =
         typeof data.paymentTermsDays === 'number'
           ? data.paymentTermsDays
-          : settings?.defaultPaymentTermsDays || 30;
+          : settingNumber(settings, 'defaultPaymentTermsDays') || 30;
       dueDate = new Date(issueDate);
       dueDate.setUTCDate(dueDate.getUTCDate() + Number(paymentTermsDays));
       // Normalize to midnight UTC
@@ -720,10 +747,12 @@ export class InvoicesService {
       dueDate: dueDate,
       currency: validatedCurrency,
       // Apply default notes and terms if not provided, and sanitize
-      notes: data.notes || settings?.defaultInvoiceNotes || null,
+      notes:
+        data.notes || settingString(settings, 'defaultInvoiceNotes') || null,
       metadataJson: {
         ...(data.metadataJson || {}),
-        terms: data.terms || settings?.defaultInvoiceTerms || null,
+        terms:
+          data.terms || settingString(settings, 'defaultInvoiceTerms') || null,
       },
     };
 
@@ -973,7 +1002,7 @@ export class InvoicesService {
             `Inserting item with lineTotal: ${finalLineTotal} (type: ${typeof finalLineTotal})`,
           );
 
-          const insertResult = await queryRunner.query(
+          const insertResult: unknown = await queryRunner.query(
             `INSERT INTO "invoice_items" ("invoiceId", "inventoryItemId", "description", "quantity", "unitPrice", "taxRate", "discountRate", "lineTotal") 
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
            RETURNING "id"`,
@@ -989,7 +1018,7 @@ export class InvoicesService {
             ],
           );
 
-          const insertedId = insertResult?.[0]?.id;
+          const insertedId = firstReturnedId(insertResult);
           if (insertedId) {
             insertedInvoiceItems.push({
               id: insertedId,
@@ -1071,10 +1100,10 @@ export class InvoicesService {
           UsageMetric.INVOICES_CREATED,
           1,
         );
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Don't fail invoice creation if usage tracking fails
         this.logger.error(
-          `Failed to track usage for invoice creation: ${error.message}`,
+          `Failed to track usage for invoice creation: ${errorMessage(error)}`,
         );
       }
 
@@ -1123,7 +1152,9 @@ export class InvoicesService {
   async update(
     id: string,
     userId: string,
-    data: UpdateInvoiceDto,
+    // metadataJson is not in UpdateInvoiceDto (so HTTP bodies cannot carry it); internal
+    // callers may pass it.
+    data: UpdateInvoiceDto & { metadataJson?: InvoiceMetadata | null },
   ): Promise<Invoice> {
     this.logger.log(`Updating invoice ${id} for user ${userId}`);
 
@@ -1306,11 +1337,13 @@ export class InvoicesService {
       // Strip lineTotal from items if present (backend recalculates it)
       // This prevents validation errors since lineTotal is not in the DTO
       if (data.items && Array.isArray(data.items)) {
-        data.items = data.items.map((item: any) => {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars -- rest-omit: lineTotal is dropped from the copy on purpose
-          const { lineTotal, ...itemWithoutLineTotal } = item;
-          return itemWithoutLineTotal;
-        });
+        data.items = data.items.map(
+          (item: InvoiceItemDto & { lineTotal?: unknown }) => {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars -- rest-omit: lineTotal is dropped from the copy on purpose
+            const { lineTotal, ...itemWithoutLineTotal } = item;
+            return itemWithoutLineTotal;
+          },
+        );
       }
 
       // PHASE 4 FIX: Dates are now validated using validateDate in the update logic below
@@ -1358,7 +1391,7 @@ export class InvoicesService {
 
         if (
           itemsToValidate.length > 0 &&
-          itemsToValidate.some((item: any) => item.inventoryItemId)
+          itemsToValidate.some((item) => item.inventoryItemId)
         ) {
           const operation =
             (data.status !== undefined ? data.status : invoice.status) ===
@@ -1366,8 +1399,8 @@ export class InvoicesService {
               ? 'reserve'
               : 'sale';
           const itemsForValidation = itemsToValidate
-            .filter((item: any) => item.inventoryItemId)
-            .map((item: any) => ({
+            .filter((item) => item.inventoryItemId)
+            .map((item) => ({
               inventoryItemId: item.inventoryItemId,
               quantity: item.quantity,
               description: item.description,
@@ -1407,7 +1440,12 @@ export class InvoicesService {
 
       // Create properly typed update object
       interface InvoiceUpdateData {
-        [key: string]: any;
+        clientId?: string;
+        storeId?: string | null;
+        number?: string;
+        type?: 'invoice' | 'estimate';
+        currency?: string;
+        status?: Invoice['status'];
         subtotal?: number;
         taxTotal?: number;
         discountTotal?: number;
@@ -1416,7 +1454,7 @@ export class InvoicesService {
         dueDate?: string;
         paidAt?: string | undefined;
         notes?: string | undefined;
-        metadataJson?: any; // { terms?: string } plus free-form keys
+        metadataJson?: InvoiceMetadata;
       }
 
       const updateData: InvoiceUpdateData = {};
@@ -1465,12 +1503,12 @@ export class InvoicesService {
       }
 
       // Sanitize text inputs
-      if ((data as any).metadataJson?.terms !== undefined) {
+      if (data.metadataJson?.terms !== undefined) {
         updateData.metadataJson = {
-          ...((data as any).metadataJson || {}),
-          terms: (data as any).metadataJson.terms
-            ? sanitizeString((data as any).metadataJson.terms, 5000)
-            : (data as any).metadataJson.terms,
+          ...(data.metadataJson || {}),
+          terms: data.metadataJson.terms
+            ? sanitizeString(data.metadataJson.terms, 5000)
+            : data.metadataJson.terms,
         };
       }
 
@@ -1558,7 +1596,16 @@ export class InvoicesService {
 
             // Create the item object with all required fields
             // Sanitize description to prevent XSS
-            const itemData: any = {
+            const itemData: {
+              inventoryItemId: string | null;
+              description: string;
+              quantity: number;
+              unitPrice: number;
+              taxRate: number;
+              discountRate: number;
+              lineTotal: number;
+              invoiceId: string;
+            } = {
               inventoryItemId: item.inventoryItemId || null,
               description: item.description
                 ? sanitizeString(item.description, 1000)
@@ -1972,14 +2019,14 @@ export class InvoicesService {
                     : `Insufficient store stock for item ${inventoryItem.name || inventoryItem.sku}`;
                 throw new BadRequestException(errorMessage);
               }
-            } catch (validationError: any) {
+            } catch (validationError: unknown) {
               // If it's already a BadRequestException, re-throw it
               if (validationError instanceof BadRequestException) {
                 throw validationError;
               }
               // Otherwise, wrap it
               throw new BadRequestException(
-                `Store stock validation failed for item ${inventoryItem.name || inventoryItem.sku}: ${validationError.message}`,
+                `Store stock validation failed for item ${inventoryItem.name || inventoryItem.sku}: ${errorMessage(validationError)}`,
               );
             }
           }
@@ -2170,8 +2217,8 @@ export class InvoicesService {
           errorMessage.includes('violates foreign key constraint') ||
           errorMessage.includes('constraint') ||
           errorMessage.includes('foreign key') ||
-          (error as any)?.code === '23503' ||
-          (error as any)?.code === '23505';
+          errorStringField(error, 'code') === '23503' ||
+          errorStringField(error, 'code') === '23505';
 
         if (isConstraintError) {
           // Log full error details for debugging
@@ -2180,16 +2227,20 @@ export class InvoicesService {
             error,
           );
           this.logger.error(`Error message: ${error.message}`);
-          this.logger.error(`Error code: ${(error as any)?.code || 'unknown'}`);
           this.logger.error(
-            `Error detail: ${(error as any)?.detail || 'none'}`,
+            `Error code: ${errorStringField(error, 'code') || 'unknown'}`,
           );
           this.logger.error(
-            `Error constraint: ${(error as any)?.constraint || 'none'}`,
+            `Error detail: ${errorStringField(error, 'detail') || 'none'}`,
           );
-          this.logger.error(`Error table: ${(error as any)?.table || 'none'}`);
           this.logger.error(
-            `Error column: ${(error as any)?.column || 'none'}`,
+            `Error constraint: ${errorStringField(error, 'constraint') || 'none'}`,
+          );
+          this.logger.error(
+            `Error table: ${errorStringField(error, 'table') || 'none'}`,
+          );
+          this.logger.error(
+            `Error column: ${errorStringField(error, 'column') || 'none'}`,
           );
           this.logger.error(
             `Full error object: ${JSON.stringify(error, Object.getOwnPropertyNames(error))}`,
@@ -2200,10 +2251,10 @@ export class InvoicesService {
           let specificError =
             'Invalid data: constraint violation. Please check all referenced entities exist.';
           const fullErrorMsg = error.message || '';
-          const errorDetail = (error as any)?.detail || '';
-          const errorConstraint = (error as any)?.constraint || '';
-          const errorTable = (error as any)?.table || '';
-          const errorColumn = (error as any)?.column || '';
+          const errorDetail = errorStringField(error, 'detail') || '';
+          const errorConstraint = errorStringField(error, 'constraint') || '';
+          const errorTable = errorStringField(error, 'table') || '';
+          const errorColumn = errorStringField(error, 'column') || '';
 
           // Combine all error information for better matching
           const allErrorText =
@@ -2474,13 +2525,8 @@ export class InvoicesService {
       // Check if transaction is still active before rolling back (TypeORM versions vary)
       let isActive = false;
       try {
-        // Type-safe check for transaction active state
-        const transactionActive = (queryRunner as any).isTransactionActive;
-        if (typeof transactionActive === 'function') {
-          isActive = transactionActive();
-        } else if (transactionActive !== undefined) {
-          isActive = !!transactionActive;
-        }
+        // QueryRunner.isTransactionActive is a boolean property in the TypeORM version in use.
+        isActive = queryRunner.isTransactionActive;
       } catch {
         // If checking transaction state fails, assume it's not active
         isActive = false;
@@ -2680,7 +2726,7 @@ export class InvoicesService {
         "COALESCE(SUM(CASE WHEN invoice.status = 'overdue' THEN invoice.total ELSE 0 END), 0) as totalOverdue",
         'COALESCE(SUM(invoice.total), 0) as totalAmount',
       ])
-      .getRawOne();
+      .getRawOne<Record<string, string | undefined>>();
 
     // DIAGNOSTIC: Log the raw stats
     this.logger.log(
@@ -2706,7 +2752,7 @@ export class InvoicesService {
       .andWhere('invoice.paidAt >= :startOfMonth', { startOfMonth })
       .andWhere('invoice.paidAt <= :endOfMonth', { endOfMonth })
       .select('COALESCE(SUM(invoice.total), 0) as monthlyTotal')
-      .getRawOne();
+      .getRawOne<Record<string, string | undefined>>();
 
     // Issue #61: Null safety - ensure all values are numbers
     // Map to frontend expected format
@@ -2794,13 +2840,14 @@ export class InvoicesService {
   private async generateInvoiceNumber(
     userId: string,
     type: 'invoice' | 'estimate',
-    settings: any,
+    settings: SerializedSettings,
     queryRunner?: QueryRunner,
   ): Promise<string> {
     const manager = queryRunner?.manager || this.invoicesRepository.manager;
 
     // Use user's invoice number format if available
-    const format = settings?.invoiceNumberFormat || 'INV-{YYYY}-{NUM}';
+    const format =
+      settingString(settings, 'invoiceNumberFormat') || 'INV-{YYYY}-{NUM}';
     const prefix = type === 'invoice' ? 'INV' : 'EST';
     const now = new Date();
     const year = now.getFullYear();
@@ -3032,7 +3079,7 @@ export class InvoicesService {
         const emailMessage =
           options?.message || this.buildInvoiceEmailHtml(invoiceToUpdate);
 
-        const emailOptions: any = {
+        const emailOptions: Parameters<MailService['sendMail']>[0] = {
           to: recipientEmail,
           subject: emailSubject,
           html: emailMessage,
@@ -3056,7 +3103,7 @@ export class InvoicesService {
           `Invoice ${invoiceToUpdate.number} email sent successfully to ${recipientEmail}`,
         );
         return { message: 'Invoice sent successfully via email' };
-      } catch (emailError: any) {
+      } catch (emailError: unknown) {
         // Email failure after commit is logged but doesn't rollback the status change
         this.logger.error(
           `Failed to send email for invoice ${invoiceToUpdate.number}:`,
@@ -3066,7 +3113,7 @@ export class InvoicesService {
         return {
           message:
             'Invoice status updated to sent, but email failed to send. Please check email configuration.',
-          emailError: emailError.message,
+          emailError: errorMessage(emailError),
         };
       }
     } catch (error) {
