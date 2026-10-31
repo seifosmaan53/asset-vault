@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 import * as sgMail from '@sendgrid/mail';
 
 export type EmailProvider = 'smtp' | 'sendgrid';
@@ -35,10 +36,54 @@ function describeError(error: unknown): { message: string; code: string } {
   return { message: String(error), code: 'UNKNOWN' };
 }
 
+/** One string field of a thrown value, read structurally (see describeError). */
+function errorField(
+  error: unknown,
+  field: 'message' | 'stack',
+): string | undefined {
+  if (typeof error !== 'object' || error === null) return undefined;
+  let value: unknown;
+  if (field === 'message') {
+    value = 'message' in error ? error.message : undefined;
+  } else {
+    value = 'stack' in error ? error.stack : undefined;
+  }
+  return typeof value === 'string' ? value : undefined;
+}
+
+/** The `response.body.errors` list SendGrid attaches to a failed request, if present. */
+function sendGridErrors(error: unknown): { message?: string }[] | undefined {
+  if (typeof error !== 'object' || error === null || !('response' in error)) {
+    return undefined;
+  }
+  const { response } = error;
+  if (
+    typeof response !== 'object' ||
+    response === null ||
+    !('body' in response)
+  ) {
+    return undefined;
+  }
+  const { body } = response;
+  if (typeof body !== 'object' || body === null || !('errors' in body)) {
+    return undefined;
+  }
+  const { errors } = body;
+  if (!Array.isArray(errors)) return undefined;
+  return errors.map((e: unknown) => {
+    const message =
+      typeof e === 'object' && e !== null && 'message' in e
+        ? e.message
+        : undefined;
+    return { message: typeof message === 'string' ? message : undefined };
+  });
+}
+
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
-  private transporter: nodemailer.Transporter | null = null;
+  private transporter: nodemailer.Transporter<SMTPTransport.SentMessageInfo> | null =
+    null;
   private emailProvider: EmailProvider = 'smtp';
   private sendGridConfigured = false;
 
@@ -60,7 +105,7 @@ export class MailService {
 
   private initializeEmailService(): void {
     // Check for SendGrid API key first (preferred)
-    const sendGridApiKey = this.configService.get('SENDGRID_API_KEY');
+    const sendGridApiKey = this.configService.get<string>('SENDGRID_API_KEY');
     if (sendGridApiKey && sendGridApiKey.trim() !== '') {
       try {
         sgMail.setApiKey(sendGridApiKey);
@@ -81,10 +126,12 @@ export class MailService {
   }
 
   private initializeTransporter(): void {
-    const smtpHost = this.configService.get('SMTP_HOST');
-    const smtpPort = Number(this.configService.get('SMTP_PORT') ?? 587);
-    const smtpUser = this.configService.get('SMTP_USER');
-    const smtpPass = this.configService.get('SMTP_PASS');
+    const smtpHost = this.configService.get<string>('SMTP_HOST');
+    const smtpPort = Number(
+      this.configService.get<string | number>('SMTP_PORT') ?? 587,
+    );
+    const smtpUser = this.configService.get<string>('SMTP_USER');
+    const smtpPass = this.configService.get<string>('SMTP_PASS');
 
     // Check if SMTP configuration exists
     if (!smtpHost || !smtpUser || !smtpPass) {
@@ -281,7 +328,7 @@ export class MailService {
 
     // Fall back to SMTP
     // Re-check SMTP configuration at runtime (in case .env was updated)
-    const smtpHost = this.configService.get('SMTP_HOST');
+    const smtpHost = this.configService.get<string>('SMTP_HOST');
     if (smtpHost && !this.isValidSmtpHost(smtpHost)) {
       const errorMessage = `SMTP host "${smtpHost}" is invalid or a placeholder. Please remove or update SMTP_HOST in your .env file. Email sending is disabled.`;
       this.logger.error(errorMessage);
@@ -301,7 +348,7 @@ export class MailService {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         const from =
-          this.configService.get('SMTP_FROM') ||
+          this.configService.get<string>('SMTP_FROM') ||
           'Asset Vault <no-reply@asset-vault.app>';
 
         // Verify transporter connection with timeout (only on first attempt)
@@ -316,12 +363,13 @@ export class MailService {
                 ),
               ),
             ]);
-          } catch (verifyError: any) {
+          } catch (verifyError: unknown) {
             // If verification fails, log but try to send anyway (some SMTP servers don't support verify)
-            if (verifyError.message !== 'SMTP verification timeout') {
+            const verifyMessage = errorField(verifyError, 'message');
+            if (verifyMessage !== 'SMTP verification timeout') {
               this.logger.warn(
                 'SMTP verification failed, but attempting to send email anyway:',
-                verifyError.message,
+                verifyMessage,
               );
             }
           }
@@ -339,10 +387,9 @@ export class MailService {
           `Email sent successfully to ${options.to}. Message ID: ${result.messageId}${attempt > 0 ? ` (after ${attempt} retry${attempt > 1 ? 'ies' : ''})` : ''}`,
         );
         return; // Success, exit retry loop
-      } catch (error: any) {
-        lastError = error;
-        const errorMessage = error.message || 'Unknown error occurred';
-        const errorCode = error.code || 'UNKNOWN';
+      } catch (error: unknown) {
+        const { message: errorMessage, code: errorCode } = describeError(error);
+        lastError = error instanceof Error ? error : new Error(errorMessage);
 
         // Determine if error is retryable
         const isRetryable =
@@ -360,7 +407,7 @@ export class MailService {
             {
               message: errorMessage,
               code: errorCode,
-              stack: error.stack,
+              stack: errorField(error, 'stack'),
             },
           );
 
@@ -374,7 +421,7 @@ export class MailService {
             errorCode === 'ETIMEDOUT' ||
             errorCode === 'ENOTFOUND'
           ) {
-            const smtpHost = this.configService.get('SMTP_HOST');
+            const smtpHost = this.configService.get<string>('SMTP_HOST');
             throw new Error(
               `Cannot connect to SMTP server "${smtpHost}". Please check SMTP_HOST and SMTP_PORT settings. Make sure the host is not a placeholder value.`,
             );
@@ -428,7 +475,7 @@ export class MailService {
   ): Promise<void> {
     const fromEmail =
       options.from ||
-      this.configService.get('SMTP_FROM') ||
+      this.configService.get<string>('SMTP_FROM') ||
       'no-reply@asset-vault.app';
 
     // Extract email from "Name <email>" format if needed
@@ -462,15 +509,15 @@ export class MailService {
           `Email sent successfully via SendGrid to ${options.to}${attempt > 0 ? ` (after ${attempt} retry${attempt > 1 ? 'ies' : ''})` : ''}`,
         );
         return;
-      } catch (error: any) {
-        lastError = error;
-        const errorMessage = error.message || 'Unknown error occurred';
+      } catch (error: unknown) {
+        const { message: errorMessage } = describeError(error);
+        lastError = error instanceof Error ? error : new Error(errorMessage);
 
         // SendGrid specific error handling
-        if (error.response?.body?.errors) {
-          const sgErrors = error.response.body.errors;
+        const sgErrors = sendGridErrors(error);
+        if (sgErrors) {
           const isRetryable = sgErrors.some(
-            (e: any) =>
+            (e) =>
               e.message?.includes('timeout') ||
               e.message?.includes('rate limit') ||
               e.message?.includes('temporarily'),
@@ -479,7 +526,7 @@ export class MailService {
           if (!isRetryable || attempt === maxRetries) {
             this.logger.error(`SendGrid email send failed:`, sgErrors);
             throw new Error(
-              `SendGrid error: ${sgErrors.map((e: any) => e.message).join(', ')}`,
+              `SendGrid error: ${sgErrors.map((e) => e.message).join(', ')}`,
             );
           }
         } else {
