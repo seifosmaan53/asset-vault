@@ -52,16 +52,17 @@ docker compose down              # add -v to delete the database volume
 ### Database schema
 
 Nothing creates the schema automatically: the API does not run migrations at startup, and
-the backend image contains only the compiled app, not the migration runner. Run the
-migrations from the host against the published port 5432, once the `postgres` service is
-healthy:
+it refuses to start while any migration is pending. The backend image includes the compiled
+migration runner, so run it as a one-off container once the `postgres` service is healthy,
+then start the API:
 
 ```bash
-cd backend
-npm ci
-cp .env.example .env   # DB_HOST=localhost, plus the DB_* values used by compose and CLERK_SECRET_KEY
-npm run migration:run
+docker compose run --rm backend node dist/database/migration-runner.js
+docker compose up -d backend
 ```
+
+Backup, rerun, failure and recovery steps are in
+[`docs/operations/MIGRATIONS.md`](../operations/MIGRATIONS.md).
 
 ## Hot-reload frontend (dev profile)
 

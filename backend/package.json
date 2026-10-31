@@ -62,6 +62,7 @@
     "migration:generate": "node -r tsconfig-paths/register -r ts-node/register ./node_modules/typeorm/cli.js migration:generate src/migrations/MigrationName -d src/database/data-source.ts",
     "migration:revert": "node -r tsconfig-paths/register -r ts-node/register src/database/migration-revert.ts",
     "migration:run": "node -r tsconfig-paths/register -r ts-node/register src/database/migration-runner.ts",
+    "migration:run:prod": "node dist/database/migration-runner.js",
     "postbuild": "echo Build completed successfully",
     "prepublishOnly": "npm run build",
     "seed": "node -r tsconfig-paths/register -r ts-node/register src/database/seed-runner.ts",
