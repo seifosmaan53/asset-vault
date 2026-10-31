@@ -130,7 +130,7 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
         }
         return originalObserve.apply(this, args);
       };
-    } catch (e) {
+    } catch {
       // Ignore if PerformanceObserver is not fully available
     }
   }

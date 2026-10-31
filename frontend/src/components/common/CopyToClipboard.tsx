@@ -47,7 +47,7 @@ const CopyToClipboard = ({
         setCopied(false);
         copyTimeoutRef.current = null;
       }, TIMEOUTS.COPY_FEEDBACK_DURATION);
-    } catch (error) {
+    } catch {
       // Fallback for older browsers
       const textArea = document.createElement('textarea');
       textArea.value = text;
@@ -68,7 +68,7 @@ const CopyToClipboard = ({
           setCopied(false);
           copyTimeoutRef.current = null;
         }, TIMEOUTS.COPY_FEEDBACK_DURATION);
-      } catch (err) {
+      } catch {
         showToast('Failed to copy to clipboard', 'error');
       }
       document.body.removeChild(textArea);

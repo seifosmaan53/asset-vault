@@ -1,5 +1,5 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -29,7 +29,6 @@ import { useToast } from '../../contexts/ToastContext';
 import { useInvoices } from '../../hooks/useInvoices';
 import { formatCurrency } from '../../utils/formatters';
 import ReceiptIcon from '@mui/icons-material/Receipt';
-import { useMemo } from 'react';
 import { Breadcrumbs } from '../../components/common/Breadcrumbs';
 
 const ClientDetail = () => {

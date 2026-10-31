@@ -8,7 +8,7 @@ export interface CreateApiKeyDto {
   isActive?: boolean;
 }
 
-export interface UpdateApiKeyDto extends Partial<CreateApiKeyDto> {}
+export type UpdateApiKeyDto = Partial<CreateApiKeyDto>;
 
 export const apiKeysApi = {
   getAll: async (): Promise<ApiKey[]> => {

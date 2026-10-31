@@ -17,7 +17,7 @@ export interface CreateClientDto {
   avatarUrl?: string;
 }
 
-export interface UpdateClientDto extends Partial<CreateClientDto> {}
+export type UpdateClientDto = Partial<CreateClientDto>;
 
 // Helper function to validate and sanitize client data
 const sanitizeClient = (client: unknown): Client | null => {

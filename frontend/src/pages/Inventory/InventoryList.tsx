@@ -30,6 +30,8 @@ import {
   TableSortLabel,
   InputAdornment,
   Checkbox,
+  alpha,
+  useTheme,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -53,7 +55,6 @@ import { useUndo } from '../../hooks/useUndo';
 import { getErrorMessage } from '../../utils/errorHandling';
 import { exportToCSV } from '../../utils/export';
 import { formatCurrency } from '../../utils/formatters';
-import { alpha, useTheme } from '@mui/material';
 import BulkAddInventoryDialog from '../../components/inventory/BulkAddInventoryDialog';
 import { ItemStoresDialog } from '../../components/inventory/ItemStoresDialog';
 import Grid from '../../components/common/Grid';
@@ -545,7 +546,7 @@ const InventoryList = () => {
     setImportPreviewOpen(true);
   }, []);
 
-  const handleImportConfirm = useCallback(async (_data: Partial<InventoryItem>[]) => {
+  const handleImportConfirm = useCallback(async () => {
     if (!importFile) return;
     
     setIsImporting(true);

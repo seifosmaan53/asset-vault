@@ -2,7 +2,7 @@ import { Box, Typography, Paper, CircularProgress, Card, CardContent, Button, Ch
 import Grid from '../components/common/Grid';
 import { logger } from '../utils/logger';
 import { useNavigate } from 'react-router-dom';
-import { useInvoiceStats } from '../hooks/useInvoices';
+import { useInvoiceStats, useInvoices } from '../hooks/useInvoices';
 import { useLowStock, useInventory } from '../hooks/useInventory';
 import { formatCurrency } from '../utils/formatters';
 import RevenueChart from '../components/dashboard/RevenueChart';
@@ -27,7 +27,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { invoicesApi } from '../api/invoices';
 import { subMonths, format, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO, startOfDay, endOfDay } from 'date-fns';
 import { validateDateRange } from '../utils/dates';
-import { useInvoices } from '../hooks/useInvoices';
 import { exportToCSV } from '../utils/export';
 import { getErrorMessage } from '../utils/errorHandling';
 import { useToast } from '../contexts/ToastContext';
@@ -1127,7 +1126,7 @@ const Dashboard = () => {
                       return stockA - stockB;
                     })
                     .slice(0, 5)
-                    .map((item, _index) => {
+                    .map((item) => {
                       const currentStock = Math.max(0, item.currentStock || 0);
                       const reorderLevel = item.reorderLevel || 0;
                       const deficit = Math.max(0, reorderLevel - currentStock);

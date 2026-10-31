@@ -25,7 +25,7 @@ import {
 import { useInventoryItem, useCreateInventoryItem, useUpdateInventoryItem, useInventory } from '../../hooks/useInventory';
 import { useStores } from '../../hooks/useStore';
 import { useStoreItemSettingsByItem, useCreateOrUpdateStoreItemSettings } from '../../hooks/useStoreItemSettings';
-import type { CreateInventoryItemDto } from '../../api/inventory';
+import { type CreateInventoryItemDto, inventoryApi } from '../../api/inventory';
 import { useEffect, useRef, useState } from 'react';
 import { TIMEOUTS } from '../../constants/timeouts';
 import { inventoryItemSchema } from '../../utils/validationSchemas';
@@ -35,7 +35,6 @@ import { logger } from '../../utils/logger';
 import { getErrorMessage } from '../../utils/errorHandling';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { useUndo } from '../../hooks/useUndo';
-import { inventoryApi } from '../../api/inventory';
 import StoreIcon from '@mui/icons-material/Store';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import NumbersIcon from '@mui/icons-material/Numbers';

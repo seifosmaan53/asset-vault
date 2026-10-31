@@ -39,7 +39,7 @@ export interface CreateInventoryItemDto {
   averageWeeklyUsage?: number;
 }
 
-export interface UpdateInventoryItemDto extends Partial<CreateInventoryItemDto> {}
+export type UpdateInventoryItemDto = Partial<CreateInventoryItemDto>;
 
 export interface CreateStockMovementDto {
   type: 'purchase' | 'sale' | 'adjustment';

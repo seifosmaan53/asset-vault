@@ -57,7 +57,7 @@ export const ImportDialog = ({
 
     try {
       const ext = getFileExtension(selectedFile.name);
-      const data = ext === 'csv' ? await parseCSV(selectedFile) : await parseExcel(selectedFile);
+      const data = ext === 'csv' ? await parseCSV(selectedFile) : await parseExcel();
       
       if (data.length === 0) {
         setError('File appears to be empty or could not be parsed.');

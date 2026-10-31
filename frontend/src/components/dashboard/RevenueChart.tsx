@@ -215,7 +215,7 @@ const RevenueChart = ({ startDate, endDate }: RevenueChartProps) => {
           }
 
           periods[idx].revenue += total;
-        } catch (error) {
+        } catch {
           // Log error for debugging but continue processing other invoices
           // Error silently skipped to prevent chart rendering issues
         }

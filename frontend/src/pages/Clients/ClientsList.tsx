@@ -58,8 +58,10 @@ import { TIMEOUTS } from '../../constants/timeouts';
 import { formatPhoneNumber, formatAddressSingleLine } from '../../utils/phone';
 import { logger } from '../../utils/logger';
 import { useDebounce } from '../../utils/useDebounce';
-import { AdvancedFilters } from '../../components/common/AdvancedFilters';
-import type { AdvancedFiltersState } from '../../components/common/AdvancedFilters';
+import {
+  AdvancedFilters,
+  type AdvancedFiltersState,
+} from '../../components/common/AdvancedFilters';
 import { clientsApi } from '../../api/clients';
 import { SearchHistoryDropdown } from '../../components/common/SearchHistoryDropdown';
 import { useSearch } from '../../contexts/SearchContext';

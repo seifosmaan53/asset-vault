@@ -1,8 +1,10 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-import { useRecentItems as useRecentItemsContext } from '../contexts/RecentItemsContext';
+import {
+  useRecentItems as useRecentItemsContext,
+  type RecentItemType,
+} from '../contexts/RecentItemsContext';
 import { useCallback } from 'react';
-import type { RecentItemType } from '../contexts/RecentItemsContext';
 
 /**
  * Hook for tracking and accessing recent items

@@ -613,7 +613,7 @@ const StoreInventory = () => {
                 });
                 
                 showToast('Store inventory exported successfully', 'success');
-              } catch (error) {
+              } catch {
                 showToast('Failed to export inventory', 'error');
               } finally {
                 setIsExporting(false);

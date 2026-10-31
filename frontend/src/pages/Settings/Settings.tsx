@@ -18,8 +18,7 @@ import {
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useProfile, useUpdateProfile } from '../../hooks/useAuth';
-import { settingsApi } from '../../api/settings';
-import type { UserSettings } from '../../api/settings';
+import { settingsApi, type UserSettings } from '../../api/settings';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSettingsContext } from '../../contexts/SettingsContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -227,9 +226,9 @@ const Settings = () => {
       // Additional validation: check if it's actually a UserSettings object
       const isSettingsObject = updatedSettings && typeof updatedSettings === 'object' && 
         !Array.isArray(updatedSettings) &&
-        (updatedSettings.hasOwnProperty('defaultCurrency') || 
-         updatedSettings.hasOwnProperty('dateFormat') || 
-         updatedSettings.hasOwnProperty('companyName'));
+        (Object.prototype.hasOwnProperty.call(updatedSettings, 'defaultCurrency') || 
+         Object.prototype.hasOwnProperty.call(updatedSettings, 'dateFormat') || 
+         Object.prototype.hasOwnProperty.call(updatedSettings, 'companyName'));
       
       if (hasErrorProperties || !isSettingsObject) {
         logger.error('Received invalid response in onSuccess handler:', updatedSettings);
@@ -418,7 +417,7 @@ const Settings = () => {
     
     // Remove undefined values
     return Object.fromEntries(
-      Object.entries(cleaned).filter(([_key, value]) => value !== undefined)
+      Object.entries(cleaned).filter(([, value]) => value !== undefined)
     ) as Partial<UserSettings>;
   };
 

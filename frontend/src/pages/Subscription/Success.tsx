@@ -91,7 +91,7 @@ export default function SubscriptionSuccess() {
               setError('Failed to verify subscription. Please check your billing page or try refreshing.');
               setLoading(false);
             }
-          } catch (loadErr) {
+          } catch {
             setError('Failed to verify subscription. Please check your billing page.');
             setLoading(false);
           }

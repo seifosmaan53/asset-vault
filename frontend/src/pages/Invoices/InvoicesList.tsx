@@ -53,8 +53,10 @@ import { getErrorMessage } from '../../utils/errorHandling';
 import { exportToCSV } from '../../utils/export';
 import { TableColumnControls } from '../../components/common/TableColumnControls';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
-import { AdvancedFilters } from '../../components/common/AdvancedFilters';
-import type { AdvancedFiltersState } from '../../components/common/AdvancedFilters';
+import {
+  AdvancedFilters,
+  type AdvancedFiltersState,
+} from '../../components/common/AdvancedFilters';
 import { useQueryClient } from '@tanstack/react-query';
 import { InvoiceQuickActions } from '../../components/invoices/InvoiceQuickActions';
 import { EmptyState } from '../../components/common/EmptyState';
@@ -1029,7 +1031,7 @@ const InvoicesList = () => {
           </TableHead>
           <TableBody>
             {invoices && invoices.length > 0 ? (
-              invoices.map((invoice, _index) => {
+              invoices.map((invoice) => {
                 // Use the updated invoice from cache if available, otherwise use the original
                 const currentInvoice = invoice;
                 const statusConfig = getStatusConfig(currentInvoice.status);

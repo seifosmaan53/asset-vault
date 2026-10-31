@@ -36,7 +36,7 @@ const getClerkToken = async (maxWaitMs: number = 1000): Promise<string | null> =
 
     // Timeout reached, token function not available
     return null;
-  } catch (e) {
+  } catch {
     return null;
   }
 };
@@ -57,14 +57,14 @@ const clearAuthState = () => {
       authData.state.user = null;
       localStorage.setItem('auth-storage', JSON.stringify(authData));
     }
-  } catch (e) {
+  } catch {
     // Ignore errors (localStorage might be disabled)
   }
   
   // Clear settings cache
   try {
     clearSettingsCache();
-  } catch (e) {
+  } catch {
     // Ignore if settingsCache module fails to load
   }
 };
@@ -229,23 +229,10 @@ class ApiClient {
 
         // Handle request deduplication - if this was a cancelled duplicate request, return the original promise
         if (originalRequest?.__isDedupe && originalRequest?.__dedupePromise) {
-          // Check if this was cancelled (which is expected for duplicates)
-          if (axios.isCancel(error)) {
-            // Return the original promise result instead of the cancellation error
-            try {
-              return await originalRequest.__dedupePromise;
-            } catch (dedupeError) {
-              // If the original promise also failed, throw that error
-              throw dedupeError;
-            }
-          }
-          // If it's a real error (not cancellation), still return the original promise
-          // This ensures all duplicate requests get the same result
-          try {
-            return await originalRequest.__dedupePromise;
-          } catch (dedupeError) {
-            throw dedupeError;
-          }
+          // Whether this duplicate was cancelled (the expected case) or failed for real,
+          // settle it with the original request's outcome — its result, or its error —
+          // so every duplicate request gets the same result.
+          return await originalRequest.__dedupePromise;
         }
         
         // Track error promise for future deduplication (so duplicate requests get the same error)
@@ -295,7 +282,7 @@ class ApiClient {
             }).catch(() => {
               // Auth store might not be available yet
             });
-          } catch (e) {
+          } catch {
             // Auth store might not be available yet
           }
           // FIX #158: Always redirect to login on 401, even if refresh fails

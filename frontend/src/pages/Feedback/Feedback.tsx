@@ -20,8 +20,7 @@ import BuildIcon from '@mui/icons-material/Build';
 import ChatIcon from '@mui/icons-material/Chat';
 import SendIcon from '@mui/icons-material/Send';
 import FeedbackIcon from '@mui/icons-material/Feedback';
-import { feedbackApi } from '../../api/feedback';
-import type { CreateFeedbackDto } from '../../api/feedback';
+import { feedbackApi, type CreateFeedbackDto } from '../../api/feedback';
 import { useMutation } from '@tanstack/react-query';
 import { useToast } from '../../contexts/ToastContext';
 import { getErrorMessage } from '../../utils/errorHandling';
@@ -56,7 +55,7 @@ const Feedback = () => {
   const onSubmit = async (data: CreateFeedbackDto) => {
     try {
       await submitFeedback.mutateAsync(data);
-    } catch (error) {
+    } catch {
       // Error handled in mutation
     }
   };
