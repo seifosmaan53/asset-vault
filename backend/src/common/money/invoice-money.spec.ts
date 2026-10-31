@@ -230,6 +230,62 @@ function hasFiveOrMoreDecimals(n: number): boolean {
   return (m[2]?.length ?? 0) + Number(m[3] ?? 0) > 4;
 }
 
+/** value as an exact fraction n / 10^k from its decimal string (independent of the module). */
+function exactFraction(value: unknown): { n: bigint; d: bigint } {
+  const text = Number(value).toString();
+  const m = /^(\d+)(?:\.(\d+))?(?:e-(\d+))?$/.exec(text);
+  if (!m) throw new Error(`unexpected ${text}`);
+  const frac = m[2] ?? '';
+  const extra = Number(m[3] ?? 0);
+  return { n: BigInt(m[1] + frac), d: 10n ** BigInt(frac.length + extra) };
+}
+function roundHalfUp(n: bigint, d: bigint): bigint {
+  return (n * 2n + d) / (2n * d);
+}
+
+/**
+ * Whether `message` (a new-limit rejection) is really true of the input,
+ * decided independently of the module under test.
+ */
+function newLimitHolds(
+  items: ReadonlyArray<Record<string, unknown>>,
+  taxPolicy: 'afterDiscount' | 'beforeDiscount',
+  message: string,
+): boolean {
+  const LIMIT = 9999999999n;
+  const field = /^items\[(\d+)\]\.(\w+) /.exec(message);
+  if (/must be at most 99999999\.99$/.test(message) && field) {
+    return Number(items[Number(field[1])][field[2]]) > 99999999.99;
+  }
+  if (/must have at most 4 decimal places$/.test(message)) {
+    const value = field ? items[Number(field[1])][field[2]] : undefined;
+    return field ? hasFiveOrMoreDecimals(Number(value)) : true; // invoiceDiscount: checked by its own test
+  }
+  // Amount limits: recompute every line exactly.
+  let sub = 0n;
+  let disc = 0n;
+  let tax = 0n;
+  let anyLine = false;
+  for (const item of items) {
+    const q = BigInt(Number(item.quantity));
+    const p = exactFraction(item.unitPrice);
+    const s = (q * p.n * 100n) / p.d;
+    const dr = exactFraction(item.discountRate ?? 0);
+    const tr = exactFraction(item.taxRate ?? 0);
+    const dd = roundHalfUp(s * dr.n, 100n * dr.d);
+    const tt = roundHalfUp(
+      (taxPolicy === 'afterDiscount' ? s - dd : s) * tr.n,
+      100n * tr.d,
+    );
+    if ([s, dd, tt, s - dd + tt].some((v) => v > LIMIT)) anyLine = true;
+    sub += s;
+    disc += dd;
+    tax += tt;
+  }
+  if (/^items\[\d+\] amounts must not exceed/.test(message)) return anyLine;
+  return [sub, disc, tax, sub - disc + tax].some((v) => v > LIMIT);
+}
+
 /** Independent integer oracle: `bp` basis points (percent x 100) of `cents`, half away from zero. */
 function oraclePercent(cents: number, bp: number): number {
   const n = BigInt(cents) * BigInt(bp);
@@ -603,10 +659,14 @@ describe('invoice money (shared by the API and the web app)', () => {
           expect(issues.length).toBeGreaterThan(0);
           if (issues[0].message !== before.error) {
             expect(isNewLimit(issues[0].message)).toBe(true);
+            expect(newLimitHolds(items, taxPolicy, issues[0].message)).toBe(
+              true,
+            );
             newlyLimited++;
           }
         } else if (issues.length > 0) {
           expect(isNewLimit(issues[0].message)).toBe(true);
+          expect(newLimitHolds(items, taxPolicy, issues[0].message)).toBe(true);
           newlyLimited++;
         }
       }

@@ -65,6 +65,8 @@ export function submittedMoneyFields(item: InvoiceFormMoneyFields | null | undef
 
 /** A form line with its description (as the invoice form holds it). */
 export interface InvoiceFormLine extends InvoiceFormMoneyFields {
+  /** Present on lines loaded from a saved invoice. */
+  id?: string | null;
   description?: string | null;
   inventoryItemId?: string | null;
 }
@@ -77,13 +79,14 @@ function isBlank(value: unknown): boolean {
 }
 
 /**
- * A line nobody has filled in, exactly as "Add item" creates it: no
+ * A new line nobody has filled in, exactly as "Add item" creates it: no
  * description, no inventory item, quantity 1 (or empty), and no price or
  * rates. It is left out of both the totals and the submitted invoice. Any
  * other line is submitted and must have a description.
  */
 export function isPlaceholderLine(item: InvoiceFormLine | null | undefined): boolean {
   if (!item) return true;
+  if (item.id) return false; // a saved line is never dropped, whatever it contains
   const zeroOrBlank = (v: unknown) => isBlank(v) || Number(v) === 0;
   return (
     isBlank(item.description?.trim()) &&
