@@ -1,0 +1,42 @@
+// Copyright (c) 2025 Asset Vault. All rights reserved.
+
+/**
+ * Read the message and stack of a caught value without assuming it is an Error.
+ *
+ * `catch (error)` binds `unknown` in practice: libraries and our own code can throw strings,
+ * plain objects or `null`. These helpers give the same text as `error.message` / `error.stack`
+ * for anything carrying those properties, and a readable fallback for anything else.
+ */
+export function errorMessage(error: unknown): string {
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    return String(error.message);
+  }
+  return String(error);
+}
+
+export function errorStack(error: unknown): string | undefined {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'stack' in error &&
+    typeof error.stack === 'string'
+  ) {
+    return error.stack;
+  }
+  return undefined;
+}
+
+/**
+ * Read a string property of a caught value, e.g. the `code`, `detail`, `constraint`, `table`
+ * and `column` fields node-postgres puts on a database error. Anything else gives undefined.
+ */
+export function errorStringField(
+  error: unknown,
+  field: string,
+): string | undefined {
+  if (typeof error === 'object' && error !== null && field in error) {
+    const value: unknown = (error as Record<string, unknown>)[field];
+    return typeof value === 'string' ? value : undefined;
+  }
+  return undefined;
+}

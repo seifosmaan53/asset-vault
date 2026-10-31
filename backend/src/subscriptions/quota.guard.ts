@@ -12,7 +12,8 @@ import { UsageService, UsageMetric } from './usage.service';
 import { SubscriptionsService } from './subscriptions.service';
 import { IS_PUBLIC_KEY } from '../auth/public.decorator';
 import { SKIP_QUOTA_KEY } from './skip-quota.decorator';
-import { RequestUser } from '../auth/interfaces/request-user.interface';
+import type { Request } from 'express';
+import { readBodyField, readRequestUserId } from './request-user.util';
 
 @Injectable()
 export class QuotaGuard implements CanActivate {
@@ -68,20 +69,21 @@ export class QuotaGuard implements CanActivate {
       [context.getHandler(), context.getClass()],
     );
 
-    const request = context.switchToHttp().getRequest();
-    const user = request.user as RequestUser;
+    const request = context.switchToHttp().getRequest<Request>();
+    const user = readRequestUserId(request.user);
+    const queryDuplicate = request.query?.duplicate;
+    const bodyIsDuplicate = readBodyField(request.body, 'isDuplicate');
 
     // Allow skipping quota if it's a duplication (check query param, header, or body flag)
     const isDuplication =
-      request.query?.duplicate === 'true' ||
+      queryDuplicate === 'true' ||
       request.headers['x-duplicate'] === 'true' ||
-      (request.body &&
-        (request.body.isDuplicate === true ||
-          request.body.isDuplicate === 'true'));
+      bodyIsDuplicate === true ||
+      bodyIsDuplicate === 'true';
 
     if (skipQuota || isDuplication) {
       this.logger.debug(
-        `Skipping quota check for duplication: query=${request.query?.duplicate}, header=${request.headers['x-duplicate']}, body=${request.body?.isDuplicate}`,
+        `Skipping quota check for duplication: query=${typeof queryDuplicate === 'string' ? queryDuplicate : JSON.stringify(queryDuplicate)}, header=${String(request.headers['x-duplicate'])}, body=${String(bodyIsDuplicate)}`,
       );
       return true;
     }

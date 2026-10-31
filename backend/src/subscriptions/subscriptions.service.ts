@@ -16,6 +16,7 @@ import {
 import { Plan } from './entities/plan.entity';
 import { StripeService } from './stripe.service';
 import { User } from '../users/entities/user.entity';
+import type Stripe from 'stripe';
 
 @Injectable()
 export class SubscriptionsService {
@@ -268,7 +269,7 @@ export class SubscriptionsService {
     return false;
   }
 
-  async getBillingHistory(userId: string): Promise<any[]> {
+  async getBillingHistory(userId: string): Promise<Stripe.Invoice[]> {
     const subscription = await this.getSubscription(userId);
     if (!subscription || !subscription.stripeCustomerId) {
       return [];
@@ -313,7 +314,7 @@ export class SubscriptionsService {
 
   async updateSubscriptionFromStripe(
     stripeSubscriptionId: string,
-    stripeData: any,
+    stripeData: Stripe.Subscription,
   ): Promise<Subscription> {
     const subscription = await this.subscriptionRepository.findOne({
       where: { stripeSubscriptionId },
@@ -349,7 +350,7 @@ export class SubscriptionsService {
   async updateSubscriptionFromStripeByUserId(
     userId: string,
     stripeSubscriptionId: string,
-    stripeData: any,
+    stripeData: Stripe.Subscription,
   ): Promise<Subscription> {
     // Find subscription by userId (since stripeSubscriptionId might not be set yet)
     let subscription = await this.subscriptionRepository.findOne({

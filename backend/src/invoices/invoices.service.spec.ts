@@ -60,12 +60,12 @@ describe('InvoicesService', () => {
   const mockInvoicesRepository = {
     // returned undefined, so the service's `invoice.subtotal = ...` blew up with
     // "Cannot set properties of undefined"
-    create: jest.fn((x) => ({ ...x })),
-    save: jest.fn(),
-    findOne: jest.fn(),
-    find: jest.fn(),
+    create: jest.fn((x: Record<string, unknown>) => ({ ...x })),
+    save: jest.fn<Promise<unknown>, unknown[]>(),
+    findOne: jest.fn<Promise<unknown>, unknown[]>(),
+    find: jest.fn<Promise<unknown>, unknown[]>(),
     update: jest.fn(),
-    count: jest.fn(),
+    count: jest.fn<Promise<number | undefined>, unknown[]>(),
     softRemove: jest.fn(),
     /* findOne() moved from repository.findOne() to a QueryBuilder chain. Delegating
        getOne/getMany back to the findOne/find mocks keeps the per-test stubs these
@@ -102,7 +102,7 @@ describe('InvoicesService', () => {
   };
 
   const mockInvoiceItemsRepository = {
-    create: jest.fn((x) => ({ ...x })),
+    create: jest.fn((x: Record<string, unknown>) => ({ ...x })),
     save: jest.fn(),
     delete: jest.fn(),
   };
@@ -120,7 +120,10 @@ describe('InvoicesService', () => {
   };
 
   const mockStoreStockValidator = {
-    validateAndThrow: jest.fn(),
+    validateAndThrow: jest.fn<
+      ReturnType<StoreStockValidatorService['validateAndThrow']>,
+      Parameters<StoreStockValidatorService['validateAndThrow']>
+    >(),
     validateStoreStockAvailability: jest.fn(),
     validateInvoiceItemsStoreStock: jest.fn(),
     getAvailableStoreStock: jest.fn(),
@@ -248,7 +251,9 @@ describe('InvoicesService', () => {
        only tracks a line if that id comes back. Returning [] meant no line was ever
        registered and the stock loop had nothing to iterate — so createMovement was
        never reached regardless of what a test asserted. */
-    query: jest.fn().mockResolvedValue([{ id: 'invoice-item-1' }]),
+    query: jest
+      .fn<Promise<unknown>, [string, unknown[]?]>()
+      .mockResolvedValue([{ id: 'invoice-item-1' }]),
   };
 
   beforeEach(async () => {
@@ -288,8 +293,8 @@ describe('InvoicesService', () => {
         {
           provide: getRepositoryToken(InvoiceStatusHistory),
           useValue: {
-            create: jest.fn((x) => x),
-            save: jest.fn((x) => Promise.resolve(x)),
+            create: jest.fn((x: unknown) => x),
+            save: jest.fn((x: unknown) => Promise.resolve(x)),
             find: jest.fn().mockResolvedValue([]),
             findOne: jest.fn(),
             createQueryBuilder: jest.fn(() => mockQueryBuilder0()),
@@ -309,7 +314,16 @@ describe('InvoicesService', () => {
             getRepository: jest.fn((entity: unknown) => {
               if (entity !== InventoryItem) return mockClientsRepository;
               let ids: string[] = [];
-              const qb = {
+              interface OwnedItemsQuery {
+                select: () => OwnedItemsQuery;
+                where: (
+                  sql: string,
+                  params: { ids: string[] },
+                ) => OwnedItemsQuery;
+                andWhere: () => OwnedItemsQuery;
+                getMany: () => Promise<{ id: string }[]>;
+              }
+              const qb: OwnedItemsQuery = {
                 select: jest.fn(() => qb),
                 where: jest.fn((_sql: string, params: { ids: string[] }) => {
                   ids = params.ids;
@@ -379,6 +393,7 @@ describe('InvoicesService', () => {
     it('should calculate totals correctly with single item', () => {
       const items = [
         {
+          description: 'Line',
           quantity: 2,
           unitPrice: 100,
           taxRate: 10,
@@ -387,7 +402,7 @@ describe('InvoicesService', () => {
       ];
 
       // Access private method via type casting
-      const result = (service as any).calculateTotals(items);
+      const result = service['calculateTotals'](items);
 
       expect(result.subtotal).toBe(200); // 2 * 100
       expect(result.discountTotal).toBe(10); // 200 * 0.05
@@ -398,12 +413,14 @@ describe('InvoicesService', () => {
     it('should calculate totals correctly with multiple items', () => {
       const items = [
         {
+          description: 'Line',
           quantity: 2,
           unitPrice: 100,
           taxRate: 10,
           discountRate: 5,
         },
         {
+          description: 'Line',
           quantity: 3,
           unitPrice: 50,
           taxRate: 8,
@@ -411,7 +428,7 @@ describe('InvoicesService', () => {
         },
       ];
 
-      const result = (service as any).calculateTotals(items);
+      const result = service['calculateTotals'](items);
 
       expect(result.subtotal).toBe(350); // (2 * 100) + (3 * 50)
       expect(result.discountTotal).toBe(10); // 200 * 0.05
@@ -426,6 +443,7 @@ describe('InvoicesService', () => {
     it('should handle zero tax and discount', () => {
       const items = [
         {
+          description: 'Line',
           quantity: 1,
           unitPrice: 100,
           taxRate: 0,
@@ -433,7 +451,7 @@ describe('InvoicesService', () => {
         },
       ];
 
-      const result = (service as any).calculateTotals(items);
+      const result = service['calculateTotals'](items);
 
       expect(result.subtotal).toBe(100);
       expect(result.discountTotal).toBe(0);
@@ -447,10 +465,16 @@ describe('InvoicesService', () => {
          behaviour: silently rounding 33.333 hides a data-entry error inside a figure
          the customer is billed for. */
       const items = [
-        { quantity: 3, unitPrice: 33.333, taxRate: 7.5, discountRate: 2.5 },
+        {
+          description: 'Line',
+          quantity: 3,
+          unitPrice: 33.333,
+          taxRate: 7.5,
+          discountRate: 2.5,
+        },
       ];
 
-      expect(() => (service as any).calculateTotals(items)).toThrow(
+      expect(() => service['calculateTotals'](items)).toThrow(
         /at most 2 decimal places/i,
       );
     });
@@ -459,15 +483,26 @@ describe('InvoicesService', () => {
       // Asserts the property the old test was named for, rather than one hardcoded
       // total — rates chosen so the intermediate maths does not land on clean cents.
       const items = [
-        { quantity: 3, unitPrice: 33.33, taxRate: 7.5, discountRate: 2.5 },
+        {
+          description: 'Line',
+          quantity: 3,
+          unitPrice: 33.33,
+          taxRate: 7.5,
+          discountRate: 2.5,
+        },
       ];
 
-      const result = (service as any).calculateTotals(items);
+      const result = service['calculateTotals'](items);
 
       const atMostTwoDecimals = (n: number) =>
         Number.isFinite(n) && Math.abs(n * 100 - Math.round(n * 100)) < 1e-9;
 
-      for (const key of ['subtotal', 'discountTotal', 'taxTotal', 'total']) {
+      for (const key of [
+        'subtotal',
+        'discountTotal',
+        'taxTotal',
+        'total',
+      ] as const) {
         expect(atMostTwoDecimals(result[key])).toBe(true);
       }
     });
@@ -479,9 +514,10 @@ describe('InvoicesService', () => {
       const year = new Date().getFullYear();
       mockInvoicesRepository.count.mockResolvedValue(5);
 
-      const result = await (service as any).generateInvoiceNumber(
+      const result = await service['generateInvoiceNumber'](
         userId,
         'invoice',
+        undefined,
       );
 
       expect(result).toBe(`INV-${year}-0006`);
@@ -500,9 +536,10 @@ describe('InvoicesService', () => {
       const year = new Date().getFullYear();
       mockInvoicesRepository.count.mockResolvedValue(0);
 
-      const result = await (service as any).generateInvoiceNumber(
+      const result = await service['generateInvoiceNumber'](
         userId,
         'estimate',
+        undefined,
       );
 
       expect(result).toBe(`EST-${year}-0001`);
@@ -513,9 +550,10 @@ describe('InvoicesService', () => {
       const year = new Date().getFullYear();
       mockInvoicesRepository.count.mockResolvedValue(99);
 
-      const result = await (service as any).generateInvoiceNumber(
+      const result = await service['generateInvoiceNumber'](
         userId,
         'invoice',
+        undefined,
       );
 
       expect(result).toBe(`INV-${year}-0100`);
@@ -1115,10 +1153,12 @@ describe('InvoicesService', () => {
 
       expect(mockStoreService.findOne).toHaveBeenCalledWith(newStoreId, userId);
 
-      const savedWithStore = (
-        mockQueryRunner.manager.save as jest.Mock
-      ).mock.calls.some(
-        (c) => (c[1] as { storeId?: string })?.storeId === newStoreId,
+      const savedWithStore = mockQueryRunner.manager.save.mock.calls.some(
+        ([, saved]) =>
+          typeof saved === 'object' &&
+          saved !== null &&
+          'storeId' in saved &&
+          saved.storeId === newStoreId,
       );
 
       expect(savedWithStore).toBe(true);

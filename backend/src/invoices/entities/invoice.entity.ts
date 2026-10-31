@@ -14,6 +14,14 @@ import { Client } from '../../clients/entities/client.entity';
 import { Store } from '../../inventory/entities/store.entity';
 import { InvoiceItem } from './invoice-item.entity';
 
+/**
+ * JSON kept on an invoice. `terms` (payment terms text) is the only key the application
+ * reads or writes. Older rows may hold other keys; they are passed through untouched.
+ */
+export interface InvoiceMetadata {
+  terms?: string | null;
+}
+
 @Entity('invoices')
 export class Invoice {
   @PrimaryGeneratedColumn('uuid')
@@ -75,7 +83,7 @@ export class Invoice {
   notes: string;
 
   @Column({ type: 'jsonb', nullable: true })
-  metadataJson: any;
+  metadataJson: InvoiceMetadata | null;
 
   @Column({ type: 'timestamp', nullable: true })
   paidAt: Date;

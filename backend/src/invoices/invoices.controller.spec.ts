@@ -1,5 +1,9 @@
 import { type TestingModule, Test } from '@nestjs/testing';
-import { InvoicesController } from './invoices.controller';
+import {
+  type AuthenticatedRequest,
+  InvoicesController,
+} from './invoices.controller';
+import { UserRole } from '../users/entities/user.entity';
 import { InvoicesService } from './invoices.service';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { QuotaGuard } from '../subscriptions/quota.guard';
@@ -26,10 +30,22 @@ describe('InvoicesController', () => {
     backfillPaidAtDates: jest.fn(),
   };
 
+  const req: AuthenticatedRequest = {
+    user: {
+      userId: 'user-123',
+      email: 'user-123@example.test',
+      role: UserRole.OWNER,
+    },
+    url: '/invoices',
+    method: 'GET',
+  };
+
   const mockAuthGuard = {
     canActivate: (context: ExecutionContext) => {
-      const request = context.switchToHttp().getRequest();
-      request.user = { userId: 'user-123' };
+      const request = context
+        .switchToHttp()
+        .getRequest<Partial<AuthenticatedRequest>>();
+      request.user = req.user;
       return true;
     },
   };
@@ -67,10 +83,7 @@ describe('InvoicesController', () => {
       ];
       mockInvoicesService.findAll.mockResolvedValue(mockInvoices);
 
-      const result = await controller.findAll(
-        { user: { userId: 'user-123' } } as any,
-        {},
-      );
+      const result = await controller.findAll(req, {});
 
       expect(result).toEqual(mockInvoices);
       expect(mockInvoicesService.findAll).toHaveBeenCalledWith('user-123', {});
@@ -80,10 +93,7 @@ describe('InvoicesController', () => {
       const filters = { status: 'paid', type: 'invoice' };
       mockInvoicesService.findAll.mockResolvedValue([]);
 
-      await controller.findAll(
-        { user: { userId: 'user-123' } } as any,
-        filters,
-      );
+      await controller.findAll(req, filters);
 
       expect(mockInvoicesService.findAll).toHaveBeenCalledWith(
         'user-123',
@@ -97,9 +107,7 @@ describe('InvoicesController', () => {
       const mockInvoice = { id: 'invoice-1', number: 'INV-2024-0001' };
       mockInvoicesService.findOne.mockResolvedValue(mockInvoice);
 
-      const result = await controller.findOne('invoice-1', {
-        user: { userId: 'user-123' },
-      } as any);
+      const result = await controller.findOne('invoice-1', req);
 
       expect(result).toEqual(mockInvoice);
       expect(mockInvoicesService.findOne).toHaveBeenCalledWith(
@@ -122,9 +130,7 @@ describe('InvoicesController', () => {
       const mockInvoice = { id: 'invoice-1', ...createDto };
       mockInvoicesService.create.mockResolvedValue(mockInvoice);
 
-      const result = await controller.create(createDto, {
-        user: { userId: 'user-123' },
-      } as any);
+      const result = await controller.create(createDto, req);
 
       /* create/update now return an envelope — { data, message } — rather than the
          bare entity. Asserting on result.data keeps the test about the payload while
@@ -145,9 +151,7 @@ describe('InvoicesController', () => {
       const mockInvoice = { id: 'invoice-1', ...updateDto };
       mockInvoicesService.update.mockResolvedValue(mockInvoice);
 
-      const result = await controller.update('invoice-1', updateDto, {
-        user: { userId: 'user-123' },
-      } as any);
+      const result = await controller.update('invoice-1', updateDto, req);
 
       expect(result.data).toEqual(mockInvoice);
       expect(mockInvoicesService.update).toHaveBeenCalledWith(
@@ -162,9 +166,7 @@ describe('InvoicesController', () => {
     it('should delete an invoice', async () => {
       mockInvoicesService.remove.mockResolvedValue(undefined);
 
-      await controller.remove('invoice-1', {
-        user: { userId: 'user-123' },
-      } as any);
+      await controller.remove('invoice-1', req);
 
       expect(mockInvoicesService.remove).toHaveBeenCalledWith(
         'invoice-1',
@@ -182,9 +184,7 @@ describe('InvoicesController', () => {
       };
       mockInvoicesService.getStats.mockResolvedValue(mockStats);
 
-      const result = await controller.getStats({
-        user: { userId: 'user-123' },
-      } as any);
+      const result = await controller.getStats(req);
 
       // getStats spreads the figures and adds a message alongside them.
       expect(result).toEqual(expect.objectContaining(mockStats));
@@ -200,9 +200,7 @@ describe('InvoicesController', () => {
         mockInvoice,
       );
 
-      const result = await controller.convert('estimate-1', {
-        user: { userId: 'user-123' },
-      } as any);
+      const result = await controller.convert('estimate-1', req);
 
       expect(result).toEqual(mockInvoice);
       expect(mockInvoicesService.convertEstimateToInvoice).toHaveBeenCalledWith(
@@ -219,9 +217,7 @@ describe('InvoicesController', () => {
 
       // send() gained an emailOptions body parameter between the id and the request.
       const emailOptions = { to: 'client@example.test' };
-      const result = await controller.send('invoice-1', emailOptions, {
-        user: { userId: 'user-123' },
-      } as any);
+      const result = await controller.send('invoice-1', emailOptions, req);
 
       expect(result).toEqual(mockResponse);
       expect(mockInvoicesService.sendEmail).toHaveBeenCalledWith(

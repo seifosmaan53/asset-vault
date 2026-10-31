@@ -23,6 +23,7 @@ import { UsageService } from './usage.service';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { RequestUser } from '../auth/interfaces/request-user.interface';
 import { Request } from 'express';
+import { errorMessage, errorStack } from '../invoices/utils/error-details.util';
 
 interface AuthenticatedRequest extends Request {
   user: RequestUser;
@@ -348,13 +349,13 @@ export class SubscriptionsController {
         status: session.status,
         subscription: null,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        `Failed to verify checkout session: ${error.message}`,
-        error.stack,
+        `Failed to verify checkout session: ${errorMessage(error)}`,
+        errorStack(error),
       );
       throw new BadRequestException(
-        `Failed to verify checkout session: ${error.message}`,
+        `Failed to verify checkout session: ${errorMessage(error)}`,
       );
     }
   }
@@ -427,7 +428,7 @@ export class SubscriptionsController {
           trialEndsAt: updatedSubscription.trialEndsAt,
         },
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Only log as error if it's an unexpected error (not a handled case)
       if (
         error instanceof BadRequestException &&
@@ -435,7 +436,7 @@ export class SubscriptionsController {
           error.message.includes('no Stripe subscription ID'))
       ) {
         // These are expected cases, log as debug
-        this.logger.debug(`Subscription sync info: ${error.message}`);
+        this.logger.debug(`Subscription sync info: ${errorMessage(error)}`);
         return {
           message: error.message,
           subscription: null,
@@ -443,11 +444,11 @@ export class SubscriptionsController {
       }
 
       this.logger.error(
-        `Failed to sync subscription: ${error.message}`,
-        error.stack,
+        `Failed to sync subscription: ${errorMessage(error)}`,
+        errorStack(error),
       );
       throw new BadRequestException(
-        `Failed to sync subscription: ${error.message}`,
+        `Failed to sync subscription: ${errorMessage(error)}`,
       );
     }
   }

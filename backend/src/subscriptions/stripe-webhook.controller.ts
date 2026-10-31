@@ -16,6 +16,7 @@ import { SubscriptionsService } from './subscriptions.service';
 import { Public } from '../auth/public.decorator';
 import Stripe from 'stripe';
 import { ApiTags } from '@nestjs/swagger';
+import { errorStack } from '../invoices/utils/error-details.util';
 
 @ApiTags('subscriptions')
 @Controller('subscriptions/webhook')
@@ -78,7 +79,7 @@ export class StripeWebhookController {
         signatureString,
         webhookSecret,
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       this.logger.error(
@@ -125,7 +126,7 @@ export class StripeWebhookController {
       }
 
       return res.json({ received: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(`Error handling webhook event ${event.type}:`, error);
       return res.status(500).json({ error: 'Webhook handler failed' });
     }
@@ -179,12 +180,12 @@ export class StripeWebhookController {
           `Checkout session ${session.id} is not a subscription session or missing subscription`,
         );
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
         `Error handling checkout session completed for ${session.id}:`,
         error,
       );
-      this.logger.error(`Error stack: ${error.stack}`);
+      this.logger.error(`Error stack: ${errorStack(error)}`);
       throw error; // Re-throw to be caught by main handler
     }
   }
@@ -207,7 +208,7 @@ export class StripeWebhookController {
         subscription.id,
         subscription,
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
         `Error handling subscription created for ${subscription.id}:`,
         error,
@@ -226,7 +227,7 @@ export class StripeWebhookController {
         subscription.id,
         subscription,
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
         `Error handling subscription updated for ${subscription.id}:`,
         error,
@@ -245,7 +246,7 @@ export class StripeWebhookController {
         subscription.id,
         subscription,
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
         `Error handling subscription deleted for ${subscription.id}:`,
         error,
@@ -269,7 +270,7 @@ export class StripeWebhookController {
           subscription,
         );
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
         `Error handling invoice payment succeeded for ${invoice.id}:`,
         error,
@@ -293,7 +294,7 @@ export class StripeWebhookController {
           subscription,
         );
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
         `Error handling invoice payment failed for ${invoice.id}:`,
         error,
