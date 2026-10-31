@@ -5,6 +5,7 @@ import { DataSource } from 'typeorm';
 import { User, UserRole } from '../src/users/entities/user.entity';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import { runScript } from '../src/database/run-script';
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -81,5 +82,4 @@ async function grantOwnerAccess() {
   }
 }
 
-grantOwnerAccess();
-
+runScript(grantOwnerAccess);

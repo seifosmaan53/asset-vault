@@ -19,6 +19,16 @@ import {
 } from './invoice-money';
 import { INVOICE_MONEY_CASES } from './invoice-money.cases';
 
+/** Every amount on a totals object; all of them are integer cents. */
+function centsValues(amounts: object): number[] {
+  return Object.values(amounts).map((v: unknown) => {
+    if (typeof v !== 'number') {
+      throw new TypeError(`expected an amount in cents, got ${typeof v}`);
+    }
+    return v;
+  });
+}
+
 /* ------------------------------------------------------------------ *
  * The API's implementation before this module existed (commit 93bdb9c,
  * src/invoices/utils/invoice-totals.util.ts), kept verbatim in logic and
@@ -110,9 +120,9 @@ function legacyCompute(
   };
   // The old invoiceTotalsToMoney validated every amount (this is where the size limit applied).
   for (const l of result.lines) {
-    for (const v of Object.values(l)) legacyCentsToMoney(v);
+    for (const v of centsValues(l)) legacyCentsToMoney(v);
   }
-  for (const v of Object.values(result.invoice)) legacyCentsToMoney(v);
+  for (const v of centsValues(result.invoice)) legacyCentsToMoney(v);
   return result;
 }
 

@@ -66,7 +66,7 @@ export class QueryOptimizationUtil {
   static optimizeWhereClause<T extends ObjectLiteral>(
     queryBuilder: SelectQueryBuilder<T>,
     indexedFields: string[],
-    conditions: Record<string, any>,
+    conditions: Record<string, unknown>,
   ): SelectQueryBuilder<T> {
     // Prioritize indexed fields in WHERE clause
     indexedFields.forEach((field) => {
@@ -91,7 +91,7 @@ export class QueryOptimizationUtil {
    */
   static async explainQuery<T extends ObjectLiteral>(
     queryBuilder: SelectQueryBuilder<T>,
-  ): Promise<any> {
+  ): Promise<unknown> {
     const sql = queryBuilder.getQuery();
     const parameters = queryBuilder.getParameters();
 
@@ -108,7 +108,7 @@ export class QueryOptimizationUtil {
     const explainQuery = queryBuilder.connection.createQueryRunner();
     try {
       // FIX Issue #182: Use parameterized query - parameters passed separately, not in SQL string
-      const result = await explainQuery.query(
+      const result: unknown = await explainQuery.query(
         `EXPLAIN ANALYZE ${sql}`,
         Object.values(parameters),
       );

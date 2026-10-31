@@ -1,7 +1,7 @@
 import { DataSource } from 'typeorm';
 import { config } from 'dotenv';
 import { User } from '../users/entities/user.entity';
-import * as bcrypt from 'bcryptjs';
+import { runScript } from './run-script';
 
 config();
 
@@ -49,7 +49,7 @@ async function checkUserLogin() {
     console.log(`  Email: ${user.email}`);
     console.log(`  Name: ${user.name}`);
     console.log(`  Role: ${user.role}`);
-    console.log(`  Created: ${user.createdAt}`);
+    console.log(`  Created: ${String(user.createdAt)}`);
     console.log(`  Clerk User ID: ${user.clerkUserId || 'Not linked'}`);
     console.log('  ✅ Authentication is now handled by Clerk');
 
@@ -88,4 +88,4 @@ async function checkUserLogin() {
   }
 }
 
-checkUserLogin();
+runScript(checkUserLogin);

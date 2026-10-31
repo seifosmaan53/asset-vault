@@ -2,6 +2,7 @@ import { config } from 'dotenv';
 import { AppDataSource } from './data-source';
 import { Invoice } from '../invoices/entities/invoice.entity';
 import { Client } from '../clients/entities/client.entity';
+import { runScript } from './run-script';
 
 config();
 
@@ -33,7 +34,7 @@ async function checkDeletedData() {
       deletedInvoices.forEach((inv) => {
         const total = parseFloat(inv.total.toString());
         console.log(
-          `  - ${inv.number}: $${total.toFixed(2)} (${inv.status}) - Deleted: ${inv.deletedAt}`,
+          `  - ${inv.number}: $${total.toFixed(2)} (${inv.status}) - Deleted: ${String(inv.deletedAt)}`,
         );
       });
 
@@ -63,7 +64,9 @@ async function checkDeletedData() {
     console.log(`Found ${deletedClients.length} deleted clients`);
     if (deletedClients.length > 0) {
       deletedClients.forEach((client) => {
-        console.log(`  - ${client.name} - Deleted: ${client.deletedAt}`);
+        console.log(
+          `  - ${client.name} - Deleted: ${String(client.deletedAt)}`,
+        );
       });
     }
 
@@ -75,4 +78,4 @@ async function checkDeletedData() {
   }
 }
 
-checkDeletedData();
+runScript(checkDeletedData);

@@ -161,7 +161,7 @@ export class MetricsService {
     const queryRunner = this.dataSource.createQueryRunner();
     try {
       await queryRunner.connect();
-      const result = await queryRunner.query(`
+      const result: unknown = await queryRunner.query(`
         SELECT 
           count(*) FILTER (WHERE state = 'active') as active_connections,
           count(*) FILTER (WHERE state = 'idle') as idle_connections,
@@ -171,14 +171,23 @@ export class MetricsService {
         WHERE datname = current_database();
       `);
 
-      if (result && result.length > 0) {
-        const row = result[0];
+      const row: unknown = Array.isArray(result) ? result[0] : undefined;
+      if (typeof row === 'object' && row !== null) {
+        // node-postgres returns count(*) as a string (bigint) and setting::int as a
+        // number; both parse the same way.
+        const field = (name: string): string => {
+          const value: unknown = Reflect.get(row, name);
+          return typeof value === 'string' || typeof value === 'number'
+            ? String(value)
+            : '';
+        };
+        const rawMax: unknown = Reflect.get(row, 'max_connections');
         return {
-          activeConnections: parseInt(row.active_connections || '0', 10),
-          idleConnections: parseInt(row.idle_connections || '0', 10),
-          totalConnections: parseInt(row.total_connections || '0', 10),
-          maxConnections: row.max_connections
-            ? parseInt(row.max_connections, 10)
+          activeConnections: parseInt(field('active_connections') || '0', 10),
+          idleConnections: parseInt(field('idle_connections') || '0', 10),
+          totalConnections: parseInt(field('total_connections') || '0', 10),
+          maxConnections: rawMax
+            ? parseInt(field('max_connections'), 10)
             : undefined,
         };
       }

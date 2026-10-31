@@ -4,6 +4,8 @@
 import { DataSource } from 'typeorm';
 import { config } from 'dotenv';
 import { User } from '../users/entities/user.entity';
+import { runScript } from './run-script';
+import { readProperty } from '../common/utils/read-property.util';
 
 config();
 
@@ -54,13 +56,14 @@ async function listUsers() {
 
     await dataSource.destroy();
     process.exit(0);
-  } catch (error: any) {
-    console.error('Error listing users:', error.message);
-    if (error.stack) {
-      console.error('\nStack trace:', error.stack);
+  } catch (error: unknown) {
+    const stack = readProperty(error, 'stack');
+    console.error('Error listing users:', readProperty(error, 'message'));
+    if (stack) {
+      console.error('\nStack trace:', stack);
     }
     process.exit(1);
   }
 }
 
-listUsers();
+runScript(listUsers);

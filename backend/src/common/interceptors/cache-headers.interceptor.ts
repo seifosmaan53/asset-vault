@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { Response } from 'express';
+import type { Request, Response } from 'express';
 import { Reflector } from '@nestjs/core';
 
 /**
@@ -30,7 +30,7 @@ export class CacheHeadersInterceptor implements NestInterceptor {
     }>('cache', handler);
 
     // FIX #161: Response caching at HTTP level - only for GET requests
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<Request>();
     if (request.method !== 'GET') {
       // Don't cache non-GET requests
       return next.handle();

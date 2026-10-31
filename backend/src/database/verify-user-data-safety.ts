@@ -10,6 +10,7 @@ import { Store } from '../inventory/entities/store.entity';
 import { StoreItemSettings } from '../inventory/entities/store-item-settings.entity';
 import { Organization } from '../organizations/entities/organization.entity';
 import { UserOrganization } from '../organizations/entities/user-organization.entity';
+import { runScript } from './run-script';
 
 config();
 
@@ -254,4 +255,4 @@ async function verifyUserDataSafety() {
   }
 }
 
-verifyUserDataSafety();
+runScript(verifyUserDataSafety);

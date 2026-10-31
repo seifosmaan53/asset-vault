@@ -10,6 +10,7 @@ import { Store } from '../inventory/entities/store.entity';
 import { StoreItemSettings } from '../inventory/entities/store-item-settings.entity';
 import { Organization } from '../organizations/entities/organization.entity';
 import { UserOrganization } from '../organizations/entities/user-organization.entity';
+import { runScript } from './run-script';
 
 config();
 
@@ -72,7 +73,7 @@ async function checkCurrentUser() {
       console.log(`  ID: ${user.id}`);
       console.log(`  Role: ${user.role}`);
       console.log(`  Name: ${user.name || 'N/A'}`);
-      console.log(`  Created: ${user.createdAt}`);
+      console.log(`  Created: ${String(user.createdAt)}`);
       console.log(
         `  Data: ${clientCount} clients, ${invoiceCount} invoices, ${inventoryCount} items`,
       );
@@ -113,4 +114,4 @@ async function checkCurrentUser() {
   }
 }
 
-checkCurrentUser();
+runScript(checkCurrentUser);

@@ -1,7 +1,5 @@
 // Copyright (c) 2025 Asset Vault. All rights reserved.
 
-// Copyright (c) 2025 Asset Vault. All rights reserved.
-
 import {
   Controller,
   Post,
@@ -11,12 +9,21 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import type { Request } from 'express';
+import type { GuardRequest } from '../auth/interfaces/request-user.interface';
 import { TrpcRouter } from './trpc.router';
 import { TrpcService } from './trpc.service';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { createContext } from './trpc.context';
+import { errorField } from './error-fields';
+import { readProperty } from '../common/utils/read-property.util';
 import { ApiTags } from '@nestjs/swagger';
+
+/** A tRPC caller procedure: takes the raw input, resolves to the procedure's output. */
+function isProcedure(
+  value: unknown,
+): value is (input: unknown) => Promise<unknown> {
+  return typeof value === 'function';
+}
 
 /**
  * tRPC Controller
@@ -36,7 +43,7 @@ export class TrpcController {
   ) {}
 
   @Post('*')
-  async handler(@Req() req: Request, @Body() body: any) {
+  async handler(@Req() req: GuardRequest, @Body() body: unknown) {
     try {
       const ctx = await createContext(req);
       const caller = this.trpcRouter.appRouter.createCaller(ctx);
@@ -57,8 +64,9 @@ export class TrpcController {
 
       const [routerName, procedureName] = path;
 
-      // Get the router
-      const router = (caller as any)[routerName];
+      // Get the router. The caller is a tRPC proxy, so routers and procedures are
+      // looked up by name at runtime.
+      const router = readProperty(caller, routerName);
       if (!router) {
         throw new HttpException(
           `Router "${routerName}" not found`,
@@ -67,8 +75,8 @@ export class TrpcController {
       }
 
       // Get the procedure
-      const procedure = router[procedureName];
-      if (!procedure) {
+      const procedure = readProperty(router, procedureName);
+      if (!isProcedure(procedure)) {
         throw new HttpException(
           `Procedure "${procedureName}" not found in router "${routerName}"`,
           HttpStatus.NOT_FOUND,
@@ -78,16 +86,23 @@ export class TrpcController {
       // Call the procedure
       const result = await procedure(body);
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      // The bad-path and not-found responses above already carry their status.
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
       // Handle tRPC errors
-      if (error.code && error.message) {
+      const code = errorField(error, 'code');
+      const message = errorField(error, 'message');
+      if (code && message) {
         throw new HttpException(
           {
-            code: error.code,
-            message: error.message,
-            data: error.data,
+            code,
+            message,
+            data: errorField(error, 'data'),
           },
-          error.code === 'UNAUTHORIZED'
+          code === 'UNAUTHORIZED'
             ? HttpStatus.UNAUTHORIZED
             : HttpStatus.BAD_REQUEST,
         );
@@ -95,7 +110,9 @@ export class TrpcController {
 
       // Handle other errors
       throw new HttpException(
-        error.message || 'Internal server error',
+        typeof message === 'string' && message
+          ? message
+          : 'Internal server error',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

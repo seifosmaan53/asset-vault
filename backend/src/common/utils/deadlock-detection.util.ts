@@ -2,6 +2,7 @@
 
 import { Logger } from '@nestjs/common';
 import type { QueryRunner } from 'typeorm';
+import { readProperty, readStringProperty } from './read-property.util';
 
 /**
  * Deadlock Detection and Retry Utility
@@ -55,14 +56,19 @@ export class DeadlockDetector {
   /**
    * Check if an error is a deadlock error
    */
-  private static isDeadlockError(error: any): boolean {
+  private static isDeadlockError(error: unknown): boolean {
     if (!error) return false;
 
-    const errorCode = error.code || error.errno || '';
-    const errorMessage = error.message || '';
+    const errorCode =
+      readProperty(error, 'code') || readProperty(error, 'errno') || '';
+    const errorMessage = readStringProperty(error, 'message') || '';
 
     // Check PostgreSQL deadlock error codes
-    if (this.DEADLOCK_ERROR_CODES.includes(String(errorCode))) {
+    // Driver codes are strings (SQLSTATE '40P01') or numbers (errno).
+    if (
+      (typeof errorCode === 'string' || typeof errorCode === 'number') &&
+      this.DEADLOCK_ERROR_CODES.includes(String(errorCode))
+    ) {
       return true;
     }
 

@@ -1,14 +1,11 @@
-import type { TestingModule } from '@nestjs/testing';
-import { Test } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
-import { DataSource } from 'typeorm';
 import { InvoicesService } from '../src/invoices/invoices.service';
 import { InventoryService } from '../src/inventory/inventory.service';
 import { StoreService } from '../src/inventory/store.service';
 import { StoreItemSettingsService } from '../src/inventory/store-item-settings.service';
-import { StoreStockValidatorService } from '../src/inventory/store-stock-validator.service';
 import { Invoice } from '../src/invoices/entities/invoice.entity';
 import { InvoiceItem } from '../src/invoices/entities/invoice-item.entity';
 import { InventoryItem } from '../src/inventory/entities/inventory-item.entity';
@@ -28,17 +25,13 @@ import { UserSettingsService } from '../src/user-settings/user-settings.service'
  */
 describe('Invoices-Store Integration', () => {
   let invoicesService: InvoicesService;
-  let inventoryService: InventoryService;
   let storeService: StoreService;
-  let storeItemSettingsService: StoreItemSettingsService;
   let invoiceRepository: Repository<Invoice>;
   let invoiceItemsRepository: Repository<InvoiceItem>;
   let inventoryRepository: Repository<InventoryItem>;
   let storeRepository: Repository<Store>;
   let storeItemSettingsRepository: Repository<StoreItemSettings>;
   let stockMovementRepository: Repository<StockMovement>;
-  let clientRepository: Repository<Client>;
-  let userRepository: Repository<User>;
 
   let testUser: User;
   let testClient: Client;
@@ -118,11 +111,7 @@ describe('Invoices-Store Integration', () => {
     }).compile();
 
     invoicesService = module.get<InvoicesService>(InvoicesService);
-    inventoryService = module.get<InventoryService>(InventoryService);
     storeService = module.get<StoreService>(StoreService);
-    storeItemSettingsService = module.get<StoreItemSettingsService>(
-      StoreItemSettingsService,
-    );
 
     invoiceRepository = module.get<Repository<Invoice>>(
       getRepositoryToken(Invoice),
@@ -140,10 +129,6 @@ describe('Invoices-Store Integration', () => {
     stockMovementRepository = module.get<Repository<StockMovement>>(
       getRepositoryToken(StockMovement),
     );
-    clientRepository = module.get<Repository<Client>>(
-      getRepositoryToken(Client),
-    );
-    userRepository = module.get<Repository<User>>(getRepositoryToken(User));
 
     // Setup test data
     testUser = { id: 'user-123', email: 'test@example.com' } as User;
@@ -281,10 +266,11 @@ describe('Invoices-Store Integration', () => {
 
       await invoicesService.create(testUser.id, invoiceData);
 
-      // Verify store stock was decreased (reserved)
-      expect(storeItemSettingsRepository.save).toHaveBeenCalledWith(
-        expect.objectContaining({ currentStock: 95 }),
-      );
+      // Verify store stock was decreased (reserved). jest.spyOn on a method that is already a
+      // jest.fn returns that same mock, so this reads the mock without detaching the method.
+      expect(
+        jest.spyOn(storeItemSettingsRepository, 'save'),
+      ).toHaveBeenCalledWith(expect.objectContaining({ currentStock: 95 }));
     });
 
     it('should update invoice from draft to sent and convert reserved to sale', async () => {
@@ -328,7 +314,7 @@ describe('Invoices-Store Integration', () => {
       await invoicesService.update(invoiceId, testUser.id, { status: 'sent' });
 
       // Verify convertReservedToSale was called (through inventory service)
-      expect(inventoryRepository.save).toHaveBeenCalled();
+      expect(jest.spyOn(inventoryRepository, 'save')).toHaveBeenCalled();
     });
   });
 
@@ -404,7 +390,9 @@ describe('Invoices-Store Integration', () => {
       await invoicesService.create(testUser.id, invoiceData);
 
       // Verify store stock was decreased
-      expect(storeItemSettingsRepository.save).toHaveBeenCalled();
+      expect(
+        jest.spyOn(storeItemSettingsRepository, 'save'),
+      ).toHaveBeenCalled();
     });
 
     it('should only update global stock when invoice created without storeId', async () => {
@@ -465,9 +453,11 @@ describe('Invoices-Store Integration', () => {
       await invoicesService.create(testUser.id, invoiceData);
 
       // Verify store stock was NOT updated
-      expect(storeItemSettingsRepository.save).not.toHaveBeenCalled();
+      expect(
+        jest.spyOn(storeItemSettingsRepository, 'save'),
+      ).not.toHaveBeenCalled();
       // Verify global stock was updated
-      expect(inventoryRepository.save).toHaveBeenCalled();
+      expect(jest.spyOn(inventoryRepository, 'save')).toHaveBeenCalled();
     });
   });
 

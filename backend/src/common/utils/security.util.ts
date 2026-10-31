@@ -57,42 +57,46 @@ export function sanitizeString(
  * @param fields - Array of field names to sanitize (if not provided, sanitizes all string fields)
  * @returns Sanitized object
  */
+/** Any non-null object (arrays included), viewed as string-keyed for recursion. */
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 export function sanitizeObject<T extends Record<string, any>>(
   obj: T,
   fields?: string[],
 ): T {
   if (!obj || typeof obj !== 'object') return obj;
 
-  const sanitized: any = { ...obj };
+  const sanitized: Record<string, unknown> = { ...obj };
 
   // If fields specified, only sanitize those
   if (fields && Array.isArray(fields)) {
     fields.forEach((field) => {
-      if (sanitized[field] && typeof sanitized[field] === 'string') {
-        sanitized[field] = sanitizeString(sanitized[field]);
+      const value = sanitized[field];
+      if (value && typeof value === 'string') {
+        sanitized[field] = sanitizeString(value);
       }
     });
   } else {
     // Sanitize all string fields
     Object.keys(sanitized).forEach((key) => {
-      if (typeof sanitized[key] === 'string') {
-        sanitized[key] = sanitizeString(sanitized[key]);
-      } else if (Array.isArray(sanitized[key])) {
+      const value = sanitized[key];
+      if (typeof value === 'string') {
+        sanitized[key] = sanitizeString(value);
+      } else if (Array.isArray(value)) {
         // Recursively sanitize array items
-        sanitized[key] = sanitized[key].map((item: any) => {
+        sanitized[key] = value.map((item: unknown) => {
           if (typeof item === 'string') {
             return sanitizeString(item);
-          } else if (typeof item === 'object' && item !== null) {
+          } else if (isPlainRecord(item)) {
             return sanitizeObject(item);
           }
           return item;
         });
-      } else if (
-        typeof sanitized[key] === 'object' &&
-        sanitized[key] !== null
-      ) {
+      } else if (isPlainRecord(value)) {
         // Recursively sanitize nested objects
-        sanitized[key] = sanitizeObject(sanitized[key]);
+        sanitized[key] = sanitizeObject(value);
       }
     });
   }

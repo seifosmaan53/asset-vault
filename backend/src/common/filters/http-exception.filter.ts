@@ -10,6 +10,7 @@ import {
 import { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { getErrorCode } from '../utils/error-codes.util';
+import type { RequestWithId } from '../utils/request-id.util';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -20,7 +21,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest();
+    const request = ctx.getRequest<RequestWithId>();
 
     const status =
       exception instanceof HttpException
@@ -77,7 +78,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     // Sanitize error message in production
     let message: string | string[];
-    let errors: any = undefined;
+    let errors: Record<string, string[]> | undefined = undefined;
 
     if (exception instanceof HttpException) {
       const exceptionResponse = exception.getResponse();
@@ -122,8 +123,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     // FIX #166: Include request ID in error response for correlation
-    const requestId =
-      request['requestId'] || request.headers['x-request-id'] || 'unknown';
+    const requestId: string | string[] =
+      request.requestId || request.headers['x-request-id'] || 'unknown';
 
     response.status(status).json({
       statusCode: status,

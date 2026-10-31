@@ -8,6 +8,7 @@ import {
   SetMetadata,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import type { Request } from 'express';
 
 export const REQUIRED_HEADERS_KEY = 'requiredHeaders';
 
@@ -27,7 +28,7 @@ export class HeaderValidationGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<Request>();
     const requiredHeaders = this.reflector.getAllAndOverride<string[]>(
       REQUIRED_HEADERS_KEY,
       [context.getHandler(), context.getClass()],
@@ -41,7 +42,12 @@ export class HeaderValidationGuard implements CanActivate {
 
     for (const header of requiredHeaders) {
       const headerValue = request.headers[header.toLowerCase()];
-      if (!headerValue || headerValue.trim() === '') {
+      // Node only delivers repeated headers as an array for set-cookie; any other
+      // header arrives as one string.
+      const value = Array.isArray(headerValue)
+        ? headerValue.join(', ')
+        : headerValue;
+      if (!value || value.trim() === '') {
         missingHeaders.push(header);
       }
     }

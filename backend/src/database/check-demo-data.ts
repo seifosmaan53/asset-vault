@@ -2,6 +2,7 @@ import { DataSource } from 'typeorm';
 import { config } from 'dotenv';
 import { User } from '../users/entities/user.entity';
 import { Client } from '../clients/entities/client.entity';
+import { runScript } from './run-script';
 
 config();
 
@@ -57,7 +58,7 @@ async function checkDemoData() {
 
     await dataSource.destroy();
     process.exit(0);
-  } catch (error) {
+  } catch {
     // If database connection fails or tables don't exist, assume no demo data
     console.log('NO_DEMO_DATA');
     try {
@@ -69,4 +70,4 @@ async function checkDemoData() {
   }
 }
 
-checkDemoData();
+runScript(checkDemoData);
