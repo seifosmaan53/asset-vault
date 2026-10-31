@@ -149,6 +149,10 @@ jobs:
 
       - name: Build the builder stage and inspect its context
         run: |
+          # Decoys: local env files a developer might have. None may reach the image.
+          for f in .env .env.local .env.development .env.staging; do
+            echo "DECOY_SECRET=must-not-be-in-the-image" > "frontend/$f"
+          done
           docker build -f frontend/Dockerfile --target builder \
             --build-arg VITE_CLERK_PUBLISHABLE_KEY="$DUMMY_PK" -t av-frontend-builder .
           echo '--- files under /backend in the builder stage:'
@@ -159,6 +163,10 @@ jobs:
           docker run --rm av-frontend-builder sh -c 'ls -a /app | grep "^\.env" || true' | tee env-files.txt
           # Only the committed example may be there; .env / .env.local must never reach the build.
           if grep -vx '.env.example' env-files.txt; then echo 'unexpected env file in build context'; exit 1; fi
+          if docker run --rm av-frontend-builder grep -rl DECOY_SECRET /app /backend 2>/dev/null; then
+            echo 'a decoy env file reached the build context'; exit 1
+          fi
+          rm -f frontend/.env frontend/.env.local frontend/.env.development frontend/.env.staging
 
       - name: Build fails without a publishable key
         run: |
