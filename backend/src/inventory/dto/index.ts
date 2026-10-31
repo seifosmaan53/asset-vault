@@ -43,7 +43,8 @@ export class CreateInventoryItemDto {
 
   @ApiPropertyOptional({
     example: 'Laptops',
-    description: 'General-purpose asset category used for grouping and reporting',
+    description:
+      'General-purpose asset category used for grouping and reporting',
   })
   @IsOptional()
   @IsString()
