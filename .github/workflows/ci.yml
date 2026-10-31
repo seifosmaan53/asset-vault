@@ -133,6 +133,134 @@ jobs:
         working-directory: ./frontend
         run: npx vitest run --passWithNoTests
 
+  # GATING. Builds the production frontend image the way docker-compose.yml does (context = the
+  # repository root, so the shared invoice-money module is included), runs it, and checks what
+  # nginx actually serves. The publishable key is a syntactically valid dummy: without one the
+  # bundler drops the app and only the configuration screen is left.
+  frontend-image:
+    name: Frontend image (docker build + smoke)
+    runs-on: ubuntu-latest
+    env:
+      # pk_test_ + base64("dummy.clerk.accounts.dev$"). Not a real Clerk instance.
+      DUMMY_PK: pk_test_ZHVtbXkuY2xlcmsuYWNjb3VudHMuZGV2JA==
+      MONEY_MARKER: 'must be a decimal number (no exponent'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the builder stage and inspect its context
+        run: |
+          docker build -f frontend/Dockerfile --target builder \
+            --build-arg VITE_CLERK_PUBLISHABLE_KEY="$DUMMY_PK" -t av-frontend-builder .
+          echo '--- files under /backend in the builder stage:'
+          docker run --rm av-frontend-builder find /backend -type f | tee backend-files.txt
+          # The root .dockerignore must admit exactly one file from backend/.
+          test "$(cat backend-files.txt)" = /backend/src/common/money/invoice-money.ts
+          echo '--- env files in /app:'
+          docker run --rm av-frontend-builder sh -c 'ls -a /app | grep "^\.env" || true' | tee env-files.txt
+          # Only the committed example may be there; .env / .env.local must never reach the build.
+          if grep -vx '.env.example' env-files.txt; then echo 'unexpected env file in build context'; exit 1; fi
+
+      - name: Build fails without a publishable key
+        run: |
+          if docker build -f frontend/Dockerfile --target builder . > no-key.log 2>&1; then
+            cat no-key.log; echo 'build without VITE_CLERK_PUBLISHABLE_KEY should have failed'; exit 1
+          fi
+          grep -q 'VITE_CLERK_PUBLISHABLE_KEY is not set' no-key.log
+          echo 'refused as expected'
+
+      - name: Build the production image
+        run: |
+          docker build -f frontend/Dockerfile \
+            --build-arg VITE_CLERK_PUBLISHABLE_KEY="$DUMMY_PK" -t av-frontend .
+          docker image ls av-frontend
+
+      - name: Inspect the served directory
+        run: |
+          docker run --rm av-frontend find /usr/share/nginx/html -type f | sort | tee html-files.txt
+          if grep -E '(^|/)\.env|\.map$|\.tsx?$|backend' html-files.txt; then
+            echo 'served directory contains env files, source maps, sources or backend files'; exit 1
+          fi
+          grep -q '^/usr/share/nginx/html/index.html$' html-files.txt
+
+      - name: Run the container and smoke-check it
+        run: |
+          docker run -d --name av-frontend -p 8080:80 av-frontend
+          for i in $(seq 1 30); do curl -fsS -o /dev/null http://localhost:8080/ && break; sleep 1; done
+          base=http://localhost:8080
+
+          echo '--- GET /'
+          curl -fsS -D root.headers -o index.html "$base/"
+          head -n1 root.headers; grep -i '^x-content-type-options' root.headers
+          grep -q '<div id="root">' index.html
+
+          echo '--- entry script referenced by index.html'
+          entry=$(grep -oE 'src="/assets/[^"]+\.js"' index.html | head -n1 | cut -d'"' -f2)
+          test -n "$entry"; echo "$entry"
+          curl -fsS -D entry.headers -H 'Accept-Encoding: gzip' -o /dev/null "$base$entry"
+          head -n1 entry.headers
+          grep -iE '^content-type: (application|text)/javascript' entry.headers
+          grep -i '^content-encoding: gzip' entry.headers
+          grep -i '^cache-control: public, immutable' entry.headers
+          grep -i '^x-content-type-options: nosniff' entry.headers
+
+          echo '--- SPA deep link /invoices/create'
+          code=$(curl -sS -o deep.html -w '%{http_code}' "$base/invoices/create")
+          echo "HTTP $code"; test "$code" = 200; cmp deep.html index.html
+
+          echo '--- missing asset is a 404, not index.html'
+          code=$(curl -sS -o /dev/null -w '%{http_code}' "$base/assets/does-not-exist.js")
+          echo "HTTP $code"; test "$code" = 404
+
+          echo '--- every served JS asset, fetched over HTTP'
+          mkdir -p served
+          for f in $(grep '\.js$' html-files.txt); do
+            rel=${f#/usr/share/nginx/html}
+            curl -fsS -o "served/$(basename "$rel")" "$base$rel"
+          done
+          ls served | wc -l
+          echo '--- shared invoice-money module is in the bundle'
+          grep -lF "$MONEY_MARKER" served/*.js
+          echo '--- the build-arg key reached the bundle'
+          grep -lF "$DUMMY_PK" served/*.js
+
+      - name: Container log
+        if: always()
+        run: docker logs av-frontend 2>&1 | tail -n 40 || true
+
+      - name: Build the dev image
+        run: docker build -f frontend/Dockerfile.dev -t av-frontend-dev .
+
+  # GATING. Builds the API image and validates the Compose file; does not run the API
+  # (that needs a migrated database and a Clerk instance).
+  backend-image:
+    name: Backend image (docker build) + Compose config
+    runs-on: ubuntu-latest
+    env:
+      CLERK_SECRET_KEY: sk_test_ci_not_a_real_key
+      VITE_CLERK_PUBLISHABLE_KEY: pk_test_ZHVtbXkuY2xlcmsuYWNjb3VudHMuZGV2JA==
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the backend image
+        run: |
+          docker build -t av-backend backend
+          docker run --rm av-backend node --version
+          docker run --rm av-backend test -f dist/main.js
+          docker run --rm av-backend sh -c 'test ! -d node_modules/@nestjs/cli' && echo 'no dev dependencies'
+
+      - name: Validate docker-compose.yml
+        run: |
+          docker compose config --quiet
+          docker compose config --services
+          test "$(docker compose config --services | sort | tr '\n' ' ')" = 'backend frontend postgres '
+          test "$(docker compose --profile dev config --services | grep -c frontend-dev)" = 1
+
+      - name: Start the postgres service
+        run: |
+          docker compose up -d --wait postgres
+          docker compose exec -T postgres psql -U postgres -d invoiceme -c 'select 1'
+          docker compose down -v
+
   audit:
     name: Dependency audit
     runs-on: ubuntu-latest
