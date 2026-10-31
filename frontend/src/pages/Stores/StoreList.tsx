@@ -34,6 +34,7 @@ import WarningIcon from '@mui/icons-material/Warning';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import DownloadIcon from '@mui/icons-material/Download';
 import { useStores, useDeleteStore, useUpdateStore } from '../../hooks/useStore';
+import type { Store } from '../../types/store';
 import { useStoreAlerts } from '../../hooks/useStoreAlerts';
 import type { StoreAlert } from '../../api/storeAlerts';
 import { useInventoryStats } from '../../hooks/useInventory';
@@ -188,7 +189,7 @@ const StoreList = () => {
     const storeName = storeToDelete.name;
     
     // Get store data before deletion for undo
-    let storeData = queryClient.getQueryData<any>(['stores', storeId]);
+    let storeData = queryClient.getQueryData<Store>(['stores', storeId]);
     
     // If not in cache, try to find it in the current list
     if (!storeData && stores) {
@@ -220,7 +221,7 @@ const StoreList = () => {
             'store',
             `Store ${storeData.name || storeName}`,
             storeData,
-            async (store: any) => {
+            async (store: Store) => {
               try {
                 const { storeApi } = await import('../../api/store');
                 await storeApi.create({

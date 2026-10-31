@@ -31,6 +31,7 @@ import { exportToCSV } from '../utils/export';
 import { getErrorMessage } from '../utils/errorHandling';
 import { useToast } from '../contexts/ToastContext';
 import { TIMEOUTS } from '../constants/timeouts';
+import type { Invoice } from '../types/invoice';
 // Cache clearing is done manually below
 
 const Dashboard = () => {
@@ -140,7 +141,7 @@ const Dashboard = () => {
 
   // Helper function to calculate actual revenue (profit) for an invoice
   // Moved outside useMemo for better performance and reusability
-  const calculateInvoiceProfit = useCallback((invoice: any, costMap: Map<string, number>): number => {
+  const calculateInvoiceProfit = useCallback((invoice: Invoice, costMap: Map<string, number>): number => {
     if (!invoice.items || !Array.isArray(invoice.items) || invoice.items.length === 0) {
       return 0;
     }

@@ -14,12 +14,18 @@ import {
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CloseIcon from '@mui/icons-material/Close';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import { parseCSV, parseExcel, isSupportedFile, getFileExtension } from '../../utils/import';
+import {
+  parseCSV,
+  parseExcel,
+  isSupportedFile,
+  getFileExtension,
+  type ImportRow,
+} from '../../utils/import';
 
 interface ImportDialogProps {
   open: boolean;
   onClose: () => void;
-  onFileSelect: (data: any[], file: File) => void;
+  onFileSelect: (data: ImportRow[], file: File) => void;
   acceptedFormats?: string[];
   maxFileSize?: number; // in MB
 }

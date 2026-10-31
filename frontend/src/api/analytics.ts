@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient';
+import type { AxiosError } from 'axios';
 
 export interface InvoiceStatusData {
   status: string;
@@ -193,7 +194,8 @@ export const analyticsApi = {
       const url = `/analytics/sales-by-category${queryString ? `?${queryString}` : ''}`;
       const response = await apiClient.get<SalesByCategory[]>(url);
       return response.data || [];
-    } catch (error: any) {
+    } catch (caught) {
+      const error = caught as AxiosError | undefined;
       // Ignore request deduplication errors (these are expected and not real errors)
       // Also ignore axios cancel errors
       if (
@@ -226,7 +228,8 @@ export const analyticsApi = {
       const url = `/analytics/revenue-by-payment-method${queryString ? `?${queryString}` : ''}`;
       const response = await apiClient.get<RevenueByPaymentMethod[]>(url);
       return response.data || [];
-    } catch (error: any) {
+    } catch (caught) {
+      const error = caught as AxiosError | undefined;
       // Ignore request deduplication errors (these are expected and not real errors)
       // Also ignore axios cancel errors
       if (

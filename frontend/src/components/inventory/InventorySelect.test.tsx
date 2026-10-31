@@ -56,7 +56,7 @@ describe('InventorySelect', () => {
       data: [],
       isLoading: false,
       refetch: vi.fn().mockResolvedValue({}),
-    } as any);
+    } as unknown as ReturnType<typeof useInventory>);
 
     render(
       <TestWrapper>
@@ -72,7 +72,7 @@ describe('InventorySelect', () => {
       data: mockItems,
       isLoading: false,
       refetch: vi.fn().mockResolvedValue({}),
-    } as any);
+    } as unknown as ReturnType<typeof useInventory>);
 
     render(
       <TestWrapper>
@@ -94,7 +94,7 @@ describe('InventorySelect', () => {
       data: mockItems,
       isLoading: false,
       refetch: vi.fn().mockResolvedValue({}),
-    } as any);
+    } as unknown as ReturnType<typeof useInventory>);
 
     render(
       <TestWrapper>
@@ -118,7 +118,7 @@ describe('InventorySelect', () => {
       data: mockItems,
       isLoading: false,
       refetch: vi.fn().mockResolvedValue({}),
-    } as any);
+    } as unknown as ReturnType<typeof useInventory>);
 
     render(
       <TestWrapper>
@@ -142,7 +142,7 @@ describe('InventorySelect', () => {
     vi.mocked(useInventory).mockReturnValue({
       data: [],
       isLoading: true,
-    } as any);
+    } as unknown as ReturnType<typeof useInventory>);
 
     render(
       <TestWrapper>
@@ -159,7 +159,7 @@ describe('InventorySelect', () => {
       data: mockItems,
       isLoading: false,
       refetch: vi.fn().mockResolvedValue({}),
-    } as any);
+    } as unknown as ReturnType<typeof useInventory>);
 
     render(
       <TestWrapper>

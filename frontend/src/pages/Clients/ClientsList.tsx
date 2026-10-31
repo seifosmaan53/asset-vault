@@ -66,10 +66,16 @@ import { clientsApi } from '../../api/clients';
 import { SearchHistoryDropdown } from '../../components/common/SearchHistoryDropdown';
 import { useSearch } from '../../contexts/SearchContext';
 import HistoryIcon from '@mui/icons-material/History';
-import type { ColumnMapping, ImportResult } from '../../utils/import';
-import type { Client } from '../../types/client';
+import type { ColumnMapping, ImportResult, ImportRow, ImportRowError } from '../../utils/import';
+import type { Address, Client } from '../../types/client';
 import { EmptyState } from '../../components/common/EmptyState';
 import { useTableColumns } from '../../hooks/useTableColumns';
+
+// A spreadsheet row mapped onto client fields during import (all cell values are text).
+type ImportedClientField = 'name' | 'email' | 'phone' | 'notes';
+type ImportedClientRow = Partial<Record<ImportedClientField, string>> & {
+  addressJson: Partial<Address>;
+};
 
 const ClientsList = () => {
   const navigate = useNavigate();
@@ -598,7 +604,7 @@ const ClientsList = () => {
   }, [filteredClients]);
 
   // Import handlers
-  const handleImportFileSelect = useCallback((data: any[], file: File) => {
+  const handleImportFileSelect = useCallback((data: ImportRow[], file: File) => {
     setImportFile(file);
     
     // Map columns to client fields - handle multiple possible column names
@@ -636,14 +642,14 @@ const ClientsList = () => {
 
     // Transform data - map columns to fields
     const transformed = data.map(row => {
-      const mapped: any = { addressJson: {} };
+      const mapped: ImportedClientRow = { addressJson: {} };
       columnMappings.forEach(mapping => {
         if (row[mapping.sourceColumn] !== undefined && row[mapping.sourceColumn] !== null && row[mapping.sourceColumn] !== '') {
           if (mapping.targetField.startsWith('addressJson.')) {
-            const field = mapping.targetField.split('.')[1];
+            const field = mapping.targetField.split('.')[1] as keyof Address;
             mapped.addressJson[field] = row[mapping.sourceColumn];
           } else {
-            mapped[mapping.targetField] = row[mapping.sourceColumn];
+            mapped[mapping.targetField as ImportedClientField] = row[mapping.sourceColumn];
           }
         }
       });
@@ -652,7 +658,7 @@ const ClientsList = () => {
 
     // Validate
     const valid: Partial<Client>[] = [];
-    const invalid: Array<{ row: number; data: any; errors: string[] }> = [];
+    const invalid: ImportRowError[] = [];
     
     transformed.forEach((row, index) => {
       const errors: string[] = [];
@@ -662,7 +668,8 @@ const ClientsList = () => {
       if (errors.length > 0) {
         invalid.push({ row: index + 2, data: row, errors });
       } else {
-        valid.push(row);
+        // Address parts may be partial here; the import endpoint validates the file itself.
+        valid.push(row as Partial<Client>);
       }
     });
 

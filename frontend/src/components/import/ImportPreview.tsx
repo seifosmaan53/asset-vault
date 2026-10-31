@@ -26,6 +26,12 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import type { ImportResult } from '../../utils/import';
 
+// Cell text for a preview table: the value as a string, or '-' when it is missing.
+const formatCell = (record: object, col: string): string => {
+  const value = (record as Record<string, unknown>)[col];
+  return value !== undefined && value !== null ? String(value) : '-';
+};
+
 interface ImportPreviewProps<T> {
   open: boolean;
   onClose: () => void;
@@ -34,7 +40,7 @@ interface ImportPreviewProps<T> {
   isLoading?: boolean;
 }
 
-export const ImportPreview = <T extends Record<string, any>>({
+export const ImportPreview = <T extends object>({
   open,
   onClose,
   onConfirm,
@@ -191,9 +197,7 @@ export const ImportPreview = <T extends Record<string, any>>({
                         </TableCell>
                         {sampleColumns.map((col) => (
                           <TableCell key={col}>
-                            {row[col] !== undefined && row[col] !== null
-                              ? String(row[col])
-                              : '-'}
+                            {formatCell(row, col)}
                           </TableCell>
                         ))}
                       </TableRow>
@@ -241,9 +245,7 @@ export const ImportPreview = <T extends Record<string, any>>({
                         </TableCell>
                         {sampleColumns.map((col) => (
                           <TableCell key={col}>
-                            {item.data[col] !== undefined && item.data[col] !== null
-                              ? String(item.data[col])
-                              : '-'}
+                            {formatCell(item.data, col)}
                           </TableCell>
                         ))}
                       </TableRow>

@@ -65,7 +65,7 @@ const Analytics = () => {
       });
 
       // Calculate profit for each invoice
-      invoices.forEach((invoice: any) => {
+      invoices.forEach((invoice) => {
         const invoiceTotal = typeof invoice.total === 'number' 
           ? invoice.total 
           : (typeof invoice.total === 'string' 
@@ -75,7 +75,7 @@ const Analytics = () => {
 
         if (invoice.items && Array.isArray(invoice.items)) {
           let profit = 0;
-          invoice.items.forEach((item: any) => {
+          invoice.items.forEach((item) => {
             const quantity = Number(item.quantity) || 0;
             const unitPrice = Number(item.unitPrice) || 0;
             const sellingPrice = quantity * unitPrice;

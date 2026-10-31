@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -326,9 +326,9 @@ const Settings = () => {
     getValues,
     handleSubmit: handleSettingsSubmitForm,
   } = useForm<UserSettings>({
-    // Note: 'as any' is required here due to TypeScript type incompatibility between zod schema and UserSettings
+    // Note: the cast is required here due to TypeScript type incompatibility between zod schema and UserSettings
     // This is a known limitation when using zodResolver with complex schemas
-    resolver: zodResolver(settingsSchema) as any,
+    resolver: zodResolver(settingsSchema) as unknown as Resolver<UserSettings>,
     defaultValues: settings ? createResetValues(settings) : {},
     mode: 'onBlur', // Validate on blur to avoid blocking saves with unrelated field errors
     reValidateMode: 'onChange', // Re-validate on change after first blur
@@ -446,7 +446,7 @@ const Settings = () => {
         // Show validation warnings but don't block submission
         const errorMessages: string[] = [];
         errorFields.forEach((field) => {
-          const error = (errors as Record<string, any>)[field];
+          const error: unknown = (errors as Record<string, unknown>)[field];
           if (error && typeof error === 'object' && 'message' in error) {
             errorMessages.push(`${field}: ${error.message}`);
           } else if (typeof error === 'string') {

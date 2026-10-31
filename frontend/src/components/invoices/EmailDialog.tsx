@@ -83,8 +83,8 @@ export const EmailDialog = ({
         includePdf,
       });
       handleClose();
-    } catch (err: any) {
-      setError(err.message || 'Failed to send email');
+    } catch (err) {
+      setError((err as Error).message || 'Failed to send email');
     }
   };
 

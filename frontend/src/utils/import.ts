@@ -1,22 +1,28 @@
 // Note: xlsx library needs to be installed: npm install xlsx
 // For now, using a simple CSV parser and Excel parsing will be handled on backend
 
+/** One parsed spreadsheet row: column header -> cell text. */
+export type ImportRow = Record<string, string>;
+
+/** A row that failed validation, with the values it was mapped to. */
+export type ImportRowError = { row: number; data: object; errors: string[] };
+
 export type ImportResult<T> = {
   valid: T[];
-  invalid: Array<{ row: number; data: any; errors: string[] }>;
+  invalid: ImportRowError[];
 };
 
 export type ColumnMapping = {
   sourceColumn: string;
   targetField: string;
   required?: boolean;
-  transform?: (value: any) => any;
+  transform?: (value: unknown) => unknown;
 };
 
 /**
  * Parse CSV file
  */
-export const parseCSV = async (file: File): Promise<any[]> => {
+export const parseCSV = async (file: File): Promise<ImportRow[]> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -32,10 +38,10 @@ export const parseCSV = async (file: File): Promise<any[]> => {
         const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
         
         // Parse rows
-        const rows: any[] = [];
+        const rows: ImportRow[] = [];
         for (let i = 1; i < lines.length; i++) {
           const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
-          const row: any = {};
+          const row: ImportRow = {};
           headers.forEach((header, index) => {
             row[header] = values[index] || '';
           });
@@ -57,7 +63,7 @@ export const parseCSV = async (file: File): Promise<any[]> => {
  * Note: For Excel files, we'll send to backend for parsing
  * This is a placeholder - actual parsing happens on backend
  */
-export const parseExcel = async (): Promise<any[]> => {
+export const parseExcel = async (): Promise<ImportRow[]> => {
   // For now, return empty array - backend will handle Excel parsing
   // Frontend can still validate file type
   return Promise.resolve([]);
@@ -67,16 +73,16 @@ export const parseExcel = async (): Promise<any[]> => {
  * Validate and transform imported data
  */
 export const validateAndTransform = <T>(
-  rows: any[],
+  rows: Array<Record<string, unknown>>,
   columnMappings: ColumnMapping[],
-  validator?: (row: any) => { valid: boolean; errors: string[] },
+  validator?: (row: Record<string, unknown>) => { valid: boolean; errors: string[] },
 ): ImportResult<T> => {
   const valid: T[] = [];
-  const invalid: Array<{ row: number; data: any; errors: string[] }> = [];
+  const invalid: ImportRowError[] = [];
 
   rows.forEach((row, index) => {
     const errors: string[] = [];
-    const transformed: any = {};
+    const transformed: Record<string, unknown> = {};
 
     // Map columns
     columnMappings.forEach(mapping => {
