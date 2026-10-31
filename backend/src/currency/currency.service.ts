@@ -9,6 +9,23 @@ export interface ExchangeRate {
   date: Date;
 }
 
+/**
+ * The `rates[to]` entry of an exchangerate-api response, when it is a finite
+ * number; undefined for anything else.
+ */
+function readRate(data: unknown, to: string): number | undefined {
+  if (typeof data !== 'object' || data === null || !('rates' in data)) {
+    return undefined;
+  }
+  const { rates } = data;
+  if (typeof rates !== 'object' || rates === null) {
+    return undefined;
+  }
+  // Same lookup as rates[to]; read into unknown so the type check below decides.
+  const rate: unknown = Reflect.get(rates, to);
+  return typeof rate === 'number' && Number.isFinite(rate) ? rate : undefined;
+}
+
 @Injectable()
 export class CurrencyService {
   private readonly logger = new Logger(CurrencyService.name);
@@ -35,15 +52,16 @@ export class CurrencyService {
       const dateStr = date ? date.toISOString().split('T')[0] : 'latest';
       const url = `${this.baseUrl}/${dateStr}/${from}`;
 
-      const response = await axios.get(url);
-      const rates = response.data.rates;
+      // Third-party JSON: nothing about its shape is trusted.
+      const response = await axios.get<unknown>(url);
+      const rate = readRate(response.data, to);
 
-      if (!rates || !rates[to]) {
+      if (!rate) {
         this.logger.warn(`Exchange rate not found for ${from} to ${to}`);
         return 1; // Fallback to 1:1 if rate not found
       }
 
-      return rates[to];
+      return rate;
     } catch (error) {
       this.logger.error(`Failed to fetch exchange rate: ${error}`);
       return 1; // Fallback to 1:1 on error
