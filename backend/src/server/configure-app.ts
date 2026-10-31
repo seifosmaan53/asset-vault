@@ -15,6 +15,7 @@ import type { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
 import { v4 as uuidv4 } from 'uuid';
 import { HttpExceptionFilter } from '../common/filters/http-exception.filter';
+import { corsAllowedOrigins, createCorsMiddleware } from './cors.middleware';
 
 export function configureHttpApp(
   app: NestExpressApplication,
@@ -101,70 +102,13 @@ export function configureHttpApp(
     }),
   );
 
-  // Enable CORS with proper security (works in all environments)
+  // CORS: exact-origin allowlist; a disallowed Origin gets a 403 JSON, never a 500.
+  // See src/server/cors.middleware.ts for the behaviour and the reasons.
   const frontendUrl =
     configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
-  app.enableCors({
-    origin: (origin, callback) => {
-      // In production, strictly validate origins
-      if (isProduction) {
-        const allowedOrigins = [frontendUrl];
-        // Also allow same-origin requests (no origin header)
-        if (!origin || allowedOrigins.includes(origin)) {
-          callback(null, true);
-        } else {
-          logger.warn(`CORS blocked request from origin: ${origin}`);
-          callback(new Error('Not allowed by CORS'));
-        }
-      } else {
-        // In development, allow localhost and local network IPs
-        // Also allow requests with no origin (same-origin, mobile apps, etc.)
-        if (!origin) {
-          callback(null, true);
-          return;
-        }
-
-        const allowedOrigins = [
-          frontendUrl,
-          'http://localhost:5173',
-          'http://localhost:3000',
-          'http://127.0.0.1:5173',
-          'http://127.0.0.1:3000',
-          /^http:\/\/192\.168\.\d+\.\d+:\d+$/, // Local network IPs
-          /^http:\/\/10\.\d+\.\d+\.\d+:\d+$/, // Private network IPs
-          /^http:\/\/172\.(1[6-9]|2\d|3[01])\.\d+\.\d+:\d+$/, // Private network IPs
-        ];
-
-        const isAllowed = allowedOrigins.some((allowed) => {
-          if (typeof allowed === 'string') return origin === allowed;
-          return allowed.test(origin);
-        });
-
-        if (isAllowed) {
-          callback(null, true);
-        } else {
-          logger.warn(
-            `CORS blocked request from origin: ${origin} (development mode)`,
-          );
-          callback(new Error('Not allowed by CORS'));
-        }
-      }
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    // Allow custom tenant header for multi-organization context
-    // Also allow x-duplicate header for invoice duplication feature
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'X-Organization-Id',
-      'x-organization-id',
-      'x-duplicate',
-      'X-Duplicate',
-    ],
-    exposedHeaders: ['Content-Range', 'X-Content-Range'],
-    maxAge: 86400, // 24 hours
-  });
+  app.use(
+    createCorsMiddleware(corsAllowedOrigins(isProduction, frontendUrl), logger),
+  );
 
   // Request logging middleware
   app.use((req: Request, res: Response, next: NextFunction) => {
