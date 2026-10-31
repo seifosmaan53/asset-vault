@@ -11,6 +11,8 @@ import { InventoryItem } from '../inventory/entities/inventory-item.entity';
 import { StockMovement } from '../inventory/entities/stock-movement.entity';
 import { Store } from '../inventory/entities/store.entity';
 import { StoreItemSettings } from '../inventory/entities/store-item-settings.entity';
+import { runScript } from './run-script';
+import { readProperty } from '../common/utils/read-property.util';
 
 config();
 
@@ -126,13 +128,14 @@ async function verifyUserData() {
 
     await dataSource.destroy();
     process.exit(0);
-  } catch (error: any) {
-    console.error('Error:', error.message);
-    if (error.stack) {
-      console.error('\nStack:', error.stack);
+  } catch (error: unknown) {
+    const stack = readProperty(error, 'stack');
+    console.error('Error:', readProperty(error, 'message'));
+    if (stack) {
+      console.error('\nStack:', stack);
     }
     process.exit(1);
   }
 }
 
-verifyUserData();
+runScript(verifyUserData);

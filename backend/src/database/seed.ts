@@ -1,6 +1,4 @@
-import type { DataSource, Repository } from 'typeorm';
-import { In } from 'typeorm';
-import * as bcrypt from 'bcryptjs';
+import { type DataSource, type Repository, In } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Client } from '../clients/entities/client.entity';
 import { InventoryItem } from '../inventory/entities/inventory-item.entity';
@@ -1230,7 +1228,6 @@ export async function seedDatabase(dataSource: DataSource) {
   // Distribute across stores to show store analytics
   const currentMonth = invoiceNow.getMonth();
   const currentYear = invoiceNow.getFullYear();
-  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const currentDay = invoiceNow.getDate();
 
   // Create 30-40 paid invoices spread throughout the current month across all stores
@@ -1296,7 +1293,6 @@ export async function seedDatabase(dataSource: DataSource) {
 
   // Create more paid invoices from previous months for better historical data
   for (let monthOffset = 1; monthOffset <= 6; monthOffset++) {
-    const monthDate = new Date(currentYear, currentMonth - monthOffset, 1);
     const daysInThatMonth = new Date(
       currentYear,
       currentMonth - monthOffset + 1,
@@ -1470,7 +1466,9 @@ export async function seedDatabase(dataSource: DataSource) {
     for (let i = 0; i < sortedInvoices.length; i++) {
       const invoice = sortedInvoices[i];
       let needsUpdate = false;
-      const updates: any = {};
+      const updates: Partial<
+        Pick<Invoice, 'issueDate' | 'dueDate' | 'paidAt'>
+      > = {};
 
       // Update createdAt timestamp to ensure proper sorting (newest first)
       // Use raw SQL to bypass TypeORM's @CreateDateColumn auto-management
@@ -1569,9 +1567,6 @@ export async function seedDatabase(dataSource: DataSource) {
     (i) => !SEED_INVENTORY_SKUS.includes(i.sku),
   );
   // Identify seed invoices by NUMBER pattern, not by client (user-created invoices linked to seed clients must be preserved)
-  const finalSeedInvoices = finalInvoices.filter((inv) =>
-    isSeedInvoiceNumber(inv.number),
-  );
   const finalUserInvoices = finalInvoices.filter(
     (inv) => !isSeedInvoiceNumber(inv.number),
   );

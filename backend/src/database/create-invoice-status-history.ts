@@ -4,6 +4,8 @@
 
 import { DataSource } from 'typeorm';
 import { config } from 'dotenv';
+import { runScript } from './run-script';
+import { readProperty } from '../common/utils/read-property.util';
 
 config();
 
@@ -26,7 +28,7 @@ async function createInvoiceStatusHistoryTable() {
     const queryRunner = dataSource.createQueryRunner();
 
     // Check if table already exists
-    const tableExists = await queryRunner.query(`
+    const tableExists: unknown = await queryRunner.query(`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
         WHERE table_schema = 'public' 
@@ -34,7 +36,11 @@ async function createInvoiceStatusHistoryTable() {
       );
     `);
 
-    if (tableExists[0].exists) {
+    // One row, { exists: boolean }.
+    const firstRow: unknown = Array.isArray(tableExists)
+      ? tableExists[0]
+      : undefined;
+    if (readProperty(firstRow, 'exists')) {
       console.log(
         '⚠️  Table "invoice_status_history" already exists. Skipping creation.',
       );
@@ -61,11 +67,11 @@ async function createInvoiceStatusHistoryTable() {
     console.log('✅ Table created');
 
     // Add foreign key constraint
-    const constraintExists = await queryRunner.query(`
+    const constraintExists: unknown = await queryRunner.query(`
       SELECT 1 FROM pg_constraint WHERE conname = 'FK_invoice_status_history_invoiceId'
     `);
 
-    if (constraintExists.length === 0) {
+    if (Array.isArray(constraintExists) && constraintExists.length === 0) {
       await queryRunner.query(`
         ALTER TABLE "invoice_status_history" 
         ADD CONSTRAINT "FK_invoice_status_history_invoiceId" 
@@ -111,4 +117,4 @@ async function createInvoiceStatusHistoryTable() {
   }
 }
 
-createInvoiceStatusHistoryTable();
+runScript(createInvoiceStatusHistoryTable);

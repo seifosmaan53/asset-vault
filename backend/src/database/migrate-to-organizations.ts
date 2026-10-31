@@ -15,6 +15,7 @@ import { StoreItemSettings } from '../inventory/entities/store-item-settings.ent
 import { UserSettings } from '../user-settings/entities/user-settings.entity';
 // Invoice templates removed
 import { ApiKey } from '../api-keys/entities/api-key.entity';
+import { runScript } from './run-script';
 
 config();
 
@@ -66,17 +67,6 @@ async function migrateToOrganizations() {
     const organizationRepository = dataSource.getRepository(Organization);
     const userOrganizationRepository =
       dataSource.getRepository(UserOrganization);
-    const clientRepository = dataSource.getRepository(Client);
-    const invoiceRepository = dataSource.getRepository(Invoice);
-    const inventoryRepository = dataSource.getRepository(InventoryItem);
-    const storeRepository = dataSource.getRepository(Store);
-    // const recurringInvoiceRepository = dataSource.getRepository(RecurringInvoice); // Removed
-    const stockMovementRepository = dataSource.getRepository(StockMovement);
-    const storeItemSettingsRepository =
-      dataSource.getRepository(StoreItemSettings);
-    const userSettingsRepository = dataSource.getRepository(UserSettings);
-    // const invoiceTemplateRepository = dataSource.getRepository(InvoiceTemplate); // Removed
-    const apiKeyRepository = dataSource.getRepository(ApiKey);
 
     // Get all users
     const users = await userRepository.find();
@@ -156,4 +146,4 @@ async function migrateToOrganizations() {
   }
 }
 
-migrateToOrganizations();
+runScript(migrateToOrganizations);

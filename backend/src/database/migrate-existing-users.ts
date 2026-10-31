@@ -74,6 +74,12 @@ export async function migrateExistingUsers(dataSource: DataSource) {
   );
 }
 
+/** Loading the data source failed: report it and exit 1, as an unhandled rejection did. */
+function exitOnImportFailure(error: unknown): void {
+  console.error('Migration failed:', error);
+  process.exit(1);
+}
+
 // Run migration if called directly
 if (require.main === module) {
   import('../database/data-source.js').then(({ AppDataSource }) => {
@@ -83,9 +89,9 @@ if (require.main === module) {
         await AppDataSource.destroy();
         process.exit(0);
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         console.error('Migration failed:', error);
         process.exit(1);
       });
-  });
+  }, exitOnImportFailure);
 }

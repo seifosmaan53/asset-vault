@@ -8,6 +8,7 @@ import { InventoryItem } from '../inventory/entities/inventory-item.entity';
 import { StockMovement } from '../inventory/entities/stock-movement.entity';
 import { Store } from '../inventory/entities/store.entity';
 import { StoreItemSettings } from '../inventory/entities/store-item-settings.entity';
+import { runScript } from './run-script';
 
 config();
 
@@ -81,7 +82,7 @@ async function diagnoseDemoUser() {
     console.log(`   Email: ${demoUser.email}`);
     console.log(`   ID: ${demoUser.id}`);
     console.log(`   Role: ${demoUser.role}`);
-    console.log(`   Created: ${demoUser.createdAt}`);
+    console.log(`   Created: ${String(demoUser.createdAt)}`);
 
     // Check for clients (use count for efficiency, only load sample if needed)
     const clientCount = await clientRepository.count({
@@ -195,4 +196,4 @@ async function diagnoseDemoUser() {
   }
 }
 
-diagnoseDemoUser();
+runScript(diagnoseDemoUser);
