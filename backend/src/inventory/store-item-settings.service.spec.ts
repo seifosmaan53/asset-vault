@@ -13,7 +13,17 @@ describe('StoreItemSettingsService', () => {
      createQueryBuilder() returned undefined and the suite died. Each chain step returns
      the builder; getOne/getMany delegate to the repositories' findOne/find so the
      existing stubs in these tests keep working. */
-  const makeQb = (one?: jest.Mock, many?: jest.Mock) => {
+  /* Repository stubs resolve to whatever a test hands them, hence `unknown`. They
+     are declared before the repository object so its manager adapters can call
+     them without the object referring to itself (which typed it as `any`). */
+  const lookupMock = () => jest.fn<Promise<unknown>, [options?: unknown]>();
+  type LookupMock = ReturnType<typeof lookupMock>;
+  const settingsFindOne = lookupMock();
+  const settingsFind = lookupMock();
+  const settingsCreate = jest.fn<unknown, [data?: unknown]>();
+  const settingsSave = jest.fn<Promise<unknown>, [data?: unknown]>();
+
+  const makeQb = (one?: LookupMock, many?: LookupMock) => {
     const qb: Record<string, jest.Mock> = {};
     for (const m of [
       'where',
@@ -47,10 +57,10 @@ describe('StoreItemSettingsService', () => {
   let itemQb: ReturnType<typeof makeQb>;
 
   const mockStoreItemSettingsRepository = {
-    create: jest.fn(),
-    save: jest.fn(),
-    findOne: jest.fn(),
-    find: jest.fn(),
+    create: settingsCreate,
+    save: settingsSave,
+    findOne: settingsFindOne,
+    find: settingsFind,
     createQueryBuilder: jest.fn(() => settingsQb),
     /* The service does `queryRunner?.manager || this.repo.manager`, so outside a
        transaction it goes through the repository's EntityManager — which the mock did
@@ -59,30 +69,28 @@ describe('StoreItemSettingsService', () => {
        tests already set up. */
     manager: {
       findOne: jest.fn((_entity: unknown, options: unknown) =>
-        mockStoreItemSettingsRepository.findOne(options),
+        settingsFindOne(options),
       ),
       // default to [] — the service reduces over the result, and an unstubbed find()
       // returning undefined blows up with "Cannot read properties of undefined"
       find: jest.fn(
         async (_entity: unknown, options: unknown) =>
-          (await mockStoreItemSettingsRepository.find(options)) ?? [],
+          (await settingsFind(options)) ?? [],
       ),
       create: jest.fn((_entity: unknown, data: unknown) =>
-        mockStoreItemSettingsRepository.create(data),
+        settingsCreate(data),
       ),
-      save: jest.fn((_entity: unknown, data: unknown) =>
-        mockStoreItemSettingsRepository.save(data),
-      ),
+      save: jest.fn((_entity: unknown, data: unknown) => settingsSave(data)),
     },
   };
 
   const mockStoreRepository = {
-    findOne: jest.fn(),
+    findOne: lookupMock(),
     createQueryBuilder: jest.fn(() => storeQb),
   };
 
   const mockInventoryItemRepository = {
-    findOne: jest.fn(),
+    findOne: lookupMock(),
     createQueryBuilder: jest.fn(() => itemQb),
   };
 
