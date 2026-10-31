@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { fileURLToPath } from 'node:url'
@@ -62,19 +63,29 @@ export default defineConfig({
     // Optimize rollup options
     rollupOptions: {
       output: {
-        // Better chunk splitting
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'mui-vendor': ['@mui/material', '@mui/icons-material', '@emotion/react', '@emotion/styled'],
-          'query-vendor': ['@tanstack/react-query'],
-          'form-vendor': ['react-hook-form', '@hookform/resolvers', 'zod'],
+        // Vendor code the app shell needs on every page gets long-lived chunks of its own, so
+        // a release that only touches app code does not invalidate them. Everything else is
+        // left to Rollup: pages are lazy (see App.tsx), and a library used only by some pages
+        // (charts, date pickers, forms, icons) lands in a chunk those pages share, fetched
+        // with them rather than at start-up. Listing such a library here would pull it into
+        // a named chunk that is still only loaded on demand, except for the cases below,
+        // which are loaded on demand under a readable name.
+        manualChunks(id) {
+          if (!id.includes('/node_modules/')) return undefined
+          const pkg = id.split('/node_modules/').pop() ?? ''
+          if (/^(react|react-dom|scheduler|react-router|react-router-dom)\//.test(pkg)) return 'react-vendor'
+          if (/^(@mui\/(material|system|utils|styled-engine|private-theming|core-downloads-tracker)|@emotion\/[^/]+|@popperjs\/core|react-transition-group|stylis|clsx|prop-types|react-is|hoist-non-react-statics)\//.test(pkg)) return 'mui-vendor'
+          if (/^@tanstack\/(react-query|query-core)\//.test(pkg)) return 'query-vendor'
+          if (/^@clerk\//.test(pkg)) return 'clerk-vendor'
+          // Only chart pages import these (dashboard, analytics, store reports).
+          if (/^(recharts|victory-vendor|d3-[^/]+|internmap|decimal\.js-light|es-toolkit|@reduxjs\/toolkit|redux|redux-thunk|reselect|immer|react-redux|eventemitter3|tiny-invariant)\//.test(pkg)) return 'charts-vendor'
+          return undefined
         },
       },
     },
     // Source maps for better debugging (disable in production for speed)
     sourcemap: process.env.NODE_ENV === 'development',
   },
-  // @ts-ignore - test config is for Vitest
   test: {
     globals: true,
     environment: 'jsdom',
