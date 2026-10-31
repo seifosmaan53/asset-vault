@@ -14,7 +14,8 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
-import type { Response } from 'express';
+import type { Request as ExpressRequest, Response } from 'express';
+import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import {
   ApiTags,
   ApiOperation,
@@ -33,7 +34,13 @@ import { InvoiceStatsResponseDto } from './dto/invoice-stats-response.dto';
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { QuotaGuard } from '../subscriptions/quota.guard';
+import { errorMessage, errorStack } from './utils/error-details.util';
 // Organizations removed - OrganizationId decorator no longer needed
+
+/** Every route here sits behind ClerkAuthGuard, which sets `user` before the handler runs. */
+interface AuthenticatedRequest extends ExpressRequest {
+  user: RequestUser;
+}
 
 @ApiTags('invoices')
 @ApiBearerAuth('Bearer')
@@ -79,7 +86,7 @@ export class InvoicesController {
     description: 'List of invoices retrieved successfully',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async findAll(@Request() req, @Query() filters: any) {
+  async findAll(@Request() req: AuthenticatedRequest, @Query() filters: any) {
     try {
       // Validate user is authenticated
       if (!req.user || !req.user.userId) {
@@ -105,12 +112,15 @@ export class InvoicesController {
         `findAll: Successfully fetched ${result.length} invoices for userId: ${req.user.userId}`,
       );
       return result;
-    } catch (error: any) {
-      this.logger.error(`Error in findAll: ${error.message}`, {
-        stack: error.stack,
+    } catch (error: unknown) {
+      this.logger.error(`Error in findAll: ${errorMessage(error)}`, {
+        stack: errorStack(error),
         userId: req.user?.userId,
         filters,
-        errorName: error.constructor?.name,
+        errorName:
+          typeof error === 'object' && error !== null
+            ? error.constructor?.name
+            : undefined,
       });
       // Re-throw the error so NestJS exception filter can handle it
       throw error;
@@ -163,7 +173,7 @@ export class InvoicesController {
     status: 200,
     description: 'Paged invoices retrieved successfully with pagination links',
   })
-  getPaged(@Request() req, @Query() query: any) {
+  getPaged(@Request() req: AuthenticatedRequest, @Query() query: any) {
     // Organizations removed - data is user-scoped
     return this.invoicesService.findPaged(req.user.userId, query);
   }
@@ -180,7 +190,9 @@ export class InvoicesController {
     type: InvoiceStatsResponseDto,
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getStats(@Request() req): Promise<InvoiceStatsResponseDto> {
+  async getStats(
+    @Request() req: AuthenticatedRequest,
+  ): Promise<InvoiceStatsResponseDto> {
     // Organizations removed - data is user-scoped
     const stats = await this.invoicesService.getStats(req.user.userId);
     // Issue #36 & #62: Return with DTO and success message
@@ -200,7 +212,7 @@ export class InvoicesController {
   @ApiResponse({ status: 200, description: 'Invoice retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Invoice not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  findOne(@Param('id') id: string, @Request() req) {
+  findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     // Organizations removed - data is user-scoped
     return this.invoicesService.findOne(id, req.user.userId);
   }
@@ -221,7 +233,7 @@ export class InvoicesController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async create(
     @Body() createDto: CreateInvoiceDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ): Promise<CreateInvoiceResponseDto> {
     // Organizations removed - data is user-scoped
     const invoice = await this.invoicesService.create(
@@ -256,7 +268,7 @@ export class InvoicesController {
   async update(
     @Param('id') id: string,
     @Body() updateDto: UpdateInvoiceDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ): Promise<UpdateInvoiceResponseDto> {
     // Log the update data for debugging (excluding sensitive info)
     const logger = new Logger(InvoicesController.name);
@@ -295,7 +307,7 @@ export class InvoicesController {
     status: 403,
     description: 'Forbidden - Admin/Owner access required',
   })
-  remove(@Param('id') id: string, @Request() req) {
+  remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     // Organizations removed - data is user-scoped
     return this.invoicesService.remove(id, req.user.userId);
   }
@@ -314,7 +326,7 @@ export class InvoicesController {
   @ApiResponse({ status: 404, description: 'Estimate not found' })
   @ApiResponse({ status: 400, description: 'Bad request - not an estimate' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  convert(@Param('id') id: string, @Request() req) {
+  convert(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     // Organizations removed - data is user-scoped
     const result = this.invoicesService.convertEstimateToInvoice(
       id,
@@ -341,7 +353,7 @@ export class InvoicesController {
   async send(
     @Param('id') id: string,
     @Body() emailOptions: any,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     // Organizations removed - data is user-scoped
     const result = await this.invoicesService.sendEmail(
@@ -367,7 +379,7 @@ export class InvoicesController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async generatePdf(
     @Param('id') id: string,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Res() res: Response,
   ) {
     // Organizations removed - data is user-scoped
@@ -399,7 +411,7 @@ export class InvoicesController {
     description: 'Forbidden - Admin/Owner access required',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async backfillPaidAt(@Request() req) {
+  async backfillPaidAt(@Request() req: AuthenticatedRequest) {
     const result = await this.invoicesService.backfillPaidAtDates(
       req.user.userId,
     );
