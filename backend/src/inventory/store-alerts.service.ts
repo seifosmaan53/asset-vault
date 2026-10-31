@@ -177,10 +177,7 @@ export class StoreAlertsService {
    * Get alerts for a specific store
    * FIX Issue #43: Validate organization access
    */
-  async getStoreAlerts(
-    storeId: string,
-    userId: string,
-  ): Promise<StoreAlert[]> {
+  async getStoreAlerts(storeId: string, userId: string): Promise<StoreAlert[]> {
     // The store must belong to the caller. This used to run only `if (organizationId)`, and organizationId
     // is always null (data is per-user), so the check never executed and a foreign store id quietly
     // returned an empty list instead of the same 404 as a missing store.

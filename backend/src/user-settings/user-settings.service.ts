@@ -242,7 +242,6 @@ export class UserSettingsService {
          one-way — those users would re-enter their password. */
       delete sanitizedData.smtpPassword;
 
-
       let settings: UserSettings;
 
       if (!existingSettings) {

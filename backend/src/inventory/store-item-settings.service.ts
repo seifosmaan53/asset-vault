@@ -415,10 +415,7 @@ export class StoreItemSettingsService {
       );
       // Return a minimal settings object to satisfy return type, but don't save it
       await this.requireStore(storeId, actorUserId);
-      await this.requireInventoryItem(
-        inventoryItemId,
-        actorUserId,
-      );
+      await this.requireInventoryItem(inventoryItemId, actorUserId);
       return manager.create(StoreItemSettings, {
         storeId,
         inventoryItemId,

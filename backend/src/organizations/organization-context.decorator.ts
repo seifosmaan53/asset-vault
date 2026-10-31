@@ -11,11 +11,7 @@ import { createParamDecorator } from '@nestjs/common';
  *
  * @deprecated no organization context exists; remove call sites when convenient.
  */
-export const OrganizationId = createParamDecorator(
-  (): string | null => null,
-);
+export const OrganizationId = createParamDecorator((): string | null => null);
 
 /** @deprecated see OrganizationId. Always null. */
-export const OrganizationRole = createParamDecorator(
-  (): string | null => null,
-);
+export const OrganizationRole = createParamDecorator((): string | null => null);

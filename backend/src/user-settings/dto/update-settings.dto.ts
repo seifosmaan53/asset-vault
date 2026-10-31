@@ -811,7 +811,8 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsString()
   @IsIn(['immediate', 'hourly', 'daily', 'weekly'], {
-    message: 'Notification frequency must be immediate, hourly, daily or weekly',
+    message:
+      'Notification frequency must be immediate, hourly, daily or weekly',
   })
   notificationFrequency?: string;
 
