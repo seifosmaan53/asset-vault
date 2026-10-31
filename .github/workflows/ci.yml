@@ -60,8 +60,9 @@ jobs:
 
       - name: Lint
         working-directory: ./backend
+        # GATING. 0 errors and 0 warnings across src, test, scripts and the CommonJS test
+        # helpers (eslint.config.mjs documents the one narrow exception for plain JS files).
         run: npm run lint -- --max-warnings=0
-        continue-on-error: true
 
       - name: Build
         working-directory: ./backend
