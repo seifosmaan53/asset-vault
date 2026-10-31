@@ -545,7 +545,7 @@ const InvoicesList = () => {
       const errorMessage = getErrorMessage(error, 'Failed to duplicate invoice');
       showToast(errorMessage, 'error');
     }
-  }, [invoices, createInvoice, showToast, navigate]);
+  }, [invoices, createInvoice, showToast, navigate, queryClient]);
 
   const handleDeleteClick = useCallback((id: string) => {
     setInvoiceToDelete(id);

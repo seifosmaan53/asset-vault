@@ -71,7 +71,7 @@ const ClientDetail = () => {
     
     // Update previous location
     previousLocationRef.current = location.pathname;
-  }, [location.pathname, id, refetchClient]);
+  }, [location.pathname, id, refetchClient, showToast]);
 
   if (isLoading) {
     return (

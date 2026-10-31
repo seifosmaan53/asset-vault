@@ -348,7 +348,7 @@ const Dashboard = () => {
           showToast('Failed to update invoice payment dates. Revenue calculations may be incomplete.', 'warning');
         });
     }
-  }, [computedStats, statsLoading, refetch]);
+  }, [computedStats, statsLoading, refetch, showToast]);
 
   // Check if there's any data at all
   // Show dashboard if there are any invoices, even if all amounts are 0 (e.g., draft invoices)
@@ -368,7 +368,7 @@ const Dashboard = () => {
            stats.monthlyTotal > 0 || 
            stats.totalAmount > 0;
     return hasStats;
-  }, [stats, invoices, statsLoading, invoicesLoading]);
+  }, [stats, invoices]);
 
   // Show loading if either stats or invoices are loading
   // This prevents showing welcome message prematurely when invoices exist but stats haven't loaded yet

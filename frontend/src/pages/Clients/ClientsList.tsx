@@ -265,7 +265,7 @@ const ClientsList = () => {
       }
     };
     // FIX #144: Fix infinite loop - refetchClients is stable from React Query
-  }, [refetchClients, queryClient, deleteClient.isPending, bulkDeleteClients.isPending]);
+  }, [refetchClients, queryClient, deleteClient.isPending, bulkDeleteClients.isPending, showToast]);
 
   // Listen for focus events to refetch when user returns to the tab
   useEffect(() => {
@@ -299,7 +299,7 @@ const ClientsList = () => {
         logger.error('ClientsList: Error in focus cleanup', error);
       }
     };
-  }, [refetchClients, queryClient, deleteClient.isPending, bulkDeleteClients.isPending]);
+  }, [refetchClients, queryClient, deleteClient.isPending, bulkDeleteClients.isPending, showToast]);
   
   // Keyboard shortcuts
   useEffect(() => {
