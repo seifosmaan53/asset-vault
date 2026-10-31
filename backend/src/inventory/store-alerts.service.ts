@@ -233,8 +233,7 @@ export class StoreAlertsService {
       // For email notifications, we use the first org's settings
       const userOrgs =
         await this.organizationsService.getUserOrganizations(userId);
-      // serializeSettings output; it has no emailNotifications key today, so
-      // the opt-out check below only applies once such a setting exists.
+      // serializeSettings output; emailLowStockAlert is the low-stock opt-out.
       let userSettings: Record<string, unknown> = {};
 
       if (userOrgs.length > 0) {
@@ -253,9 +252,10 @@ export class StoreAlertsService {
         );
       }
 
-      // Check if email notifications are enabled (default to true if not set)
-      if (userSettings?.emailNotifications === false) {
-        this.logger.log(`Email notifications disabled for user ${userId}`);
+      // The low-stock e-mail opt-out (Settings › Notifications; default on). This read a
+      // nonexistent emailNotifications key, so opting out never stopped these e-mails.
+      if (userSettings?.emailLowStockAlert === false) {
+        this.logger.log(`Low-stock alert e-mails disabled for user ${userId}`);
         return;
       }
 
