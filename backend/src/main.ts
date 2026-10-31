@@ -7,6 +7,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { checkDatabaseSchema } from './database/schema-check';
 import { configureHttpApp } from './server/configure-app';
+import { installGracefulShutdown } from './server/graceful-shutdown';
 import {
   loadServerSettings,
   type ServerSettings,
@@ -109,6 +110,16 @@ async function bootstrap() {
     }
     process.exit(1);
   }
+
+  // SIGTERM / SIGINT: stop accepting connections, finish in-flight requests, close the database
+  // pool and other resources, exit 0; exit 1 if that takes longer than SHUTDOWN_TIMEOUT_MS.
+  installGracefulShutdown(app, {
+    timeoutMs: settings.shutdownTimeoutMs,
+    logger,
+  });
+  logger.log(
+    `Graceful shutdown armed (SIGTERM/SIGINT, bound ${settings.shutdownTimeoutMs} ms).`,
+  );
 }
 bootstrap().catch((error: unknown) => {
   new Logger('Bootstrap').error('Unhandled startup failure', error);

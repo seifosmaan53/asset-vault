@@ -69,6 +69,12 @@ import { ContentNegotiationInterceptor } from './common/interceptors/content-neg
         // Proxies whose X-Forwarded-* headers are believed: '' (none, default), a hop count,
         // or a comma list of IPs / CIDRs / loopback / linklocal / uniquelocal. Never 'true'.
         TRUST_PROXY: Joi.string().allow('').optional(),
+        // Graceful-shutdown bound: in-flight requests get this long after SIGTERM, then exit 1.
+        SHUTDOWN_TIMEOUT_MS: Joi.number()
+          .integer()
+          .min(1000)
+          .max(120000)
+          .default(8000),
 
         SMTP_HOST: Joi.string().allow('', null).optional(),
         SMTP_PORT: Joi.number().allow(null).min(1).max(65535).optional(),
